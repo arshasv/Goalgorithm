@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GOALGORITHM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚽</text></svg>">
+  <style>
+    .auth-page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      padding: var(--space-lg);
+    }
+
+    .auth-page::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: var(--gradient-stadium);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .auth-page::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: var(--gradient-pitch);
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.6;
+    }
+
+    .auth-container {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 520px;
+      animation: fadeInUp 0.6s var(--ease-out);
+    }
+
+    .auth-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-large);
+      padding: var(--space-2xl);
+      box-shadow: var(--shadow-xl);
+    }
+
+    .auth-header {
+      text-align: center;
+      margin-bottom: var(--space-xl);
+    }
+
+    .auth-logo {
+      font-size: 48px;
+      margin-bottom: var(--space-sm);
+      display: block;
+    }
+
+    .auth-title {
+      font-family: var(--font-display);
+      font-size: var(--text-3xl);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+
+    .auth-subtitle {
+      color: var(--color-text-secondary);
+      font-size: var(--text-sm);
+      margin-top: 4px;
+    }
+
+    .auth-error {
+      background: var(--color-status-error);
+      color: white;
+      padding: var(--space-sm) var(--space-md);
+      border-radius: var(--radius-small);
+      font-size: var(--text-sm);
+      margin-bottom: var(--space-md);
+      display: none;
+      text-align: center;
+    }
+
+    .auth-error.visible {
+      display: block;
+    }
+
+    .auth-footer {
+      text-align: center;
+      margin-top: var(--space-lg);
+      font-size: var(--text-sm);
+      color: var(--color-text-secondary);
+    }
+
+    .auth-footer a {
+      color: var(--color-text-link);
+      font-weight: 600;
+    }
+
+    .auth-field {
+      margin-bottom: var(--space-md);
+    }
+
+    .auth-field label {
+      display: block;
+      font-size: var(--text-xs);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-text-secondary);
+      margin-bottom: 6px;
+    }
+
+    .auth-field .form-input {
+      width: 100%;
+      padding: 12px 16px;
+      font-size: var(--text-base);
+    }
+
+    .auth-field .form-hint {
+      font-size: var(--text-xs);
+      color: var(--color-text-muted);
+      margin-top: 4px;
+    }
+
+    .password-toggle {
+      position: relative;
+    }
+
+    .password-toggle .toggle-btn {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--color-text-muted);
+      cursor: pointer;
+      font-size: var(--text-sm);
+      padding: 4px;
+    }
+
+    .stadium-beam {
+      position: fixed;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(ellipse at 30% 20%, rgba(37, 99, 235, 0.04) 0%, transparent 50%);
+      animation: stadiumBeam 8s ease-in-out infinite;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    @keyframes stadiumBeam {
+      0% {
+        opacity: 0;
+        transform: translateX(-100%) rotate(-15deg);
+      }
+
+      50% {
+        opacity: 0.06;
+      }
+
+      100% {
+        opacity: 0;
+        transform: translateX(200%) rotate(-15deg);
+      }
+    }
+
+    .section-divider {
+      border: none;
+      border-top: 1px solid var(--color-border);
+      margin: var(--space-lg) 0;
+    }
+
+    .section-label {
+      font-family: var(--font-display);
+      font-size: var(--text-sm);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-text-muted);
+      margin-bottom: var(--space-md);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="auth-page">
+    <button class="theme-toggle" id="theme-toggle-btn" title="Toggle theme" style="position: absolute; top: var(--space-lg); right: var(--space-lg); z-index: 10;"></button>
+    <div class="stadium-beam"></div>
+    <div class="auth-container">
+      <div class="auth-card">
+        <div class="auth-header">
+          <span class="auth-logo">⚽</span>
+          <h1 class="auth-title">GOALGORITHM</h1>
+          <p class="auth-subtitle">Create your team leader account</p>
+        </div>
+        <div class="auth-error" id="auth-error"></div>
+        <form id="register-form" onsubmit="return handleRegister(event)">
+
+          <div class="section-label">Account Details</div>
+
+          <div class="auth-field">
+            <label for="username">Username</label>
+            <input type="text" id="username" class="form-input" placeholder="Choose a username" required
+              autocomplete="username" minlength="3">
+          </div>
+
+          <div class="auth-field">
+            <label for="email">Email</label>
+            <input type="email" id="email" class="form-input" placeholder="you@example.com" required
+              autocomplete="email" oninput="validateEmailField()">
+            <div class="form-hint" id="email-hint">Only Gmail, OpenTrends, and GOALGORITHM emails are allowed</div>
+            <div class="field-error" id="email-error" style="display:none"></div>
+          </div>
+
+          <div class="auth-field">
+            <label for="password">Password</label>
+            <div class="password-toggle">
+              <input type="password" id="password" class="form-input" placeholder="Create a password (min 6 chars)"
+                required autocomplete="new-password" minlength="6">
+              <button type="button" class="toggle-btn" onclick="togglePassword()" tabindex="-1">👁</button>
+            </div>
+            <div class="form-hint">At least 6 characters</div>
+          </div>
+
+          <div class="auth-field">
+            <label for="team_leader_name">Team Leader Name</label>
+            <input type="text" id="team_leader_name" class="form-input" placeholder="Your full name" required>
+          </div>
+
+          <hr class="section-divider">
+
+          <div class="section-label">Team Information</div>
+
+          <div class="auth-field">
+            <label for="team_code">Team Code</label>
+            <input type="text" id="team_code" class="form-input" placeholder="e.g. A" required>
+            <div class="form-hint">Enter the team name (A, B, C, D, E) assigned to your team</div>
+          </div>
+
+          <div class="auth-btn-wrapper" style="margin-top:var(--space-lg)">
+            <button type="submit" class="btn btn-primary btn-lg" id="register-btn">
+              <span id="register-btn-text">Register Team</span>
+              <span class="spinner" id="register-spinner" style="display:none"></span>
+            </button>
+          </div>
+        </form>
+        <div class="auth-footer">
+          Already have an account? <a href="login.html">Sign in</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/theme.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    ThemeManager.init();
+
+    const ALLOWED_EMAIL_DOMAINS = ['gmail.com', 'opentrends.com', 'opentrends.net', 'fifa-scoring.com'];
+
+    function validateEmailDomain(email) {
+      if (!email) return null;
+      const domain = email.trim().toLowerCase().split('@').pop() || '';
+      if (!ALLOWED_EMAIL_DOMAINS.includes(domain)) {
+        return 'Only Gmail, OpenTrends, and GOALGORITHM emails are allowed';
+      }
+      return null;
+    }
+
+    function validateEmailField() {
+      const email = document.getElementById('email').value.trim();
+      const errEl = document.getElementById('email-error');
+      const input = document.getElementById('email');
+      const btn = document.getElementById('register-btn');
+      const error = email ? validateEmailDomain(email) : null;
+      if (error) {
+        errEl.textContent = error;
+        errEl.style.display = 'block';
+        input.classList.add('input-error');
+        btn.disabled = true;
+      } else {
+        errEl.style.display = 'none';
+        input.classList.remove('input-error');
+        btn.disabled = false;
+      }
+    }
+
+    function togglePassword() {
+      const pwd = document.getElementById('password');
+      pwd.type = pwd.type === 'password' ? 'text' : 'password';
+    }
+
+    function showError(msg) {
+      const el = document.getElementById('auth-error');
+      el.textContent = msg;
+      el.classList.add('visible');
+    }
+
+    function hideError() {
+      document.getElementById('auth-error').classList.remove('visible');
+    }
+
+    function parseErrorMessage(err) {
+      if (!err) return 'Registration failed. Please try again.';
+      if (typeof err === 'string') return err;
+
+      let detail = err.message || err.detail;
+      if (err.data && err.data.detail) {
+        detail = err.data.detail;
+      }
+
+      if (!detail) return err.message || 'Registration failed. Please try again.';
+
+      if (typeof detail === 'string') return detail;
+      if (Array.isArray(detail)) {
+        return detail.map(d => {
+          if (d && typeof d === 'object') {
+            const field = d.loc ? d.loc.filter(locPart => locPart !== 'body').join('.') : '';
+            return `${field ? field + ': ' : ''}${d.msg || 'invalid value'}`;
+          }
+          return String(d);
+        }).join(', ');
+      }
+      if (typeof detail === 'object') {
+        return detail.message || detail.detail || JSON.stringify(detail);
+      }
+      return String(detail);
+    }
+
+    async function handleRegister(e) {
+      e.preventDefault();
+      hideError();
+
+      const username = document.getElementById('username').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const teamLeaderName = document.getElementById('team_leader_name').value.trim();
+      const teamCode = document.getElementById('team_code').value.trim();
+
+      if (!username || !email || !password || !teamLeaderName || !teamCode) {
+        showError('Please fill in all required fields');
+        return;
+      }
+      if (password.length < 6) {
+        showError('Password must be at least 6 characters');
+        return;
+      }
+      const emailErr = validateEmailDomain(email);
+      if (emailErr) {
+        showError(emailErr);
+        return;
+      }
+
+      const btn = document.getElementById('register-btn');
+      const btnText = document.getElementById('register-btn-text');
+      const spinner = document.getElementById('register-spinner');
+      btn.classList.add('loading');
+      if (btnText) btnText.textContent = 'Registering...';
+      if (spinner) spinner.style.display = 'inline-block';
+
+      try {
+        const data = await AuthService.register({
+          username,
+          email,
+          password,
+          team_name: teamCode,
+          team_leader_name: teamLeaderName
+        });
+
+        // Redirect to login after successful registration
+        window.location.href = 'login.html?registered=true';
+      } catch (err) {
+        showError(parseErrorMessage(err));
+      } finally {
+        btn.classList.remove('loading');
+        if (btnText) btnText.textContent = 'Register Team';
+        if (spinner) spinner.style.display = 'none';
+      }
+    }
+
+    if (Auth.isAuthenticated()) {
+      const role = Auth.getRole();
+      if (role === 'ORGANIZER') window.location.href = 'index.html#dashboard';
+      else if (role === 'TEAM_LEADER') window.location.href = 'index.html#team-dashboard';
+      else Auth.clearSession();
+    }
+  </script>
+</body>
+
+</html>
