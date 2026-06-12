@@ -95,7 +95,7 @@ function showMatchDetail(matchId) {
 function showPredictionModal(team) {
   Modal.show(`
     <div class="json-viewer">
-      <div><span class="json-key">"team_id"</span>: <span class="json-string">"TEAM_${team.toUpperCase()}"</span>,</div>
+      <div><span class="json-key">"team_id"</span>: <span class="json-string">"Team ${team}"</span>,</div>
       <div><span class="json-key">"match_id"</span>: <span class="json-string">"M32"</span>,</div>
       <div><span class="json-key">"match_prediction"</span>: {</div>
       <div style="padding-left:var(--space-md)"><span class="json-key">"predicted_winner"</span>: <span class="json-string">"home"</span>,</div>

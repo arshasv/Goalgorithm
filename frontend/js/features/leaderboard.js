@@ -41,7 +41,7 @@ async function loadLeaderboard() {
     const topScore = leaderboard[0]?.final_score || 0;
     const entriesWithTeams = leaderboard.map(e => {
       const team = teams.find(t => t.id === e.team_id);
-      return { ...e, team_name: team?.name || e.team_id };
+      return { ...e, team_name: team?.name || '—' };
     });
 
     container.innerHTML = `

@@ -1,25 +1,46 @@
-# FIFA Challenge Scoring System
+# GOALGORITHM — FIFA Challenge Scoring System
 
-Organizer-side backend for evaluating AI prediction teams in the FIFA AI Match Prediction Challenge.
+Full-stack tournament scoring platform for evaluating AI match prediction teams. Organizers upload rosters, teams submit predictions, and the system automatically computes scores across three phases — producing a final leaderboard out of **100 marks**.
 
-> **Important:** This system does NOT build or train AI prediction models. It is the evaluation infrastructure that sits alongside the challenge and objectively measures how well each participating team's AI model performed.
+> This system does **not** build or train AI prediction models. It is the evaluation infrastructure that objectively measures how well each participating team's AI model performed.
 
 ---
 
-## Processing Flow
+## System Architecture
 
 ```
-Team Prediction JSON
-        ↓
-    Validation (Pydantic schemas)
-        ↓
-    Base Score  (/25)
-        ↓
-    Ranking + Multiplier (A/B/C grades)
-        ↓
-    Phase Scores  (AI Accuracy /60, Technical /20, Presentation /20)
-        ↓
-    Final Leaderboard  (/100)
+┌──────────────────────────────────────────────────────┐
+│                   Frontend (Vanilla JS)               │
+│  dashboard  teams  matches  predictions  scoring      │
+│  leaderboard  analytics  technical  presentation      │
+│                  Light/Dark Theme                     │
+└──────────────────────┬───────────────────────────────┘
+                       │  HTTP (REST API)
+                       ▼
+┌──────────────────────────────────────────────────────┐
+│              Backend (Python FastAPI)                 │
+│  ┌──────────┐ ┌──────────┐ ┌──────────────────────┐  │
+│  │ Routes   │ │ Schemas  │ │ Services & Scoring   │  │
+│  │ (auth/   │ │ (Pydantic│ │ Engine               │  │
+│  │  teams/  │ │  v2)     │ │  - Base Score        │  │
+│  │  predict/│ │          │ │  - Multiplier        │  │
+│  │  scoring/│ │          │ │  - Normalization     │  │
+│  │  leader- │ │          │ │  - Technical Eval    │  │
+│  │  board)  │ │          │ │  - Presentation Eval │  │
+│  └────┬─────┘ └──────────┘ └──────────┬───────────┘  │
+│       │                               │              │
+│       └───────────┬───────────────────┘              │
+│                   ▼                                  │
+│        ┌──────────────────────┐                      │
+│        │  SQLAlchemy ORM      │                      │
+│        │  + Alembic Migrations│                      │
+│        └──────────┬───────────┘                      │
+└───────────────────┼──────────────────────────────────┘
+                    ▼
+         ┌─────────────────────┐
+         │  PostgreSQL 16      │
+         │  (or SQLite dev)    │
+         └─────────────────────┘
 ```
 
 ---
@@ -28,75 +49,70 @@ Team Prediction JSON
 
 | Layer | Technology |
 |---|---|
-| **Framework** | Python 3.12+, FastAPI |
+| **Frontend** | Vanilla JavaScript (SPA), CSS3 with custom properties, Light/Dark theme |
+| **Backend** | Python 3.12+, FastAPI, Uvicorn |
 | **Validation** | Pydantic v2 |
-| **API Server** | Uvicorn |
+| **ORM** | SQLAlchemy 2.0 |
+| **Migrations** | Alembic |
+| **Database** | PostgreSQL 16 (production), SQLite (development/test) |
+| **Auth** | JWT (Bearer tokens), role-based access control |
+| **Containerization** | Docker + Docker Compose |
 | **Testing** | pytest, httpx (TestClient) |
-| **Database** | PostgreSQL 15+ (planned), SQLAlchemy 2.0 async (planned) |
+| **Parsing** | csv (stdlib), openpyxl (XLSX), xlrd (XLS) |
 
 ---
 
-## What This System Does
+## Major Features
 
-This system receives prediction outputs submitted by participant teams, compares them against actual match results, computes scores, and generates a final leaderboard — all in an automated, rule-based, and reproducible manner.
+### Authentication & Roles
+- **JWT-based authentication** — secure Bearer token login/registration
+- **Organizer role** — full admin access: upload rosters, manage matches, enter results, trigger scoring, view all data
+- **Team Leader role** — limited access: manage team profile, submit predictions, view own scores
+- **Role-based dashboards** — Organizer Dashboard vs Team Leader Dashboard with different capabilities
 
-### Core Responsibilities
+### Team Management
+- **Excel/CSV team member upload** — bulk-import rosters from `.csv`, `.xls`, or `.xlsx` files
+- **Column processing** — extracts `EmployeeID`, `Name`, and `Group` from spreadsheet; ignores unused columns (`SL No`, `Seniority`, `Gender`, `Football Knowledge`)
+- **Group-based team assignment** — maps `Group` column values (A–E) directly to teams
+- **CSV management lock** — once uploaded, teams are flagged `is_csv_managed = true`; manual member additions/removals are blocked to prevent roster corruption
+- **Automatic team creation** — if a referenced team (A–E) doesn't exist, it's created automatically during upload
 
-| Responsibility | Description |
-|---|---|
-| **Receive Predictions** | Ingest structured JSON prediction files submitted by each team before match kickoff |
-| **Validate Inputs** | Validate prediction JSON against a strict contract to ensure format compliance |
-| **Ingest Actual Results** | Accept actual match result JSON after a match concludes |
-| **Calculate Accuracy** | Compute each team's Base Accuracy Score for every match |
-| **Apply Multipliers** | Rank teams per match and apply relative grade multipliers (A/B/C) |
-| **Normalize Scores** | Normalize cumulative AI accuracy scores to a 60-mark scale |
-| **Store Technical Scores** | Accept Phase 2 scores entered by the architecture committee |
-| **Store Presentation Scores** | Accept Phase 3 peer-graded presentation scores and apply multipliers |
-| **Generate Leaderboard** | Compute and publish the final master leaderboard across all three phases |
+### Predictions Management
+- **Structured JSON submissions** — per-team, per-match predictions with winner, scoreline, probabilities, player predictions
+- **Schema validation** — strict Pydantic contracts enforce required fields, data types, value ranges, and enums
+- **Duplicate prevention** — unique constraint on `(team_id, match_id)` rejects double submissions with 409
+- **Status tracking** — predictions flow through PENDING_VALIDATION → VALIDATED / INVALID states
 
----
+### Scoring Engine
+- **Base Score** — four dimensions computed per match: Winner (5pt), Scoreline Exactness (10pt), Probability Accuracy (5pt), Player Performance (5pt); max **25 pts**
+- **Per-match ranking** — all 5 teams ranked by base score each match
+- **Grade multiplier** — A = 3× (top rank), B = 2× (middle ranks), C = 1× (bottom rank); tie rules applied
+- **Phase 1 normalization** — cumulative earned points normalized to a **60-mark** scale: `(team_total / max_total) × 60`
 
-## The Three-Phase Evaluation Model
+### Evaluation Phases
+- **Technical Evaluation (Phase 2)** — committee scores 4 sub-dimensions (Code Quality, Backend Quality, Teamwork, AI Explanation), each 0–5, summed to max **20 marks**
+- **Presentation Evaluation (Phase 3)** — peer raw scores across 3 dimensions, ranked, graded, multiplied, and normalized to **20 marks**
 
-The final score for each team is out of **100 marks**, broken down as follows:
+### Leaderboard
+- **Aggregate scores** — Phase 1 + Phase 2 + Phase 3 = Grand Total out of **100 marks**
+- **Automatic sorting** — descending by final score with tie-breaking rules
+- **Rank display** — #1–5 with visual rank badges
 
-```
-Phase 1: AI Prediction Accuracy          → 60 marks  (Formula-driven, automated)
-Phase 2: Technical Implementation        → 20 marks  (Committee scored)
-Phase 3: Cross-Team Peer Presentation    → 20 marks  (Peer graded + multiplier)
-─────────────────────────────────────────────────────
-Total                                    → 100 marks
-```
+### Analytics
+- **Score progression line chart** — per-match earned points over time
+- **Phase contribution donut** — visual breakdown of Phase 1/2/3 scores
+- **Dimension profile radar** — per-dimension performance bars
+- **Per-match comparison** — side-by-side team comparison for individual matches
+- **Cross-team comparison** — dropdown-select any team to compare
 
----
-
-## Input & Output Summary
-
-### Inputs This System Accepts
-
-1. **Team Prediction JSON** — Submitted by each team before every match (match winner, scoreline, probabilities, player predictions)
-2. **Actual Match Result JSON** — Entered by organizers after each match concludes
-3. **Technical Evaluation JSON** — Scores entered by the committee for Phase 2
-4. **Presentation Evaluation JSON** — Raw peer scores for Phase 3
-
-### Output This System Produces
-
-- **Per-Match Scores** for each team
-- **Cumulative Phase 1 Scores** (normalized to 60 marks)
-- **Phase 2 Scores** (up to 20 marks)
-- **Phase 3 Scores** (up to 20 marks with multiplier)
-- **Final Master Leaderboard** (Grand Total out of 100)
-
----
-
-## Who Uses This System
-
-| Role | Usage |
-|---|---|
-| **Challenge Organizers** | Submit actual match results, trigger scoring, manage teams |
-| **Architecture Committee** | Enter Phase 2 technical evaluation scores |
-| **Peer Review Panel** | Submit Phase 3 presentation raw scores |
-| **Participants (Read-only)** | View their scores and leaderboard position |
+### Frontend Features
+- **Single Page Application** — client-side routing via hash-based Router
+- **Organizer Dashboard** — stat cards (teams, predictions, top score), leaderboard preview, recent teams list, quick action buttons
+- **Team Leader Dashboard** — profile management, member list, CSV-managed badge
+- **Light/Dark theme** — FIFA Executive (light) and FIFA Night Stadium (dark) with persistent toggle
+- **Responsive grid layout** — card-based UI with staggered animations, skeleton loading states
+- **Toast notifications** — success/error/info feedback for all actions
+- **Modal system** — confirmations, forms, detail views
 
 ---
 
@@ -104,120 +120,231 @@ Total                                    → 100 marks
 
 ```
 fifa-scoring-system/
- │
- ├── README.md                          ← You are here
- │
- ├── docs/
- │   ├── SCORING_REQUIREMENTS.md        ← What the system must evaluate
- │   ├── SYSTEM_WORKFLOW.md             ← End-to-end scoring pipeline
- │   ├── INPUT_OUTPUT_CONTRACTS.md      ← JSON structures for all I/O
- │   ├── SCORING_RULES.md               ← Formulas, multipliers, normalization
- │   ├── API_PLANNING.md                ← Planned future API endpoints
- │   ├── DATABASE_DESIGN.md             ← Planned data entities and relationships
- │   ├── FEATURES.md                    ← Functional feature descriptions
- │   ├── TECHNICAL_DOCUMENTATION.md     ← Technical specifications & constraints
- │   └── TEST_PLAN.md                   ← Testing strategy and test cases
- │
- └── backend/
-     ├── BACKEND_ARCHITECTURE.md        ← Backend layers and design
-     ├── requirements.txt               ← Python dependencies
-     ├── app/
-     │   ├── __init__.py
-     │   ├── main.py                    ← FastAPI entry point
-     │   ├── api/                       ← HTTP request/response layer
-     │   │   ├── prediction_routes.py
-     │   │   ├── result_routes.py
-     │   │   ├── scoring_routes.py
-     │   │   └── leaderboard_routes.py
-     │   ├── schemas/                   ← Pydantic validation models
-     │   │   ├── prediction_schema.py
-     │   │   ├── actual_result_schema.py
-     │   │   ├── technical_evaluation_schema.py
-     │   │   └── presentation_schema.py
-     │   ├── services/                  ← Business logic orchestration
-     │   │   └── leaderboard_service.py
-     │   ├── scoring_engine/            ← Pure mathematical calculations
-     │   │   ├── base_score/            ← Winner, scoreline, probability, player
-     │   │   ├── multiplier/            ← Ranking engine & grade calculator
-     │   │   ├── normalization/         ← Phase 1 normalizer
-     │   │   ├── technical_evaluation/  ← Phase 2 scoring
-     │   │   └── presentation_evaluation/ ← Phase 3 scoring
-     │   ├── models/                    ← SQLAlchemy ORM models (planned)
-     │   ├── database/                  ← Database access layer (planned)
-     │   └── utils/                     ← Reusable helpers
-     └── tests/
-         ├── fixtures/                  ← JSON test data files
-         ├── test_api.py
-         ├── test_schemas.py
-         ├── test_base_score.py
-         ├── test_multiplier.py
-         ├── test_normalization.py
-         ├── test_presentation_score.py
-         ├── test_technical_score.py
-         ├── test_leaderboard.py
-         ├── test_full_competition_flow.py
-         └── README.md
+├── README.md
+├── docker-compose.yml          ← Docker Compose (API + PostgreSQL)
+├── Dockerfile                  ← Backend container image
+│
+├── backend/
+│   ├── app/
+│   │   ├── main.py             ← FastAPI entry point
+│   │   ├── config.py           ← Settings from environment
+│   │   ├── api/                ← HTTP route handlers
+│   │   │   ├── auth_routes.py        ← Register, login, profile
+│   │   │   ├── team_routes.py        ← Teams CRUD, CSV/Excel upload
+│   │   │   ├── prediction_routes.py  ← Prediction submission
+│   │   │   ├── result_routes.py      ← Actual result ingestion
+│   │   │   ├── scoring_routes.py     ← Score calculation triggers
+│   │   │   ├── leaderboard_routes.py ← Leaderboard calculation
+│   │   │   ├── health_routes.py      ← Health check
+│   │   │   └── deps.py              ← Auth dependency injection
+│   │   ├── schemas/            ← Pydantic v2 validation models
+│   │   ├── models/             ← SQLAlchemy ORM models
+│   │   │   ├── user.py, team.py, team_member.py
+│   │   │   ├── match.py, prediction.py, actual_result.py
+│   │   │   ├── score.py, evaluation.py, leaderboard.py
+│   │   │   └── enums.py
+│   │   ├── services/           ← Business logic orchestration
+│   │   ├── scoring_engine/     ← Pure scoring calculations
+│   │   │   ├── base_score/     ← Winner, scoreline, probability, player
+│   │   │   ├── multiplier/     ← Ranking & grade assignment
+│   │   │   ├── normalization/  ← Phase 1 normalizer
+│   │   │   ├── technical_evaluation/
+│   │   │   └── presentation_evaluation/
+│   │   ├── auth/               ← JWT token creation/validation
+│   │   ├── database/           ← Connection, session, Base
+│   │   ├── exceptions/         ← Custom exception classes + handlers
+│   │   └── utils/              ← Email validator, team name utils
+│   ├── alembic/                ← Database migrations
+│   ├── seed.py                 ← Default organizer + teams + matches
+│   ├── requirements.txt
+│   └── tests/                  ← pytest suite (15 test files)
+│
+├── frontend/
+│   ├── index.html              ← SPA entry point
+│   ├── login.html, register.html
+│   ├── css/                    ← style.css, components.css, themes.css
+│   ├── js/
+│   │   ├── app.js              ← Router, module init
+│   │   ├── api.js              ← HTTP client + service layer
+│   │   ├── auth.js             ← Auth utilities
+│   │   ├── theme.js            ← Light/Dark toggle
+│   │   ├── data/mockData.js    ← Demo/mock data
+│   │   └── features/           ← 10 feature modules
+│   │       ├── dashboard.js, team-dashboard.js
+│   │       ├── teams.js, matches.js, predictions.js
+│   │       ├── scoring.js, leaderboard.js, analytics.js
+│   │       ├── technical.js, presentation.js
+│   └── docs/                   ← Frontend documentation
+│
+└── docs/                       ← Backend/project documentation
+    ├── TECHNICAL_DOCUMENTATION.md
+    ├── TEST_PLAN.md
+    ├── features/               ← 10 feature specification docs
+    ├── api/                    ← API endpoint docs
+    ├── database/               ← Database design docs
+    ├── architecture/           ← Architecture docs
+    └── reviews/                ← FINAL_REVIEW.md
 ```
 
 ---
 
-## Development Status
+## Backend API Overview
 
-The core scoring engine, API routes, and test suite are implemented and passing. Database and authentication layers are planned for future phases.
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/v1/auth/register` | POST | Register team leader account |
+| `/api/v1/auth/login` | POST | Login, receive JWT |
+| `/api/v1/auth/me` | GET | Current user profile |
+| `/api/v1/teams` | GET | List all teams |
+| `/api/v1/teams/upload-members-csv` | POST | Upload CSV/Excel roster |
+| `/api/v1/teams/my-team` | GET/PUT | View/update own team |
+| `/api/v1/teams/my-team/members` | POST | Add team member |
+| `/api/v1/teams/my-team/members/{id}` | DELETE | Remove team member |
+| `/api/v1/teams/{team_id}/members` | GET | List team members |
+| `/api/v1/predictions` | POST | Submit prediction |
+| `/api/v1/actual-results` | POST | Enter match result |
+| `/api/v1/calculate-match-score` | POST | Trigger match scoring |
+| `/api/v1/technical-score` | POST | Submit technical evaluation |
+| `/api/v1/presentation-score` | POST | Submit presentation scores |
+| `/api/v1/leaderboard/calculate` | POST | Generate leaderboard |
+| `/api/v1/health` | GET | Health check |
+
+Interactive Swagger docs at `http://localhost:8000/docs`.
+
+---
+
+## Frontend Overview
+
+The frontend is a **vanilla JavaScript SPA** with client-side routing. It communicates with the backend REST API via a centralized HTTP client (`api.js`). All 10 feature pages are registered with a hash-based Router in `app.js`.
+
+**Routes:**
+- `#/dashboard` — Organizer Dashboard (stat cards, leaderboard, quick actions)
+- `#/team-dashboard` — Team Leader Dashboard (profile, members, scores)
+- `#/teams` / `#/org-teams` — Team management with CSV/Excel upload
+- `#/matches` — Match list, prediction submission, result entry
+- `#/predictions` — Predictions log with filters
+- `#/scoring` — Scoring engine with per-team breakdown cards
+- `#/leaderboard` — Full ranked leaderboard with phase scores
+- `#/analytics` — Charts: progression, phase contribution, dimension profile
+- `#/technical` — Technical evaluation form (committee scoring)
+- `#/presentation` — Presentation evaluation form with ranked results
+
+The frontend includes a **demo mode** (`DEMO_MODE = true`) that falls back to mock data when the backend is unavailable.
+
+---
+
+## Database Overview
+
+The system uses **SQLAlchemy 2.0 ORM** with **Alembic** for migrations. Development/testing runs on SQLite; production uses PostgreSQL 16.
+
+### Key Tables
+
+| Table | Purpose |
+|---|---|
+| `users` | User accounts (organizers, team leaders) |
+| `teams` | Teams A–E with `is_csv_managed` flag |
+| `team_members` | Roster members (name, employee_id) |
+| `matches` | Match schedule, freeze deadlines |
+| `predictions` | Submitted predictions per team per match |
+| `player_predictions` | Per-player prediction entries |
+| `actual_results` | Actual match outcomes |
+| `scores` | Computed base scores per dimension |
+| `technical_evaluations` | Phase 2 committee scores |
+| `presentation_evaluations` | Phase 3 peer scores |
+| `leaderboard` | Final ranked leaderboard entries |
+
+---
+
+## How to Run
+
+### Docker Compose (Recommended)
+
+```bash
+docker compose up --build
+```
+
+This starts:
+- **API server** at `http://localhost:8000`
+- **PostgreSQL 16** on port `5433`
+- Swagger docs at `http://localhost:8000/docs`
+
+### Backend (Local)
+
+```bash
+cd backend
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
+
+The API is available at `http://127.0.0.1:8000/api/v1/` with Swagger at `http://127.0.0.1:8000/docs`.
+
+### Frontend (Local)
+
+Serve the `frontend/` directory with any static server:
+
+```bash
+cd frontend
+python3 -m http.server 5500
+```
+
+Then open `http://localhost:5500` in a browser. The frontend connects to the backend at the URL configured in `js/api.js`.
+
+### Database Seed
+
+```bash
+cd backend
+python seed.py
+```
+
+Creates the default organizer account (if not already present), five teams (A–E), and three sample matches.
+
+### Run Tests
+
+```bash
+cd backend
+python -m pytest
+```
+
+---
+
+## Default Credentials
+
+Seeded in `backend/seed.py`:
+
+| Role | Username | Email | Password |
+|---|---|---|---|
+| **Organizer** | `admin` | `admin@fifa-scoring.com` | `admin123` |
+
+Team leader accounts are created via the registration endpoint (`POST /api/v1/auth/register`).
+
+---
+
+## The Three-Phase Evaluation Model
+
+```
+Phase 1: AI Prediction Accuracy          → 60 marks  (Formula-driven, automated)
+Phase 2: Technical Implementation        → 20 marks  (Committee scored)
+Phase 3: Cross-Team Peer Presentation    → 20 marks  (Peer graded + multiplier)
+─────────────────────────────────────────────────────────────────────────────
+Total                                    → 100 marks
+```
 
 ---
 
 ## Key Design Principles
 
-- **Automated Scoring** — Phase 1 scoring is fully formula-driven with no manual intervention
-- **Immutable Predictions** — Once a match freeze deadline passes, no prediction updates are accepted
-- **Reproducibility** — Every score computation must be traceable and re-runnable
-- **Separation of Concerns** — Evaluation logic is entirely decoupled from participant model code
-- **Strict Input Contracts** — Any prediction JSON that violates the schema results in a score of 0 for that match
-
----
-
-## Setup
-
-### Prerequisites
-
-- Python 3.12+
-- pip
-
-### Install Dependencies
-
-```bash
-cd fifa-scoring-system/backend
-pip install -r requirements.txt
-```
-
-### Run Tests
-
-```bash
-cd fifa-scoring-system/backend
-python -m pytest
-```
-
-### Start API Server
-
-```bash
-cd fifa-scoring-system/backend
-uvicorn app.main:app --reload
-```
-
-The API is available at `http://127.0.0.1:8000/api/v1/` with interactive docs at `http://127.0.0.1:8000/docs`.
+- **Automated Scoring** — Phase 1 is fully formula-driven, no manual intervention
+- **Immutable Predictions** — No updates after match freeze deadline
+- **Reproducibility** — Every score computation is traceable and re-runnable
+- **Separation of Concerns** — Evaluation logic decoupled from participant model code
+- **Strict Input Contracts** — Schema violations result in rejection or score of 0
 
 ---
 
 ## Related Documentation
 
-- [Scoring Requirements](docs/SCORING_REQUIREMENTS.md)
-- [System Workflow](docs/SYSTEM_WORKFLOW.md)
-- [Input/Output Contracts](docs/INPUT_OUTPUT_CONTRACTS.md)
-- [Scoring Rules](docs/SCORING_RULES.md)
-- [API Planning](docs/API_PLANNING.md)
-- [Database Design](docs/DATABASE_DESIGN.md)
-- [Features](docs/FEATURES.md)
-- [Technical Documentation](docs/TECHNICAL_DOCUMENTATION.md)
-- [Test Plan](docs/TEST_PLAN.md)
+- [Technical Documentation](docs/TECHNICAL_DOCUMENTATION.md) — Full system docs index
+- [Test Plan](docs/TEST_PLAN.md) — Testing strategy and test cases
 - [Backend Architecture](backend/BACKEND_ARCHITECTURE.md)
+- [Frontend Architecture](frontend/docs/FRONTEND_ARCHITECTURE.md)
+- [Deployment Guide](docs/architecture/DEPLOYMENT.md)

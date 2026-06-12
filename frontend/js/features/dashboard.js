@@ -79,7 +79,7 @@ async function loadOrgDashboard() {
                 <tbody>${leaderboard.slice(0, 5).map(e => `
                   <tr>
                     <td>${Utils.rankBadge(e.rank)}</td>
-                    <td>${e.team_id || '—'}</td>
+                    <td>${teams.find(t => t.id === e.team_id)?.name || '—'}</td>
                     <td><strong>${Utils.fmt1(e.final_score)}</strong></td>
                   </tr>
                 `).join('')}</tbody>
