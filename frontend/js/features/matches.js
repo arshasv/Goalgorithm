@@ -71,11 +71,11 @@ function showMatchDetail(matchId) {
           <tr style="animation:fadeIn ${300+i*60}ms var(--ease-out) both">
             <td style="display:flex;align-items:center;gap:var(--space-sm)">
               ${Utils.teamBadge(t.name, 28)}
-              <span style="font-weight:600">Team ${t.name}</span>
+              <span style="font-weight:600">Team ${t.team_id || t.code} — ${t.name}</span>
             </td>
             <td>${i<m.predictions?'<span class="badge badge-success">✓ Submitted</span>':'<span class="badge badge-error">✗ Not submitted</span>'}</td>
             <td style="font-family:var(--font-data);font-size:var(--text-xs);color:var(--color-text-secondary)">${i<m.predictions?'Jun 9, 14:32':'—'}</td>
-            <td>${i<m.predictions?'<button class="btn btn-ghost btn-sm" onclick="showPredictionModal(\''+t.name+'\')">View</button>':''}</td>
+            <td>${i<m.predictions?'<button class="btn btn-ghost btn-sm" onclick="showPredictionModal(\''+t.team_id+'\',\''+t.name+'\')">View</button>':''}</td>
           </tr>`).join('')}</tbody></table>
       </div>
 
@@ -92,10 +92,10 @@ function showMatchDetail(matchId) {
     </div>`, `Match ${matchId} — ${m.home} vs ${m.away}`);
 }
 
-function showPredictionModal(team) {
+function showPredictionModal(teamId, teamName) {
   Modal.show(`
     <div class="json-viewer">
-      <div><span class="json-key">"team_id"</span>: <span class="json-string">"Team ${team}"</span>,</div>
+      <div><span class="json-key">"team_id"</span>: <span class="json-string">"${teamId}"</span>,</div>
       <div><span class="json-key">"match_id"</span>: <span class="json-string">"M32"</span>,</div>
       <div><span class="json-key">"match_prediction"</span>: {</div>
       <div style="padding-left:var(--space-md)"><span class="json-key">"predicted_winner"</span>: <span class="json-string">"home"</span>,</div>
@@ -105,7 +105,7 @@ function showPredictionModal(team) {
       <div style="padding-left:var(--space-md)"><span class="json-key">"both_teams_to_score_probability"</span>: <span class="json-number">45.0</span>,</div>
       <div style="padding-left:var(--space-md)"><span class="json-key">"goal_scorers"</span>: { <span class="json-key">"home"</span>: [<span class="json-string">"Player 1"</span>, <span class="json-string">"Player 2"</span>], <span class="json-key">"away"</span>: [<span class="json-string">"Player 3"</span>] }</div>
       <div>}</div>
-    </div>`, `Prediction Detail — Team ${team}`);
+    </div>`, `Prediction Detail — ${teamName || teamId}`);
 }
 
 /* ===== PREDICTION ENTRY FORM ===== */

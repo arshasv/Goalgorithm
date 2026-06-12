@@ -10,6 +10,9 @@ from app.models.evaluation import (
 from app.models.leaderboard import LeaderboardModel
 from app.models.user import UserModel
 from app.models.team_member import TeamMemberModel
+from app.models.scoring_config import ScoringConfigModel
+from app.models.model_submission import ModelSubmissionModel
+from app.models.upload_window import UploadWindowModel
 
 __all__ = [
     "TeamModel",
@@ -25,4 +28,7 @@ __all__ = [
     "LeaderboardModel",
     "UserModel",
     "TeamMemberModel",
+    "ScoringConfigModel",
+    "ModelSubmissionModel",
+    "UploadWindowModel",
 ]

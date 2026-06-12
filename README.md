@@ -71,11 +71,21 @@ Full-stack tournament scoring platform for evaluating AI match prediction teams.
 - **Role-based dashboards** — Organizer Dashboard vs Team Leader Dashboard with different capabilities
 
 ### Team Management
-- **Excel/CSV team member upload** — bulk-import rosters from `.csv`, `.xls`, or `.xlsx` files
-- **Column processing** — extracts `EmployeeID`, `Name`, and `Group` from spreadsheet; ignores unused columns (`SL No`, `Seniority`, `Gender`, `Football Knowledge`)
-- **Group-based team assignment** — maps `Group` column values (A–E) directly to teams
-- **CSV management lock** — once uploaded, teams are flagged `is_csv_managed = true`; manual member additions/removals are blocked to prevent roster corruption
-- **Automatic team creation** — if a referenced team (A–E) doesn't exist, it's created automatically during upload
+**Team Structure:**
+- **Team ID** — Fixed identifiers (A, B, C, D, E) used for grouping and internal mapping
+- **Team Name** — Custom name chosen by teams, displayed throughout the UI
+
+**Excel/CSV team member upload:**
+- **Supported Formats** — Supports `.csv`, `.xls`, and `.xlsx` files
+- **Input Columns** — Expects `SL No`, `EmployeeID`, `Name`, `Seniority`, `Gender`, `Football Knowledge`, `Group`
+- **Extraction** — Stores/uses only `EmployeeID`, `Name`, and `Group` (which maps to Team ID)
+- **CSV management lock** — Once uploaded, teams are flagged `is_csv_managed = true`; manual member additions/removals are blocked to prevent roster corruption
+
+### Model Submission
+- **Supported ML Files** — accepts `.zip`, `.tar.gz`, `.py`, and `.ipynb` files up to 50MB
+- **Upload Workflow** — secure endpoints mapping uploads to the authenticated team leader
+- **Time Window Locking** — API strictly blocks uploads when the organizer-defined window is closed
+- **Organizer Controls** — dedicated frontend module to dynamically configure window `start_time`, `end_time`, and `is_enabled`
 
 ### Predictions Management
 - **Structured JSON submissions** — per-team, per-match predictions with winner, scoreline, probabilities, player predictions
@@ -88,6 +98,12 @@ Full-stack tournament scoring platform for evaluating AI match prediction teams.
 - **Per-match ranking** — all 5 teams ranked by base score each match
 - **Grade multiplier** — A = 3× (top rank), B = 2× (middle ranks), C = 1× (bottom rank); tie rules applied
 - **Phase 1 normalization** — cumulative earned points normalized to a **60-mark** scale: `(team_total / max_total) × 60`
+
+### Admin Scoring Configuration
+- **Editable Thresholds** — organizers can tweak performance bounds and total points allocations without coding
+- **Probability/Accuracy Rules** — dynamic configuration of correctness rewards
+- **Future Matches Only** — ensures changes only impact newly processed records
+- **Seamless Integrations** — fully connected via dedicated backend APIs to a friendly frontend module
 
 ### Evaluation Phases
 - **Technical Evaluation (Phase 2)** — committee scores 4 sub-dimensions (Code Quality, Backend Quality, Teamwork, AI Explanation), each 0–5, summed to max **20 marks**
@@ -207,6 +223,10 @@ fifa-scoring-system/
 | `/api/v1/technical-score` | POST | Submit technical evaluation |
 | `/api/v1/presentation-score` | POST | Submit presentation scores |
 | `/api/v1/leaderboard/calculate` | POST | Generate leaderboard |
+| `/api/v1/upload-window` | GET/PUT | Manage model upload window |
+| `/api/v1/teams/my-team/model` | POST/GET | Upload/view team model |
+| `/api/v1/admin/models` | GET | List all submitted models |
+| `/api/v1/admin/scoring-config` | GET/PUT | Manage scoring configuration |
 | `/api/v1/health` | GET | Health check |
 
 Interactive Swagger docs at `http://localhost:8000/docs`.
@@ -228,6 +248,9 @@ The frontend is a **vanilla JavaScript SPA** with client-side routing. It commun
 - `#/analytics` — Charts: progression, phase contribution, dimension profile
 - `#/technical` — Technical evaluation form (committee scoring)
 - `#/presentation` — Presentation evaluation form with ranked results
+- `#/scoring-config` — Advanced scoring rule parameters tuning
+- `#/model-submission` — Team leader prediction model upload interface
+- `#/model-management` — Organizer-side hub for model downloads and window control
 
 The frontend includes a **demo mode** (`DEMO_MODE = true`) that falls back to mock data when the backend is unavailable.
 
@@ -242,7 +265,7 @@ The system uses **SQLAlchemy 2.0 ORM** with **Alembic** for migrations. Developm
 | Table | Purpose |
 |---|---|
 | `users` | User accounts (organizers, team leaders) |
-| `teams` | Teams A–E with `is_csv_managed` flag |
+| `teams` | Team entries mapping fixed Team IDs to custom Team Names |
 | `team_members` | Roster members (name, employee_id) |
 | `matches` | Match schedule, freeze deadlines |
 | `predictions` | Submitted predictions per team per match |
@@ -284,10 +307,10 @@ Serve the `frontend/` directory with any static server:
 
 ```bash
 cd frontend
-python3 -m http.server 5500
+python3 -m http.server 3000
 ```
 
-Then open `http://localhost:5500` in a browser. The frontend connects to the backend at the URL configured in `js/api.js`.
+Then open `http://localhost:3000` in a browser. The frontend connects to the backend at the URL configured in `js/api.js`.
 
 ### Database Seed
 
@@ -296,7 +319,7 @@ cd backend
 python seed.py
 ```
 
-Creates the default organizer account (if not already present), five teams (A–E), and three sample matches.
+Creates the default organizer account (if not already present), base teams, and sample matches.
 
 ### Run Tests
 

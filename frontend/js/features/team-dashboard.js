@@ -25,29 +25,35 @@ Router.register('team-dashboard', async () => {
 });
 
 let _tdTeam = null;
+let _tdLeaderboard = [];
+let _tdPredictions = [];
 
 async function loadTeamDashboard() {
   const container = document.getElementById('td-content');
   if (!container) return;
 
   try {
-    const [team, leaderboard] = await Promise.all([
-      TeamService.getMyTeam(),
-      LeaderboardService.get().catch(() => [])
-    ]);
+    const team = await TeamService.getMyTeam();
     _tdTeam = team;
+    _tdLeaderboard = await LeaderboardService.get().catch(() => []);
+    if (DEMO_MODE && !_tdLeaderboard.length) {
+      _tdLeaderboard = MockData.leaderboard;
+    }
 
-    const myRank = leaderboard.findIndex(e => e.team_id === team.id) + 1;
-    const myEntry = leaderboard.find(e => e.team_id === team.id);
+    const myRank = _tdLeaderboard.findIndex(e => e.team_id === team.id) + 1;
+    const myEntry = _tdLeaderboard.find(e => e.team_id === team.id);
 
-    const predictions = await PredictionService.list().catch(() => []);
+    _tdPredictions = await PredictionService.list().catch(() => []);
+    if (DEMO_MODE && !_tdPredictions.length) {
+      _tdPredictions = MockData.predictions.filter(p => p.team_id === team.id);
+    }
 
     container.innerHTML = `
       <div class="grid-3" style="margin-bottom:var(--space-xl)">
         <div class="card stat-card" style="animation:fadeInUp 0.4s ease-out">
           <div class="stat-label">Team Rank</div>
           <div class="stat-value" style="font-family:var(--font-score);font-size:var(--text-4xl)">
-            ${myRank ? `#${myRank}` : '—'}
+            ${myRank > 0 ? `#${myRank}` : 'Not yet calculated'}
           </div>
         </div>
         <div class="card stat-card" style="animation:fadeInUp 0.5s ease-out">
@@ -59,7 +65,7 @@ async function loadTeamDashboard() {
         <div class="card stat-card" style="animation:fadeInUp 0.6s ease-out">
           <div class="stat-label">Predictions</div>
           <div class="stat-value" style="font-family:var(--font-score);font-size:var(--text-4xl)">
-            ${predictions.length}
+            ${_tdPredictions.length}
           </div>
         </div>
       </div>
@@ -67,8 +73,8 @@ async function loadTeamDashboard() {
       <div class="tabs" style="margin-bottom:var(--space-lg)">
         <button class="tab-btn active" onclick="switchTDTab('profile', this)">Team Profile</button>
         <button class="tab-btn" onclick="switchTDTab('members', this)">Members</button>
-        <button class="tab-btn" onclick="switchTDTab('predictions', this)">My Predictions</button>
-        <button class="tab-btn" onclick="switchTDTab('scores', this)">Scores</button>
+        <button class="tab-btn" onclick="switchTDTab('predictions', this)">My Predictions (${_tdPredictions.length})</button>
+        <button class="tab-btn" onclick="switchTDTab('scores', this)">Match Scores</button>
       </div>
       <div id="td-tab-content"></div>
     `;
@@ -103,12 +109,12 @@ function renderTDProfile(container) {
   container.innerHTML = `
     <div class="card" style="max-width:600px">
       <div class="card-header">
-        <div class="card-title">${Utils.teamBadge(_tdTeam.name, 40)} ${_tdTeam.name}</div>
+        <div class="card-title">${Utils.teamBadge(_tdTeam.name, 40)} Team ${_tdTeam.team_id || _tdTeam.code} — ${_tdTeam.name}</div>
       </div>
       <div style="padding:var(--space-lg)">
         <div class="form-group" style="margin-bottom:var(--space-md)">
-          <label class="form-label">Team Code</label>
-          <input class="form-input" value="${_tdTeam.code || ''}" disabled style="opacity:0.7">
+          <label class="form-label">Team Name <span style="color:var(--color-text-muted);font-weight:400">(Team ${_tdTeam.team_id || _tdTeam.code})</span></label>
+          <input class="form-input" id="td-name" value="${_tdTeam.name || ''}" placeholder="Custom team name">
         </div>
         <div class="form-group" style="margin-bottom:var(--space-md)">
           <label class="form-label">Team Leader</label>
@@ -121,12 +127,18 @@ function renderTDProfile(container) {
 }
 
 async function saveTeamProfile() {
+  const name = document.getElementById('td-name')?.value.trim();
   const leader = document.getElementById('td-leader')?.value.trim();
+  const payload = {};
+  if (name) payload.name = name;
+  payload.team_leader_name = leader || null;
   try {
-    await TeamService.updateMyTeam({
-      team_leader_name: leader || null
-    });
+    await TeamService.updateMyTeam(payload);
     Toast.success('Team profile updated');
+    _tdTeam.name = name || _tdTeam.name;
+    _tdTeam.team_leader_name = leader || null;
+    const tc = document.getElementById('td-tab-content');
+    if (tc) renderTDProfile(tc);
   } catch(err) {
     Toast.error(err.message || 'Failed to update team');
   }
@@ -255,11 +267,112 @@ async function removeMember(id) {
 }
 
 function renderTDPredictions(container) {
-  container.innerHTML = '<div class="empty-state" style="padding:var(--space-2xl)"><div class="empty-icon">📋</div><h3 class="empty-title">Your Predictions</h3><p class="empty-desc">Go to the Match Results page to submit predictions.</p><a class="btn btn-primary" style="margin-top:var(--space-md)" onclick="Router.navigate(\'matches\')">View Matches</a></div>';
+  const preds = _tdPredictions || [];
+  if (!preds.length) {
+    container.innerHTML = '<div class="empty-state" style="padding:var(--space-2xl)"><div class="empty-icon">📋</div><h3 class="empty-title">No Predictions Yet</h3><p class="empty-desc">Submit predictions from the Match Results page.</p><a class="btn btn-primary" style="margin-top:var(--space-md)" onclick="Router.navigate(\'matches\')">View Matches</a></div>';
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="card">
+      <div class="card-header"><span class="card-title">📋 My Predictions</span></div>
+      <div class="table-wrapper" style="margin:var(--space-md)">
+        <table>
+          <thead><tr>
+            <th>Match</th>
+            <th>Predicted Winner</th>
+            <th>Scoreline</th>
+            <th>Status</th>
+            <th>Submitted</th>
+          </tr></thead>
+          <tbody>${preds.map((p, i) => {
+            const mp = p.match_prediction || p;
+            const winner = mp.predicted_winner || '—';
+            const homeG = mp.predicted_scoreline?.home_team_goals ?? '?';
+            const awayG = mp.predicted_scoreline?.away_team_goals ?? '?';
+            const status = p.status || 'submitted';
+            const date = p.submitted_at ? new Date(p.submitted_at).toLocaleString() : '—';
+            const statusClass = status === 'VALIDATED' || status === 'scored' ? 'badge-success' : status === 'INVALID' ? 'badge-error' : 'badge-warning';
+            return `<tr style="animation:fadeIn ${300 + i * 60}ms ease-out both">
+              <td style="font-family:var(--font-data);font-size:var(--text-xs)">${p.match_id || '—'}</td>
+              <td style="text-transform:capitalize">${winner}</td>
+              <td style="font-family:var(--font-score);font-weight:600">${homeG}–${awayG}</td>
+              <td><span class="badge ${statusClass}">${status.replace('_', ' ')}</span></td>
+              <td style="font-size:var(--text-xs);color:var(--color-text-muted)">${date}</td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table>
+      </div>
+    </div>`;
 }
 
-function renderTDScores(container) {
-  container.innerHTML = '<div class="empty-state" style="padding:var(--space-2xl)"><div class="empty-icon">🏆</div><h3 class="empty-title">Scores & Rankings</h3><p class="empty-desc">View your scores on the Leaderboard page.</p><a class="btn btn-primary" style="margin-top:var(--space-md)" onclick="Router.navigate(\'leaderboard\')">View Leaderboard</a></div>';
+async function renderTDScores(container) {
+  let matchBreakdown;
+  try {
+    matchBreakdown = await ScoresService.getMatchBreakdown();
+  } catch (_) {}
+  if (DEMO_MODE && (!matchBreakdown || !matchBreakdown.length)) {
+    matchBreakdown = MockData.matchBreakdown || [];
+  }
+
+  const myTeamId = _tdTeam?.id;
+  const myScores = (matchBreakdown || []).flatMap(m =>
+    (m.teams || []).filter(t => t.team_id === myTeamId).map(t => ({ match: m, score: t }))
+  );
+
+  const myEntry = _tdLeaderboard?.find(e => e.team_id === myTeamId);
+
+  if (!myScores.length && !myEntry) {
+    container.innerHTML = '<div class="empty-state" style="padding:var(--space-2xl)"><div class="empty-icon">🏆</div><h3 class="empty-title">No Scores Yet</h3><p class="empty-desc">Scores will appear once matches are scored.</p><a class="btn btn-primary" style="margin-top:var(--space-md)" onclick="Router.navigate(\'leaderboard\')">View Leaderboard</a></div>';
+    return;
+  }
+
+  let html = '';
+  if (myEntry) {
+    const rankClass = myEntry.rank <= 3 ? `rank-${myEntry.rank}` : '';
+    html += `
+      <div class="card" style="margin-bottom:var(--space-lg)">
+        <div class="card-header"><span class="card-title">🏆 Overall Standings</span></div>
+        <div class="table-wrapper" style="margin:var(--space-md)">
+          <table>
+            <thead><tr><th>Rank</th><th>Phase 1</th><th>Technical</th><th>Presentation</th><th>Final Score</th></tr></thead>
+            <tbody>
+              <tr class="${rankClass}">
+                <td>${Utils.rankBadge(myEntry.rank)}</td>
+                <td><span class="score-num">${Utils.fmt1(myEntry.phase1_score)}/60</span></td>
+                <td><span class="score-num">${Utils.fmt1(myEntry.technical_score)}/20</span></td>
+                <td><span class="score-num">${Utils.fmt1(myEntry.presentation_score)}/20</span></td>
+                <td><strong class="score-num" style="font-size:var(--text-lg)">${Utils.fmt1(myEntry.final_score)}</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+  }
+
+  if (myScores.length) {
+    html += `<div class="card">
+      <div class="card-header"><span class="card-title">⚽ Match-wise Scores</span></div>
+      <div style="padding:var(--space-md)">${myScores.map(({ match, score }) => {
+        const sc = score.score_breakdown || {};
+        return `<div class="card" style="margin-bottom:var(--space-sm);padding:var(--space-md);background:var(--color-surface-secondary)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-sm)">
+            <span style="font-weight:600">Match ${match.match_number}</span>
+            <span class="badge badge-info">${match.home_team_name} vs ${match.away_team_name}</span>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:var(--space-sm);text-align:center">
+            <div><div style="font-size:var(--text-xs);color:var(--color-text-muted)">Winner</div><div class="score-digit">${sc.winner_points ?? '—'}/5</div></div>
+            <div><div style="font-size:var(--text-xs);color:var(--color-text-muted)">Scoreline</div><div class="score-digit">${sc.scoreline_points ?? '—'}/10</div></div>
+            <div><div style="font-size:var(--text-xs);color:var(--color-text-muted)">Probability</div><div class="score-digit">${sc.probability_points ?? '—'}/5</div></div>
+            <div><div style="font-size:var(--text-xs);color:var(--color-text-muted)">Player</div><div class="score-digit">${sc.player_points ?? '—'}/5</div></div>
+            <div><div style="font-size:var(--text-xs);color:var(--color-text-muted)">Base Score</div><div class="score-digit" style="font-weight:700">${sc.base_score ?? '—'}/25</div></div>
+          </div>
+        </div>`;
+      }).join('')}</div>
+    </div>`;
+  }
+
+  container.innerHTML = html;
 }
 
 function refreshTeamDashboard() {

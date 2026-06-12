@@ -108,21 +108,20 @@ def register(
             detail="Invalid team. Only Teams A, B, C, D, E are allowed."
         )
 
-    target_team_name = f"Team {team_letter}"
-
-    existing_team = db.query(TeamModel).filter(TeamModel.name == target_team_name).first()
+    existing_team = db.query(TeamModel).filter(TeamModel.team_id == team_letter).first()
     if existing_team:
         if existing_team.user_id is not None:
             raise HTTPException(
                 status_code=409,
-                detail=f"Team '{target_team_name}' already has a registered team leader."
+                detail=f"Team '{team_letter}' already has a registered team leader."
             )
         existing_team.user_id = user.id
         existing_team.team_leader_name = body.team_leader_name
         team = existing_team
     else:
         team = TeamModel(
-            name=target_team_name,
+            team_id=team_letter,
+            name=f"Team {team_letter}",
             code=team_letter,
             team_leader_name=body.team_leader_name,
             user_id=user.id,

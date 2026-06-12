@@ -44,22 +44,24 @@ def seed(force: bool = False):
             print(f"Created organizer user: admin@fifa-scoring.com / admin123")
 
         teams_data = [
-            {"name": "Team A", "code": "A"},
-            {"name": "Team B", "code": "B"},
-            {"name": "Team C", "code": "C"},
-            {"name": "Team D", "code": "D"},
-            {"name": "Team E", "code": "E"},
+            {"team_id": "A", "name": "Team A", "code": "A"},
+            {"team_id": "B", "name": "Team B", "code": "B"},
+            {"team_id": "C", "name": "Team C", "code": "C"},
+            {"team_id": "D", "name": "Team D", "code": "D"},
+            {"team_id": "E", "name": "Team E", "code": "E"},
         ]
         for t in teams_data:
-            existing = db.query(TeamModel).filter(TeamModel.code == t["code"]).first()
+            existing = db.query(TeamModel).filter(TeamModel.team_id == t["team_id"]).first()
             if not existing:
-                team = TeamModel(name=t["name"], code=t["code"])
+                team = TeamModel(team_id=t["team_id"], name=t["name"], code=t["code"])
                 db.add(team)
-                print(f"Created team: {t['name']} ({t['code']})")
+                print(f"Created team: {t['name']} ({t['team_id']})")
             elif force:
+                existing.team_id = t["team_id"]
                 existing.name = t["name"]
+                existing.code = t["code"]
                 existing.name_normalized = normalize_team_name(t["name"])
-                print(f"Updated team: {t['name']} ({t['code']})")
+                print(f"Updated team: {t['name']} ({t['team_id']})")
 
         existing_matches = db.query(MatchModel).count()
         if existing_matches == 0 or force:

@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 
 from app.models.score import ScoreModel
+from app.models.scoring_config import ScoringConfigModel
 from app.repositories.score_repository import (
     CumulativePhaseScoreRepository,
     ScoreRepository,
@@ -15,6 +16,15 @@ from app.scoring_engine.presentation_evaluation.presentation_score import (
 from app.services.leaderboard_service import calculate_leaderboard
 
 
+def _load_active_config(db: Session) -> tuple[dict | None, str | None]:
+    config_record = db.query(ScoringConfigModel).filter(
+        ScoringConfigModel.is_active.is_(True)
+    ).first()
+    if not config_record:
+        return None, None
+    return config_record.to_dict(), str(config_record.id)
+
+
 class ScoringService:
     def __init__(self, db: Session):
         self.db = db
@@ -24,7 +34,8 @@ class ScoringService:
     def calculate_and_save_match_score(
         self, prediction: dict, actual_result: dict, actual_probabilities: dict | None = None
     ) -> dict:
-        result = calculate_base_score(prediction, actual_result, actual_probabilities)
+        config_dict, config_id = _load_active_config(self.db)
+        result = calculate_base_score(prediction, actual_result, actual_probabilities, config_dict)
 
         score = ScoreModel(
             team_id=prediction["team_id"],
@@ -34,6 +45,7 @@ class ScoringService:
             probability_points=result["breakdown"].get("probability_score"),
             player_points=result["breakdown"].get("player_score"),
             base_score=result["base_score"],
+            config_id=config_id,
         )
         self.db.add(score)
         self.db.commit()
@@ -42,7 +54,8 @@ class ScoringService:
         return result
 
     def calculate_and_save_technical_score(self, evaluation: dict) -> dict:
-        result = calculate_technical_score(evaluation)
+        config_dict, config_id = _load_active_config(self.db)
+        result = calculate_technical_score(evaluation, config_dict)
 
         from app.models.evaluation import TechnicalEvaluationModel
 
@@ -77,7 +90,8 @@ class ScoringService:
     def calculate_and_save_presentation_scores(
         self, evaluations: list[dict]
     ) -> list[dict]:
-        result = calculate_presentation_scores(evaluations)
+        config_dict, config_id = _load_active_config(self.db)
+        result = calculate_presentation_scores(evaluations, config_dict)
 
         from app.models.evaluation import PresentationEvaluationModel, Grade
 

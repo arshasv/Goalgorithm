@@ -82,4 +82,59 @@ const LeaderboardService = {
   get: () => Api.get('/leaderboard'),
 };
 
+/* Final Scores endpoints */
+const ScoresService = {
+  getDaily: () => Api.get('/scores/daily'),
+  getMatchBreakdown: () => Api.get('/scores/match-breakdown'),
+};
+
+/* Evaluation endpoints */
+const EvaluationService = {
+  getTechnical: () => Api.get('/evaluations/technical'),
+  getPresentation: () => Api.get('/evaluations/presentation'),
+};
+
+/* Scoring Config endpoints */
+const ScoringConfigService = {
+  getGuidelines: () => Api.get('/admin/scoring-config/guidelines'),
+  getActive: () => Api.get('/admin/scoring-config/active'),
+  list: () => Api.get('/admin/scoring-config'),
+  get: (id) => Api.get(`/admin/scoring-config/${id}`),
+  create: (data) => Api.post('/admin/scoring-config', data),
+  update: (id, data) => Api.put(`/admin/scoring-config/${id}`, data),
+  activate: (id) => Api.post(`/admin/scoring-config/${id}/activate`),
+  reset: () => Api.post('/admin/scoring-config/reset'),
+};
+
+/* Upload Window endpoints */
+const UploadWindowService = {
+  get: () => Api.get('/upload-window'),
+  update: (data) => Api.put('/upload-window', data),
+};
+
+/* Model Submission endpoints */
+const ModelSubmissionService = {
+  uploadModel: (formData) => Api.request('POST', '/teams/my-team/model', formData, true),
+  getMyModel: () => Api.get('/teams/my-team/model'),
+  listMyModels: () => Api.get('/teams/my-team/models'),
+  listAll: () => Api.get('/admin/models'),
+  getTeamModel: (teamId) => Api.get(`/admin/models/team/${teamId}`),
+  downloadModel: async (submissionId, fileName) => {
+    const token = Auth.getToken();
+    const r = await fetch(`${API_BASE}/admin/models/${submissionId}/download`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!r.ok) throw new Error('Failed to download file');
+    const blob = await r.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  }
+};
+
 /* Match endpoints (if available) — currently managed client-side */

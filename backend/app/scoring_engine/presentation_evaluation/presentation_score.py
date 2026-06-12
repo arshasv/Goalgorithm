@@ -14,9 +14,18 @@ class PresentationScoreError(ValueError):
     pass
 
 
-def calculate_presentation_scores(evaluations: list[dict]) -> list[dict]:
+def calculate_presentation_scores(
+    evaluations: list[dict],
+    config: dict | None = None,
+) -> list[dict]:
     if not evaluations:
         return []
+
+    denominator = config.get("presentation_denominator", PHASE3_FIXED_DENOMINATOR) if config else PHASE3_FIXED_DENOMINATOR
+    max_marks = config.get("presentation_max_marks", PHASE3_MAX_MARKS) if config else PHASE3_MAX_MARKS
+    mult_a = config.get("multiplier_a", MULTIPLIER_A) if config else MULTIPLIER_A
+    mult_b = config.get("multiplier_b", MULTIPLIER_B) if config else MULTIPLIER_B
+    mult_c = config.get("multiplier_c", MULTIPLIER_C) if config else MULTIPLIER_C
 
     scored: list[dict] = []
     for ev in evaluations:
@@ -49,15 +58,15 @@ def calculate_presentation_scores(evaluations: list[dict]) -> list[dict]:
         score = entry["raw_score"]
 
         if score == top_score and top_count == 1:
-            grade, multiplier = GRADE_A, MULTIPLIER_A
+            grade, multiplier = GRADE_A, mult_a
         elif score == bottom_score and not all_tied:
-            grade, multiplier = GRADE_C, MULTIPLIER_C
+            grade, multiplier = GRADE_C, mult_c
         else:
-            grade, multiplier = GRADE_B, MULTIPLIER_B
+            grade, multiplier = GRADE_B, mult_b
 
         multiplied = score * multiplier
         presentation_score = round(
-            (multiplied / PHASE3_FIXED_DENOMINATOR) * PHASE3_MAX_MARKS, 2
+            (multiplied / denominator) * max_marks, 2
         )
 
         results.append({

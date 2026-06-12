@@ -1,11 +1,11 @@
 
 
 const mockScores = [
-  {rank:1,team:'A',winner:5,scoreline:10,probability:5,player:5,base:25,grade:'A',multiplier:3,earned:75},
-  {rank:2,team:'B',winner:5,scoreline:5,probability:5,player:2,base:17,grade:'B',multiplier:2,earned:34},
-  {rank:3,team:'C',winner:5,scoreline:5,probability:0,player:5,base:15,grade:'B',multiplier:2,earned:30},
-  {rank:4,team:'D',winner:0,scoreline:5,probability:0,player:2,base:7,grade:'B',multiplier:2,earned:14},
-  {rank:5,team:'E',winner:0,scoreline:0,probability:0,player:0,base:0,grade:'C',multiplier:1,earned:0},
+  {rank:1,code:'A',name:'Team A',winner:5,scoreline:10,probability:5,player:5,base:25,grade:'A',multiplier:3,earned:75},
+  {rank:2,code:'B',name:'Team B',winner:5,scoreline:5,probability:5,player:2,base:17,grade:'B',multiplier:2,earned:34},
+  {rank:3,code:'C',name:'Team C',winner:5,scoreline:5,probability:0,player:5,base:15,grade:'B',multiplier:2,earned:30},
+  {rank:4,code:'D',name:'Team D',winner:0,scoreline:5,probability:0,player:2,base:7,grade:'B',multiplier:2,earned:14},
+  {rank:5,code:'E',name:'Team E',winner:0,scoreline:0,probability:0,player:0,base:0,grade:'C',multiplier:1,earned:0},
 ];
 
 Router.register('scoring', () => {
@@ -27,14 +27,14 @@ Router.register('scoring', () => {
       <div class="card-header"><span class="card-title">📐 Phase 1 Normalization</span></div>
       <div class="formula-card">
         <div class="formula-title">Formula</div>
-        <div class="formula-text">Phase 1 Score = (Total Earned / Max Earned) × 60<br>Example (Team A): (75 / 75) × 60 = <strong>60.0 / 60</strong></div>
+        <div class="formula-text">Phase 1 Score = (Total Earned / Max Earned) × 60<br>Example (Top Team): (75 / 75) × 60 = <strong>60.0 / 60</strong></div>
       </div>
     </div>
   `;
   document.getElementById('score-cards').innerHTML = mockScores.map((s, i) => `
     <div class="score-breakdown-card ${s.rank===1?'rank-1-card':''}" style="animation:slideUp ${400+i*100}ms var(--ease-out) both">
       <div class="card-header">
-        <div style="display:flex;align-items:center;gap:var(--space-sm)">${Utils.rankBadge(s.rank)}<strong style="font-family:var(--font-display);text-transform:uppercase;letter-spacing:0.03em">Team ${s.team}</strong></div>
+        <div style="display:flex;align-items:center;gap:var(--space-sm)">${Utils.rankBadge(s.rank)}<strong style="font-family:var(--font-display);text-transform:uppercase;letter-spacing:0.03em">Team ${s.code} — ${s.name}</strong></div>
         ${Utils.gradeBadge(s.grade)}
       </div>
       <div class="dimension-row">

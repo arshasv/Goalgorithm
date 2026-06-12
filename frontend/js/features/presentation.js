@@ -1,11 +1,11 @@
 
 
 const presData = [
-  {team:'A',ai_exp:18,qa:13,delivery:14},
-  {team:'B',ai_exp:15,qa:12,delivery:12},
-  {team:'C',ai_exp:14,qa:11,delivery:11},
-  {team:'D',ai_exp:10,qa:8,delivery:9},
-  {team:'E',ai_exp:7,qa:5,delivery:6},
+  {team:'A',name:'Team A',ai_exp:18,qa:13,delivery:14},
+  {team:'B',name:'Team B',ai_exp:15,qa:12,delivery:12},
+  {team:'C',name:'Team C',ai_exp:14,qa:11,delivery:11},
+  {team:'D',name:'Team D',ai_exp:10,qa:8,delivery:9},
+  {team:'E',name:'Team E',ai_exp:7,qa:5,delivery:6},
 ];
 Router.register('presentation', () => {
   const el = document.getElementById('page-content');
@@ -33,7 +33,7 @@ Router.register('presentation', () => {
           </tr></thead>
           <tbody>${presData.map((t,i)=>`
             <tr style="animation:fadeIn ${300+i*80}ms var(--ease-out) both">
-              <td style="font-weight:600;font-family:var(--font-display);text-transform:uppercase">Team ${t.team}</td>
+              <td style="font-weight:600;font-family:var(--font-display);text-transform:uppercase">Team ${t.team} — ${t.name}</td>
               <td class="score-cell"><input class="form-input score-input" type="number" min="0" max="20" value="${t.ai_exp}" id="p-${t.team}-ai" onchange="updatePresTotal('${t.team}')" oninput="validateScoreInput(this,20)"></td>
               <td class="score-cell"><input class="form-input score-input" type="number" min="0" max="15" value="${t.qa}" id="p-${t.team}-qa" onchange="updatePresTotal('${t.team}')" oninput="validateScoreInput(this,15)"></td>
               <td class="score-cell"><input class="form-input score-input" type="number" min="0" max="15" value="${t.delivery}" id="p-${t.team}-del" onchange="updatePresTotal('${t.team}')" oninput="validateScoreInput(this,15)"></td>
@@ -53,7 +53,7 @@ Router.register('presentation', () => {
     <div class="formula-card section">
       <div class="formula-title">Phase 3 Formula</div>
       <div class="formula-text">Raw Score × Multiplier ÷ 150 × 20 = Final Score<br>
-      Example (Rank 1 — Team A): 45 × 3 ÷ 150 × 20 = <strong>18.00</strong></div>
+      Example (Rank 1 — Top Team): 45 × 3 ÷ 150 × 20 = <strong>18.00</strong></div>
     </div>
   `;
 });
@@ -68,7 +68,7 @@ function updatePresTotal(team) {
 async function submitPresScores() {
   Modal.confirm('Submit Phase 3 presentation scores for all 5 teams?', async () => {
     const payload = presData.map(t=>({
-      team_id:`TEAM_${t.team.toUpperCase()}`,
+      team_id:t.team,
       ai_explanation_score:+document.getElementById(`p-${t.team}-ai`)?.value||0,
       qa_score:+document.getElementById(`p-${t.team}-qa`)?.value||0,
       delivery_score:+document.getElementById(`p-${t.team}-del`)?.value||0,
@@ -104,7 +104,7 @@ function showPresResults(payload) {
     </tr></thead>
     <tbody>${ranked.map((r, i)=>`<tr class="rank-${r.rank<=3?r.rank:'n'}" style="animation:fadeIn ${400+i*80}ms var(--ease-out) both">
       <td>${Utils.rankBadge(r.rank)}</td>
-      <td style="font-weight:600;font-family:var(--font-display);text-transform:uppercase">${r.team_id.replace('TEAM_','Team ')}</td>
+      <td style="font-weight:600;font-family:var(--font-display);text-transform:uppercase">${(() => { const pt = presData.find(p => p.team === r.team_id); return pt ? `Team ${pt.team} — ${pt.name}` : r.team_id; })()}</td>
       <td class="score-cell">${r.raw}/50</td>
       <td>${Utils.gradeBadge(r.grade)}</td>
       <td class="score-cell">${r.mult}×</td>

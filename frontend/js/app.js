@@ -42,9 +42,9 @@ const Router = {
   },
   _getAllowedRoutes() {
     if (Auth.isOrganizer()) {
-      return ['dashboard', 'leaderboard', 'org-teams', 'matches', 'scoring', 'predictions', 'technical', 'presentation', 'analytics'];
+      return ['dashboard', 'leaderboard', 'org-teams', 'matches', 'scoring', 'predictions', 'technical', 'presentation', 'analytics', 'final-scores', 'scoring-config', 'model-management'];
     }
-    return ['team-dashboard', 'matches', 'predictions', 'leaderboard'];
+    return ['team-dashboard', 'matches', 'predictions', 'leaderboard', 'final-scores', 'model-submission'];
   },
   init() {
     if (!Auth.isAuthenticated()) {

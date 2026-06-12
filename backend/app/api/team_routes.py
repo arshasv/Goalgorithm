@@ -43,8 +43,9 @@ def get_my_team(
 
     return {
         "id": str(team.id),
+        "team_id": team.team_id,
         "name": team.name,
-        "code": team.name,
+        "code": team.team_id,
         "team_leader_name": team.team_leader_name,
         "registered_at": team.registered_at.isoformat(),
         "is_active": team.is_active,
@@ -61,15 +62,12 @@ def update_my_team(
     db: Session = Depends(get_db),
 ):
 
-    if body.name:
+    if body.name is not None:
 
         team.name = body.name
 
-        # code follows name
-        team.code = body.name
 
-
-    if body.team_leader_name:
+    if body.team_leader_name is not None:
 
         team.team_leader_name = body.team_leader_name
 
@@ -163,7 +161,6 @@ def update_team(
 
     if body.name:
         team.name = body.name
-        team.code = body.name
 
 
     if body.team_leader_name:
@@ -218,20 +215,7 @@ def remove_member(
     return {"message": "Member removed"}
 
 
-GROUP_TO_TEAM = {
-    'A': 'Team A',
-    'B': 'Team B',
-    'C': 'Team C',
-    'D': 'Team D',
-    'E': 'Team E',
-}
-
-def _map_group_to_team(group_value: str) -> str | None:
-    if not group_value:
-        return None
-    group_letter = str(group_value).strip().upper()
-    return GROUP_TO_TEAM.get(group_letter)
-
+VALID_TEAM_IDS = {"A", "B", "C", "D", "E"}
 
 @router.post("/upload-members-csv")
 def upload_members_csv(
@@ -351,37 +335,39 @@ def upload_members_csv(
     new_members = []
 
     for row in data_rows:
-        group_value = (row.get(group_col) or "").strip()
+        group_value = (row.get(group_col) or "").strip().upper()
         member_name = (row.get(name_col) or "").strip()
         if not group_value or not member_name:
             continue
 
-        team_name = _map_group_to_team(group_value)
-        if not team_name:
+        if group_value not in VALID_TEAM_IDS:
             continue
 
-        if team_name not in db_teams_to_update:
-            team = db.query(TeamModel).filter(TeamModel.name == team_name).first()
+        team_id_val = group_value
+
+        if team_id_val not in db_teams_to_update:
+            team = db.query(TeamModel).filter(TeamModel.team_id == team_id_val).first()
             if team:
                 if not team.is_csv_managed:
                     existing_count = db.query(TeamMemberModel).filter(TeamMemberModel.team_id == team.id).count()
                     if existing_count > 0:
                         raise HTTPException(
                             status_code=400,
-                            detail=f"Team '{team_name}' already contains manually added members. A team can only use CSV-managed or manual members, not both."
+                            detail=f"Team '{team.name}' already contains manually added members. A team can only use CSV-managed or manual members, not both."
                         )
                 team.is_csv_managed = True
             else:
                 team = TeamModel(
-                    name=team_name,
-                    code=team_name,
+                    team_id=team_id_val,
+                    name=f"Team {team_id_val}",
+                    code=team_id_val,
                     is_csv_managed=True
                 )
                 db.add(team)
                 db.flush()
-            db_teams_to_update[team_name] = team
+            db_teams_to_update[team_id_val] = team
 
-        team = db_teams_to_update[team_name]
+        team = db_teams_to_update[team_id_val]
 
         employee_id = (row.get("employeeid") or row.get("employee_id") or "").strip()
 

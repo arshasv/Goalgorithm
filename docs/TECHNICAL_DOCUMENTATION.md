@@ -33,6 +33,8 @@ docs/
 | [Leaderboard](features/leaderboard.md) | Final leaderboard generation |
 | [Excel/CSV Upload](features/excel-csv-upload.md) | Bulk roster import, file parsing, group mapping, CSV management lock |
 | [Team Management](features/team-management.md) | CSV/Excel roster import, manual restrictions, and role badge system |
+| [Admin Scoring Configuration](features/admin-scoring-config.md) | Dynamic scoring thresholds and configuration |
+| [Model Submission](features/model-submission.md) | Team model file uploads and upload window management |
 
 ---
 
@@ -47,6 +49,8 @@ docs/
 | [Evaluation API](api/evaluation-api.md) | Technical and presentation evaluation endpoints |
 | [Team Management API](api/team-management-api.md) | `/api/v1/teams/upload-members-csv`, `/api/v1/teams`, `/api/v1/teams/{team_id}/members` |
 | [Error Responses](api/error-responses.md) | Standard error envelope, HTTP codes, example responses |
+| Admin Scoring Configuration | `/api/v1/admin/scoring-config`, `/api/v1/admin/scoring-config/active`, `/api/v1/admin/scoring-config/{id}`, `/api/v1/admin/scoring-config/{id}/activate`, `/api/v1/admin/scoring-config/reset` |
+| Model Submission | `/api/v1/upload-window`, `/api/v1/teams/my-team/model`, `/api/v1/admin/models`, `/api/v1/admin/models/{id}/download` |
 
 ---
 
@@ -57,6 +61,8 @@ docs/
 | [Database Overview](database/database-overview.md) | Engine, design goals, table list |
 | [Schema Design](database/schema-design.md) | Full entity-relationship details |
 | [Feature-Database Mapping](database/feature-database-mapping.md) | Which features read/write which tables |
+| Scoring Configuration | `scoring_configs` table tracks dynamically adjustable base scoring and evaluation thresholds |
+| Model Submissions | `upload_window_config` tracks window time constraints; `model_submissions` tracks uploaded ML files |
 
 ---
 

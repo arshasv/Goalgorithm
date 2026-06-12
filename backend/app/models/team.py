@@ -6,6 +6,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from app.database.base import Base
 
+VALID_TEAM_IDS = {"A", "B", "C", "D", "E"}
+
 
 class TeamModel(Base):
     __tablename__ = "teams"
@@ -20,6 +22,11 @@ class TeamModel(Base):
         Uuid(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
+    )
+
+    team_id: Mapped[str] = mapped_column(
+        String(1),
+        nullable=False,
     )
 
     name: Mapped[str] = mapped_column(
@@ -38,8 +45,7 @@ class TeamModel(Base):
         self.name_normalized = normalize_team_name(value)
         return value
 
-    # kept only for old APIs
-    # value will always be same as team name
+    # short identifier matching team_id (A-E), kept for old API compat
     code: Mapped[str] = mapped_column(
         String(255),
         nullable=False,

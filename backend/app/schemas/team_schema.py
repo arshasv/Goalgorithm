@@ -52,6 +52,8 @@ class TeamResponse(BaseModel):
 
     id: uuid.UUID
 
+    team_id: str
+
     name: str
 
     # returning for old frontend compatibility

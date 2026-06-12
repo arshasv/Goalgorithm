@@ -150,3 +150,29 @@ Matches ────────────────────────
 | name | String | Member name |
 | employee_id | String | Member employee ID |
 | created_at | Datetime | Audit timestamp |
+
+### ScoringConfigs
+| Field | Type | Description |
+|---|---|---|
+| id | UUID | Primary key |
+| name | String | Config display name |
+| is_active | Boolean | Only one config is active |
+| version | Integer | Revision tracking |
+| winner_points_correct | Integer | Points config (along with all other points) |
+
+### UploadWindowConfig
+| Field | Type | Description |
+|---|---|---|
+| id | UUID | Primary key |
+| is_enabled | Boolean | Master toggle |
+| start_time, end_time | Datetime | Active bounds (UTC) |
+
+### ModelSubmissions
+| Field | Type | Description |
+|---|---|---|
+| id | UUID | Primary key |
+| team_id | UUID | FK → Teams |
+| file_name, file_type, file_path | String | Uploaded file details |
+| file_size | Integer | File size in bytes |
+| is_active | Boolean | True for latest active upload |
+| uploaded_at | Datetime | Upload timestamp |

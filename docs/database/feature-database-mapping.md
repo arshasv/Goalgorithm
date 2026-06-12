@@ -35,3 +35,11 @@
 ## Team Management
 **Writes:** teams (is_csv_managed), team_members
 **Reads:** teams, team_members, users
+
+## Admin Scoring Configuration
+**Writes:** scoring_configs
+**Reads:** scoring_configs
+
+## Model Submission
+**Writes:** model_submissions, upload_window_config
+**Reads:** teams, upload_window_config, model_submissions

@@ -25,6 +25,8 @@ Router.register('org-teams', async () => {
   await loadOrgTeams();
 });
 
+
+
 async function loadOrgTeams() {
   const container = document.getElementById('org-teams-content');
   if (!container) return;
@@ -41,7 +43,7 @@ async function loadOrgTeams() {
       ${teams.map((t, i) => `
         <div class="card" style="animation:fadeInUp ${0.3 + i * 0.1}s ease-out both;cursor:pointer" onclick="showOrgTeamDetail('${t.id}')">
           <div class="card-header">
-            <div class="card-title">${Utils.teamBadge(t.name, 40)} ${t.name}</div>
+            <div class="card-title">${Utils.teamBadge(t.name, 40)} Team ${t.team_id || t.code} — ${t.name}</div>
             <span class="badge ${t.is_active ? 'badge-success' : 'badge-error'}">${t.is_active ? 'Active' : 'Inactive'}</span>
           </div>
           <div style="padding:var(--space-md)">
@@ -85,8 +87,7 @@ async function showOrgTeamDetail(teamId) {
         <div style="display:flex;align-items:center;gap:var(--space-md);margin-bottom:var(--space-lg)">
           ${Utils.teamBadge(team.name, 56)}
           <div>
-            <h3 style="font-family:var(--font-display);font-size:var(--text-xl)">${team.name}</h3>
-            <span style="color:var(--color-text-muted);font-size:var(--text-sm)">${team.code}</span>
+            <h3 style="font-family:var(--font-display);font-size:var(--text-xl)">Team ${team.team_id || team.code} — ${team.name}</h3>
           </div>
         </div>
         ${team.team_leader_name ? `<p style="margin-bottom:var(--space-md)"><strong>Leader:</strong> ${team.team_leader_name}</p>` : ''}

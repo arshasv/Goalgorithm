@@ -1,6 +1,7 @@
 import json
 import os
 import tempfile
+import uuid
 from collections.abc import Generator
 from pathlib import Path
 
@@ -21,6 +22,7 @@ from datetime import datetime, timezone
 
 from app.models.enums import UserRole, MatchStatus  # noqa: E402
 from app.models.match import MatchModel  # noqa: E402
+from app.models.scoring_config import ScoringConfigModel  # noqa: E402
 from app.models.team import TeamModel  # noqa: E402
 from app.models.user import UserModel  # noqa: E402
 
@@ -107,6 +109,7 @@ def organizer_headers(organizer: UserModel) -> dict[str, str]:
 @pytest.fixture
 def team_a(db_session: Session) -> TeamModel:
     team = TeamModel(
+        team_id="A",
         name="Team A",
         code="A",
         team_leader_name="Leader A",
@@ -155,6 +158,20 @@ def sample_match(db_session: Session) -> MatchModel:
     db_session.commit()
     db_session.refresh(match)
     return match
+
+
+@pytest.fixture
+def default_scoring_config(db_session: Session) -> ScoringConfigModel:
+    config = ScoringConfigModel(
+        id=uuid.UUID("00000000-0000-0000-0000-000000000001"),
+        name="Test Default",
+        is_active=True,
+        version=1,
+    )
+    db_session.add(config)
+    db_session.commit()
+    db_session.refresh(config)
+    return config
 
 
 def load_fixture(name: str) -> dict:

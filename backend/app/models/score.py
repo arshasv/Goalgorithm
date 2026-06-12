@@ -30,6 +30,7 @@ class ScoreModel(Base):
     )
     multiplier: Mapped[int | None] = mapped_column(Integer, nullable=True)
     earned_points: Mapped[float | None] = mapped_column(Float, nullable=True)
+    config_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     computed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

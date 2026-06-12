@@ -1,12 +1,12 @@
 
 
-const teams = ['A','B','C','D','E'];
+const teams = ['Team A','Team B','Team C','Team D','Team E'];
 const techData = [
-  {team:'A',code:5,backend:5,teamwork:5,ai:4},
-  {team:'B',code:4,backend:4,teamwork:4,ai:5},
-  {team:'C',code:3,backend:4,teamwork:4,ai:4},
-  {team:'D',code:3,backend:3,teamwork:2,ai:2},
-  {team:'E',code:1,backend:1,teamwork:1,ai:2},
+  {team:'A',name:'Team A',code:5,backend:5,teamwork:5,ai:4},
+  {team:'B',name:'Team B',code:4,backend:4,teamwork:4,ai:5},
+  {team:'C',name:'Team C',code:3,backend:4,teamwork:4,ai:4},
+  {team:'D',name:'Team D',code:3,backend:3,teamwork:2,ai:2},
+  {team:'E',name:'Team E',code:1,backend:1,teamwork:1,ai:2},
 ];
 Router.register('technical', () => {
   const el = document.getElementById('page-content');
@@ -46,7 +46,7 @@ function renderTechTable() {
   if (!tb) return;
   tb.innerHTML = techData.map((t,i)=>`
     <tr style="animation:fadeIn ${300+i*80}ms var(--ease-out) both">
-      <td style="font-weight:600;font-family:var(--font-display);text-transform:uppercase">Team ${t.team}</td>
+      <td style="font-weight:600;font-family:var(--font-display);text-transform:uppercase">Team ${t.team} — ${t.name}</td>
       ${['code','backend','teamwork','ai'].map(k=>`
         <td class="score-cell">
           <input class="form-input score-input" type="number" min="0" max="5" value="${t[k]}"
@@ -70,13 +70,13 @@ function resetTechForm() { techData.forEach(t=>{t.code=0;t.backend=0;t.teamwork=
 async function submitTechScores() {
   Modal.confirm('Submit Phase 2 technical scores for all 5 teams?', async () => {
     for (const t of techData) {
-      const payload = {team_id:`TEAM_${t.team.toUpperCase()}`,
+      const payload = {team_id:t.team,
         code_quality:+document.getElementById(`tech-${t.team}-code`)?.value||0,
         backend_quality:+document.getElementById(`tech-${t.team}-backend`)?.value||0,
         teamwork:+document.getElementById(`tech-${t.team}-teamwork`)?.value||0,
         ai_explanation:+document.getElementById(`tech-${t.team}-ai`)?.value||0};
       try { await ScoringService.calculateTechnical(payload); }
-      catch(e) { Toast.error(`Failed for Team ${t.team}: ${e.message}`); }
+      catch(e) { Toast.error(`Failed for ${t.name}: ${e.message}`); }
     }
     Toast.success('Technical scores submitted successfully!');
   }, 'Submit Phase 2 Technical Scores');

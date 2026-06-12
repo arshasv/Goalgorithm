@@ -4,14 +4,14 @@ const DEMO_MODE = true;
 
 const MockData = {
   teams: [
-    { id: '10000001-0000-0000-0000-000000000001', name: 'Team A', code: 'A', team_leader_name: 'Alice Johnson', registered_at: '2026-05-15T10:00:00Z', is_active: true, is_csv_managed: true, members: [
+    { id: '10000001-0000-0000-0000-000000000001', team_id: 'A', name: 'Team A', code: 'A', team_leader_name: 'Alice Johnson', registered_at: '2026-05-15T10:00:00Z', is_active: true, is_csv_managed: true, members: [
       { id: 'm-001', team_id: '10000001-0000-0000-0000-000000000001', name: 'Bob Smith', employee_id: 'EMP001', created_at: '2026-05-15T10:05:00Z' },
       { id: 'm-002', team_id: '10000001-0000-0000-0000-000000000001', name: 'Carol Lee', employee_id: 'EMP002', created_at: '2026-05-15T10:05:00Z' },
     ]},
-    { id: '10000001-0000-0000-0000-000000000002', name: 'Team B', code: 'B', team_leader_name: 'David Chen', registered_at: '2026-05-16T09:00:00Z', is_active: true, is_csv_managed: false, members: [] },
-    { id: '10000001-0000-0000-0000-000000000003', name: 'Team C', code: 'C', team_leader_name: 'Eve Williams', registered_at: '2026-05-17T14:00:00Z', is_active: true, is_csv_managed: false, members: [] },
-    { id: '10000001-0000-0000-0000-100000000004', name: 'Team D', code: 'D', team_leader_name: 'Frank Brown', registered_at: '2026-05-18T11:00:00Z', is_active: true, is_csv_managed: false, members: [] },
-    { id: '10000001-0000-0000-0000-000000000005', name: 'Team E', code: 'E', team_leader_name: 'Grace Davis', registered_at: '2026-05-19T16:00:00Z', is_active: false, is_csv_managed: false, members: [] },
+    { id: '10000001-0000-0000-0000-000000000002', team_id: 'B', name: 'Team B', code: 'B', team_leader_name: 'David Chen', registered_at: '2026-05-16T09:00:00Z', is_active: true, is_csv_managed: false, members: [] },
+    { id: '10000001-0000-0000-0000-000000000003', team_id: 'C', name: 'Team C', code: 'C', team_leader_name: 'Eve Williams', registered_at: '2026-05-17T14:00:00Z', is_active: true, is_csv_managed: false, members: [] },
+    { id: '10000001-0000-0000-0000-100000000004', team_id: 'D', name: 'Team D', code: 'D', team_leader_name: 'Frank Brown', registered_at: '2026-05-18T11:00:00Z', is_active: true, is_csv_managed: false, members: [] },
+    { id: '10000001-0000-0000-0000-000000000005', team_id: 'E', name: 'Team E', code: 'E', team_leader_name: 'Grace Davis', registered_at: '2026-05-19T16:00:00Z', is_active: false, is_csv_managed: false, members: [] },
   ],
 
   matches: [
@@ -286,6 +286,69 @@ const MockData = {
     { team_id: '10000001-0000-0000-0000-000000000003', rank: 3, phase1_score: 35.0, technical_score: 16.0, presentation_score: 14.5, final_score: 65.5 },
     { team_id: '10000001-0000-0000-0000-000000000004', rank: 4, phase1_score: 30.1, technical_score: 15.0, presentation_score: 13.0, final_score: 58.1 },
     { team_id: '10000001-0000-0000-0000-000000000005', rank: 5, phase1_score: 28.0, technical_score: 14.5, presentation_score: 12.0, final_score: 54.5 },
+  ],
+
+  dailyScores: [
+    {
+      date: '2026-06-10',
+      teams: [
+        { team_code: 'A', team_name: 'Team A', total_score: 85.0, rank: 1 },
+        { team_code: 'C', team_name: 'Team C', total_score: 82.5, rank: 2 },
+        { team_code: 'B', team_name: 'Team B', total_score: 78.0, rank: 3 },
+        { team_code: 'D', team_name: 'Team D', total_score: 72.0, rank: 4 },
+        { team_code: 'E', team_name: 'Team E', total_score: 65.0, rank: 5 },
+      ],
+    },
+    {
+      date: '2026-06-08',
+      teams: [
+        { team_code: 'B', team_name: 'Team B', total_score: 88.0, rank: 1 },
+        { team_code: 'A', team_name: 'Team A', total_score: 79.5, rank: 2 },
+        { team_code: 'C', team_name: 'Team C', total_score: 75.0, rank: 3 },
+        { team_code: 'D', team_name: 'Team D', total_score: 68.0, rank: 4 },
+        { team_code: 'E', team_name: 'Team E', total_score: 60.0, rank: 5 },
+      ],
+    },
+  ],
+
+  matchBreakdown: [
+    {
+      match_id: 'M32', match_number: 32, home_team_name: 'Arsenal', away_team_name: 'Chelsea',
+      scheduled_at: '2026-06-10T18:00:00', status: 'scored',
+      actual_result: { actual_winner: 'home', actual_home_goals: 2, actual_away_goals: 1 },
+      teams: [
+        { team_id: '10000001-0000-0000-0000-000000000001', team_code: 'A', team_name: 'Team A', prediction: { predicted_winner: 'home', predicted_home_goals: 2, predicted_away_goals: 1 }, score_breakdown: { winner_points: 5, scoreline_points: 10, probability_points: 5, player_points: 5, base_score: 25, earned_points: 75 } },
+        { team_id: '10000001-0000-0000-0000-000000000002', team_code: 'B', team_name: 'Team B', prediction: { predicted_winner: 'draw', predicted_home_goals: 1, predicted_away_goals: 1 }, score_breakdown: { winner_points: 0, scoreline_points: 0, probability_points: 5, player_points: 5, base_score: 10, earned_points: 20 } },
+        { team_id: '10000001-0000-0000-0000-000000000003', team_code: 'C', team_name: 'Team C', prediction: { predicted_winner: 'home', predicted_home_goals: 3, predicted_away_goals: 0 }, score_breakdown: { winner_points: 5, scoreline_points: 5, probability_points: 0, player_points: 5, base_score: 15, earned_points: 30 } },
+        { team_id: '10000001-0000-0000-0000-100000000004', team_code: 'D', team_name: 'Team D', prediction: { predicted_winner: 'home', predicted_home_goals: 2, predicted_away_goals: 0 }, score_breakdown: { winner_points: 5, scoreline_points: 5, probability_points: 5, player_points: 0, base_score: 15, earned_points: 30 } },
+      ],
+    },
+    {
+      match_id: 'M31', match_number: 31, home_team_name: 'Liverpool', away_team_name: 'Man City',
+      scheduled_at: '2026-06-08T18:00:00', status: 'completed',
+      actual_result: { actual_winner: 'draw', actual_home_goals: 1, actual_away_goals: 1 },
+      teams: [
+        { team_id: '10000001-0000-0000-0000-000000000001', team_code: 'A', team_name: 'Team A', prediction: { predicted_winner: 'away', predicted_home_goals: 0, predicted_away_goals: 2 }, score_breakdown: { winner_points: 0, scoreline_points: 0, probability_points: 0, player_points: 5, base_score: 5, earned_points: 5 } },
+        { team_id: '10000001-0000-0000-0000-000000000002', team_code: 'B', team_name: 'Team B', prediction: { predicted_winner: 'home', predicted_home_goals: 2, predicted_away_goals: 1 }, score_breakdown: { winner_points: 0, scoreline_points: 0, probability_points: 5, player_points: 2, base_score: 7, earned_points: 14 } },
+        { team_id: '10000001-0000-0000-0000-000000000003', team_code: 'C', team_name: 'Team C', prediction: { predicted_winner: 'draw', predicted_home_goals: 1, predicted_away_goals: 1 }, score_breakdown: { winner_points: 5, scoreline_points: 10, probability_points: 5, player_points: 5, base_score: 25, earned_points: 75 } },
+      ],
+    },
+  ],
+
+  technicalEvaluations: [
+    { team_id: '10000001-0000-0000-0000-000000000001', team_code: 'A', team_name: 'Team A', code_quality: 5, backend_quality: 5, teamwork: 4, ai_explanation: 4, total_score: 18, submitted_at: '2026-06-11T10:00:00Z' },
+    { team_id: '10000001-0000-0000-0000-000000000002', team_code: 'B', team_name: 'Team B', code_quality: 4, backend_quality: 5, teamwork: 4, ai_explanation: 4, total_score: 17, submitted_at: '2026-06-11T10:00:00Z' },
+    { team_id: '10000001-0000-0000-0000-000000000003', team_code: 'C', team_name: 'Team C', code_quality: 4, backend_quality: 4, teamwork: 5, ai_explanation: 3, total_score: 16, submitted_at: '2026-06-11T10:00:00Z' },
+    { team_id: '10000001-0000-0000-0000-100000000004', team_code: 'D', team_name: 'Team D', code_quality: 3, backend_quality: 4, teamwork: 4, ai_explanation: 4, total_score: 15, submitted_at: '2026-06-11T10:00:00Z' },
+    { team_id: '10000001-0000-0000-0000-000000000005', team_code: 'E', team_name: 'Team E', code_quality: 3, backend_quality: 3, teamwork: 4, ai_explanation: 4, total_score: 14, submitted_at: '2026-06-11T10:00:00Z' },
+  ],
+
+  presentationEvaluations: [
+    { team_id: '10000001-0000-0000-0000-000000000001', team_code: 'A', team_name: 'Team A', ai_explanation_score: 18, qa_score: 13, delivery_score: 14, raw_total: 45, presentation_score: 18.0, rank: 1, grade: 'A', multiplier: 3, submitted_at: '2026-06-12T14:00:00Z' },
+    { team_id: '10000001-0000-0000-0000-000000000002', team_code: 'B', team_name: 'Team B', ai_explanation_score: 16, qa_score: 12, delivery_score: 13, raw_total: 41, presentation_score: 16.4, rank: 2, grade: 'B', multiplier: 2, submitted_at: '2026-06-12T14:00:00Z' },
+    { team_id: '10000001-0000-0000-0000-000000000003', team_code: 'C', team_name: 'Team C', ai_explanation_score: 15, qa_score: 12, delivery_score: 12, raw_total: 39, presentation_score: 15.6, rank: 3, grade: 'B', multiplier: 2, submitted_at: '2026-06-12T14:00:00Z' },
+    { team_id: '10000001-0000-0000-0000-100000000004', team_code: 'D', team_name: 'Team D', ai_explanation_score: 14, qa_score: 11, delivery_score: 11, raw_total: 36, presentation_score: 14.4, rank: 4, grade: 'C', multiplier: 1, submitted_at: '2026-06-12T14:00:00Z' },
+    { team_id: '10000001-0000-0000-0000-000000000005', team_code: 'E', team_name: 'Team E', ai_explanation_score: 13, qa_score: 10, delivery_score: 10, raw_total: 33, presentation_score: 13.2, rank: 5, grade: 'C', multiplier: 1, submitted_at: '2026-06-12T14:00:00Z' },
   ],
 
   async getTeams() {

@@ -41,7 +41,7 @@ async function loadLeaderboard() {
     const topScore = leaderboard[0]?.final_score || 0;
     const entriesWithTeams = leaderboard.map(e => {
       const team = teams.find(t => t.id === e.team_id);
-      return { ...e, team_name: team?.name || '—' };
+      return { ...e, team_name: team?.name || '—', team_code: team?.team_id || team?.code || '' };
     });
 
     container.innerHTML = `
@@ -56,7 +56,7 @@ async function loadLeaderboard() {
         </div>
         <div class="card stat-card">
           <div class="stat-label">Top Team</div>
-          <div class="stat-value" style="font-family:var(--font-display);font-size:var(--text-xl)">${entriesWithTeams[0]?.team_name || '—'}</div>
+          <div class="stat-value" style="font-family:var(--font-display);font-size:var(--text-xl)">${entriesWithTeams[0] ? `Team ${entriesWithTeams[0].team_code} — ${entriesWithTeams[0].team_name}` : '—'}</div>
         </div>
       </div>
 
@@ -80,7 +80,7 @@ async function loadLeaderboard() {
                 return `
                   <tr class="${rankClass}" style="cursor:pointer" onclick="showLBDetail('${e.team_id}')">
                     <td>${e.rank}</td>
-                    <td><strong>${e.team_name}</strong></td>
+                    <td><strong>Team ${e.team_code} — ${e.team_name}</strong></td>
                     <td><span class="score-num ${Utils.scoreColor(e.phase1_score, 60)}">${Utils.fmt1(e.phase1_score)}</span></td>
                     <td><span class="score-num ${Utils.scoreColor(e.technical_score, 20)}">${Utils.fmt1(e.technical_score)}</span></td>
                     <td><span class="score-num ${Utils.scoreColor(e.presentation_score, 20)}">${Utils.fmt1(e.presentation_score)}</span></td>

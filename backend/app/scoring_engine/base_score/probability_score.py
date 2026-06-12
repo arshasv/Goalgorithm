@@ -17,10 +17,15 @@ def _probabilities_to_check(prediction: dict) -> list[tuple[str, float]]:
 def calculate_probability_score(
     prediction: dict,
     actual_probabilities: dict,
+    config: dict | None = None,
 ) -> int:
+    threshold = config.get("probability_threshold", PROBABILITY_THRESHOLD) if config else PROBABILITY_THRESHOLD
+    points_pass = config.get("probability_points_pass", PROBABILITY_POINTS_PASS) if config else PROBABILITY_POINTS_PASS
+    points_fail = config.get("probability_points_fail", PROBABILITY_POINTS_FAIL) if config else PROBABILITY_POINTS_FAIL
+
     for key, predicted_value in _probabilities_to_check(prediction):
         actual_value = actual_probabilities[key]
-        if abs(predicted_value - actual_value) > PROBABILITY_THRESHOLD:
-            return PROBABILITY_POINTS_FAIL
+        if abs(predicted_value - actual_value) > threshold:
+            return points_fail
 
-    return PROBABILITY_POINTS_PASS
+    return points_pass

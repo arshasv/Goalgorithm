@@ -7,9 +7,16 @@ GRADE_B = "B"
 GRADE_C = "C"
 
 
-def assign_grades(ranked_teams: list[dict]) -> list[dict]:
+def assign_grades(
+    ranked_teams: list[dict],
+    config: dict | None = None,
+) -> list[dict]:
     if not ranked_teams:
         return []
+
+    mult_a = config.get("multiplier_a", MULTIPLIER_A) if config else MULTIPLIER_A
+    mult_b = config.get("multiplier_b", MULTIPLIER_B) if config else MULTIPLIER_B
+    mult_c = config.get("multiplier_c", MULTIPLIER_C) if config else MULTIPLIER_C
 
     top_score = ranked_teams[0]["base_score"]
     bottom_score = ranked_teams[-1]["base_score"]
@@ -24,11 +31,11 @@ def assign_grades(ranked_teams: list[dict]) -> list[dict]:
         score = team["base_score"]
 
         if score == top_score and top_count == 1:
-            grade, multiplier = GRADE_A, MULTIPLIER_A
+            grade, multiplier = GRADE_A, mult_a
         elif score == bottom_score and not all_tied:
-            grade, multiplier = GRADE_C, MULTIPLIER_C
+            grade, multiplier = GRADE_C, mult_c
         else:
-            grade, multiplier = GRADE_B, MULTIPLIER_B
+            grade, multiplier = GRADE_B, mult_b
 
         earned_points = score * multiplier
 

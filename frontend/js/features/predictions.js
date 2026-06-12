@@ -80,16 +80,18 @@ async function loadPredictions() {
             <table>
               <thead><tr><th>Team</th><th>Match</th><th>Winner</th><th>Scoreline</th><th>Status</th><th>Submitted</th></tr></thead>
               <tbody id="pred-tbody">
-                ${preds.map(p => `
-                  <tr class="pred-row" style="cursor:pointer" onclick="showPredDetail('${p.id}')">
-                    <td><strong>${teams.find(t => t.id === p.team_id)?.name || '—'}</strong></td>
+                ${preds.map(p => {
+                  const pteam = teams.find(t => t.id === p.team_id);
+                  const pteamDisplay = pteam ? `Team ${pteam.team_id || pteam.code} — ${pteam.name}` : '—';
+                  return `<tr class="pred-row" style="cursor:pointer" onclick="showPredDetail('${p.id}')">
+                    <td><strong>${pteamDisplay}</strong></td>
                     <td style="font-family:var(--font-data);font-size:var(--text-xs)">${p.match_id || '—'}</td>
                     <td>${Utils.predictionPick('Home', 'Away', p.match_prediction?.predicted_winner)}</td>
                     <td style="font-family:var(--font-score);font-size:var(--text-lg)">${p.match_prediction?.predicted_scoreline?.home_team_goals ?? '?'} – ${p.match_prediction?.predicted_scoreline?.away_team_goals ?? '?'}</td>
                     <td>${statusBadge(p.status)}</td>
                     <td style="font-size:var(--text-xs);color:var(--color-text-muted)">${p.submitted_at ? new Date(p.submitted_at).toLocaleString() : '—'}</td>
-                  </tr>
-                `).join('')}
+                  </tr>`;
+                }).join('')}
               </tbody>
             </table>
           </div>
