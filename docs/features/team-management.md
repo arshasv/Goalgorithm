@@ -83,6 +83,6 @@ To provide clear visibility of privileges, a role badge is displayed in the top-
 
 ### Styling & Contrast
 The badge is designed to be clearly visible against the header background in both theme variations:
-- **FIFA Executive (Light Mode)**: High contrast, leveraging a dark border/text or vivid accent color against the white header.
-- **FIFA Night Stadium (Dark Mode)**: Vivid text and subtle background contrast.
+- **GOALGORITHM Executive (Light Mode)**: High contrast, leveraging a dark border/text or vivid accent color against the white header.
+- **GOALGORITHM Night Stadium (Dark Mode)**: Vivid text and subtle background contrast.
 - Uses semantic class mappings ensuring text never blends into the background.

@@ -1,6 +1,6 @@
 # Test Plan
 
-> This document describes the planned testing strategy for the FIFA Challenge Scoring System. Tests are organized by layer and feature area, following the project's separation of concerns.
+> This document describes the planned testing strategy for the GOALGORITHM Scoring System. Tests are organized by layer and feature area, following the project's separation of concerns.
 
 ---
 

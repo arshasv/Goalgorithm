@@ -75,7 +75,7 @@ def register(
     if (
         db.query(UserModel)
         .filter(
-            UserModel.email == body.email
+            UserModel.email == body.email.lower()
         )
         .first()
     ):
@@ -87,11 +87,12 @@ def register(
 
     user = UserModel(
         username=body.username,
-        email=body.email,
+        email=body.email.lower(),
         password_hash=hash_password(
             body.password
         ),
         role=UserRole.TEAM_LEADER,
+        is_active=True,
     )
 
 
@@ -168,27 +169,36 @@ def login(
     db: Session = Depends(get_db),
 ):
 
+    print("LOGIN DEBUG email:", body.email)
     user = (
         db.query(UserModel)
         .filter(
-            UserModel.email == body.email
+            UserModel.email == body.email.lower()
         )
         .first()
     )
 
+    print("LOGIN DEBUG user found:", user is not None)
+    if user:
+        print("LOGIN DEBUG user.id:", user.id)
+        print("LOGIN DEBUG user.email:", user.email)
+        print("LOGIN DEBUG user.role:", user.role)
+        # user doesn't have is_active, but let's check it if it does
+        print("LOGIN DEBUG stored hash exists:", bool(user.password_hash))
+        
+        password_verified = verify_password(body.password, user.password_hash)
+        print("LOGIN DEBUG password ok:", password_verified)
+    else:
+        password_verified = False
 
     if (
         not user
-        or not verify_password(
-            body.password,
-            user.password_hash
-        )
+        or not password_verified
     ):
         raise HTTPException(
             status_code=401,
             detail="Invalid email or password",
         )
-
 
     token = create_access_token(
         data={
@@ -196,7 +206,6 @@ def login(
             "role": user.role,
         }
     )
-
 
     team = (
         db.query(TeamModel)

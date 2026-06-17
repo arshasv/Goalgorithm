@@ -1,6 +1,6 @@
 # Technical Documentation
 
-> Entry point for the FIFA Challenge Scoring System documentation.
+> Entry point for the GOALGORITHM Scoring System documentation.
 
 ---
 
@@ -35,6 +35,7 @@ docs/
 | [Team Management](features/team-management.md) | CSV/Excel roster import, manual restrictions, and role badge system |
 | [Admin Scoring Configuration](features/admin-scoring-config.md) | Dynamic scoring thresholds and configuration |
 | [Model Submission](features/model-submission.md) | Team model file uploads and upload window management |
+| [Match Management](features/match-management.md) | Manual match creation, CSV schedule upload, and status tracking |
 
 ---
 
@@ -51,6 +52,7 @@ docs/
 | [Error Responses](api/error-responses.md) | Standard error envelope, HTTP codes, example responses |
 | Admin Scoring Configuration | `/api/v1/admin/scoring-config`, `/api/v1/admin/scoring-config/active`, `/api/v1/admin/scoring-config/{id}`, `/api/v1/admin/scoring-config/{id}/activate`, `/api/v1/admin/scoring-config/reset` |
 | Model Submission | `/api/v1/upload-window`, `/api/v1/teams/my-team/model`, `/api/v1/admin/models`, `/api/v1/admin/models/{id}/download` |
+| [Match Management API](api/match-management-api.md) | `/api/v1/matches`, `/api/v1/matches/upload-csv` |
 
 ---
 

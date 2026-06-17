@@ -1,6 +1,6 @@
 /* Final Scores Dashboard — aggregated scores, match breakdown, evaluations */
 
-Router.register('final-scores', async () => {
+Router.register('match-results', async () => {
   const main = document.getElementById('page-content');
   const isOrg = Auth.isOrganizer();
 
@@ -87,7 +87,7 @@ async function renderDailyScores(container) {
               const rankClass = t.rank <= 3 ? `rank-${t.rank}` : '';
               return `<tr class="${rankClass}">
                 <td>${t.rank}</td>
-                <td><strong>Team ${t.team_code || '?'} — ${t.team_name}</strong></td>
+                <td><strong>${Utils.formatTeamDisplay({team_id: t.team_code, name: t.team_name})}</strong></td>
                 <td><span class="score-num ${Utils.scoreColor(t.total_score, 75)}">${Utils.fmt1(t.total_score)}</span></td>
                 <td>${Utils.rankBadge(t.rank)}</td>
               </tr>`;
@@ -169,7 +169,9 @@ async function renderMatchBreakdown(container) {
                   ? `${pred.predicted_home_goals}–${pred.predicted_away_goals}`
                   : '—';
                 return `<tr>
-                  <td><strong>Team ${t.team_code || '?'} — ${t.team_name}</strong></td>
+                <td><strong>${Utils.formatTeamDisplay({team_id: t.team_code, name: t.team_name})}</strong></td>
+
+  
                   <td>${predStr}</td>
                   <td><span class="${sc.winner_points === 5 ? 'badge badge-success' : 'badge badge-error'}">${sc.winner_points ?? '—'}/5</span></td>
                   <td><span class="${sc.scoreline_points === 10 ? 'badge badge-success' : sc.scoreline_points === 5 ? 'badge badge-warning' : 'badge badge-error'}">${sc.scoreline_points ?? '—'}/10</span></td>
@@ -257,10 +259,6 @@ async function renderFSLeaderboard(container) {
   }
 
   const topScore = leaderboard[0]?.final_score || 0;
-  const entriesWithTeams = leaderboard.map(e => {
-    const team = teams.find(t => t.id === e.team_id);
-    return { ...e, team_name: team?.name || '—', team_code: team?.team_id || team?.code || '' };
-  });
 
   container.innerHTML = `
     <div class="grid-3" style="margin-bottom:var(--space-xl)">
@@ -274,7 +272,7 @@ async function renderFSLeaderboard(container) {
       </div>
       <div class="card stat-card">
         <div class="stat-label">Top Team</div>
-        <div class="stat-value" style="font-size:var(--text-lg)">${entriesWithTeams[0] ? `Team ${entriesWithTeams[0].team_code} — ${entriesWithTeams[0].team_name}` : '—'}</div>
+        <div class="stat-value" style="font-size:var(--text-lg)">${leaderboard[0] ? Utils.formatTeamDisplay(leaderboard[0]) : '—'}</div>
       </div>
     </div>
     <div class="card">
@@ -292,11 +290,11 @@ async function renderFSLeaderboard(container) {
             </tr>
           </thead>
           <tbody>
-            ${entriesWithTeams.map(e => {
+            ${leaderboard.map(e => {
               const rankClass = e.rank <= 3 ? `rank-${e.rank}` : '';
               return `<tr class="${rankClass}">
                 <td>${e.rank}</td>
-                <td><strong>Team ${e.team_code} — ${e.team_name}</strong></td>
+                <td><strong>${Utils.formatTeamDisplay(e)}</strong></td>
                 <td><span class="score-num ${Utils.scoreColor(e.phase1_score, 60)}">${Utils.fmt1(e.phase1_score)}</span></td>
                 <td><span class="score-num ${Utils.scoreColor(e.technical_score, 20)}">${Utils.fmt1(e.technical_score)}</span></td>
                 <td><span class="score-num ${Utils.scoreColor(e.presentation_score, 20)}">${Utils.fmt1(e.presentation_score)}</span></td>
@@ -362,13 +360,12 @@ async function renderEvaluations(container) {
   for (const teamId of allTeamIds) {
     const tech = technicalEvals.find(e => e.team_id === teamId);
     const pres = presentationEvals.find(e => e.team_id === teamId);
-    const teamCode = (tech?.team_code || pres?.team_code || '');
-    const teamName = (tech?.team_name || pres?.team_name || teamId);
+    const teamObj = { team_code: tech?.team_code || pres?.team_code || '', team_name: tech?.team_name || pres?.team_name || '' };
 
     html += `
       <div class="card" style="margin-bottom:var(--space-lg);animation:fadeInUp 0.3s ease-out">
         <div class="card-header">
-          <span class="card-title">Team ${teamCode} — ${teamName}</span>
+          <span class="card-title">${Utils.formatTeamDisplay(teamObj)}</span>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-lg)">
           ${tech ? renderTechCard(tech) : '<div class="alert alert-info">Technical evaluation not yet submitted.</div>'}

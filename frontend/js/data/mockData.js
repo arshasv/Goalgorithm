@@ -4,14 +4,14 @@ const DEMO_MODE = true;
 
 const MockData = {
   teams: [
-    { id: '10000001-0000-0000-0000-000000000001', team_id: 'A', name: 'Team A', code: 'A', team_leader_name: 'Alice Johnson', registered_at: '2026-05-15T10:00:00Z', is_active: true, is_csv_managed: true, members: [
+    { id: '10000001-0000-0000-0000-000000000001', team_id: 'A', name: 'Team A', code: 'A', team_code: 'A', team_name: 'Team A', team_leader: 'Alice Johnson', team_leader_name: 'Alice Johnson', registered_at: '2026-05-15T10:00:00Z', is_active: true, is_csv_managed: true, members: [
       { id: 'm-001', team_id: '10000001-0000-0000-0000-000000000001', name: 'Bob Smith', employee_id: 'EMP001', created_at: '2026-05-15T10:05:00Z' },
       { id: 'm-002', team_id: '10000001-0000-0000-0000-000000000001', name: 'Carol Lee', employee_id: 'EMP002', created_at: '2026-05-15T10:05:00Z' },
     ]},
-    { id: '10000001-0000-0000-0000-000000000002', team_id: 'B', name: 'Team B', code: 'B', team_leader_name: 'David Chen', registered_at: '2026-05-16T09:00:00Z', is_active: true, is_csv_managed: false, members: [] },
-    { id: '10000001-0000-0000-0000-000000000003', team_id: 'C', name: 'Team C', code: 'C', team_leader_name: 'Eve Williams', registered_at: '2026-05-17T14:00:00Z', is_active: true, is_csv_managed: false, members: [] },
-    { id: '10000001-0000-0000-0000-100000000004', team_id: 'D', name: 'Team D', code: 'D', team_leader_name: 'Frank Brown', registered_at: '2026-05-18T11:00:00Z', is_active: true, is_csv_managed: false, members: [] },
-    { id: '10000001-0000-0000-0000-000000000005', team_id: 'E', name: 'Team E', code: 'E', team_leader_name: 'Grace Davis', registered_at: '2026-05-19T16:00:00Z', is_active: false, is_csv_managed: false, members: [] },
+    { id: '10000001-0000-0000-0000-000000000002', team_id: 'B', name: 'Team B', code: 'B', team_code: 'B', team_name: 'Team B', team_leader: 'David Chen', team_leader_name: 'David Chen', registered_at: '2026-05-16T09:00:00Z', is_active: true, is_csv_managed: false, members: [] },
+    { id: '10000001-0000-0000-0000-000000000003', team_id: 'C', name: 'Team C', code: 'C', team_code: 'C', team_name: 'Team C', team_leader: 'Eve Williams', team_leader_name: 'Eve Williams', registered_at: '2026-05-17T14:00:00Z', is_active: true, is_csv_managed: false, members: [] },
+    { id: '10000001-0000-0000-0000-100000000004', team_id: 'D', name: 'Team D', code: 'D', team_code: 'D', team_name: 'Team D', team_leader: 'Frank Brown', team_leader_name: 'Frank Brown', registered_at: '2026-05-18T11:00:00Z', is_active: true, is_csv_managed: false, members: [] },
+    { id: '10000001-0000-0000-0000-000000000005', team_id: 'E', name: 'Team E', code: 'E', team_code: 'E', team_name: 'Team E', team_leader: 'Grace Davis', team_leader_name: 'Grace Davis', registered_at: '2026-05-19T16:00:00Z', is_active: false, is_csv_managed: false, members: [] },
   ],
 
   matches: [
@@ -27,7 +27,6 @@ const MockData = {
       team_id: '10000001-0000-0000-0000-000000000001',
       match_id: 'M32',
       submission_id: 'sub-001',
-      idempotency_key: 'idem-001',
       status: 'VALIDATED',
       submitted_at: '2026-06-09T14:32:00Z',
       match_prediction: {
@@ -59,7 +58,6 @@ const MockData = {
       team_id: '10000001-0000-0000-0000-000000000002',
       match_id: 'M32',
       submission_id: 'sub-002',
-      idempotency_key: 'idem-002',
       status: 'VALIDATED',
       submitted_at: '2026-06-09T15:00:00Z',
       match_prediction: {
@@ -91,7 +89,6 @@ const MockData = {
       team_id: '10000001-0000-0000-0000-000000000003',
       match_id: 'M32',
       submission_id: 'sub-003',
-      idempotency_key: 'idem-003',
       status: 'PENDING_VALIDATION',
       submitted_at: '2026-06-09T16:15:00Z',
       match_prediction: {
@@ -123,7 +120,6 @@ const MockData = {
       team_id: '10000001-0000-0000-0000-000000000004',
       match_id: 'M32',
       submission_id: 'sub-004',
-      idempotency_key: 'idem-004',
       status: 'VALIDATED',
       submitted_at: '2026-06-09T17:00:00Z',
       match_prediction: {
@@ -155,7 +151,6 @@ const MockData = {
       team_id: '10000001-0000-0000-0000-000000000005',
       match_id: 'M32',
       submission_id: 'sub-005',
-      idempotency_key: 'idem-005',
       status: 'PENDING_VALIDATION',
       submitted_at: '2026-06-09T18:00:00Z',
       match_prediction: {
@@ -187,7 +182,6 @@ const MockData = {
       team_id: '10000001-0000-0000-0000-000000000001',
       match_id: 'M31',
       submission_id: 'sub-006',
-      idempotency_key: 'idem-006',
       status: 'VALIDATED',
       submitted_at: '2026-06-07T10:00:00Z',
       match_prediction: {
@@ -219,7 +213,6 @@ const MockData = {
       team_id: '10000001-0000-0000-0000-000000000002',
       match_id: 'M31',
       submission_id: 'sub-007',
-      idempotency_key: 'idem-007',
       status: 'VALIDATED',
       submitted_at: '2026-06-07T11:00:00Z',
       match_prediction: {
@@ -251,7 +244,6 @@ const MockData = {
       team_id: '10000001-0000-0000-0000-000000000003',
       match_id: 'M31',
       submission_id: 'sub-008',
-      idempotency_key: 'idem-008',
       status: 'INVALID',
       submitted_at: '2026-06-07T12:00:00Z',
       match_prediction: {
@@ -281,11 +273,11 @@ const MockData = {
   ],
 
   leaderboard: [
-    { team_id: '10000001-0000-0000-0000-000000000001', rank: 1, phase1_score: 42.5, technical_score: 18.0, presentation_score: 16.5, final_score: 77.0 },
-    { team_id: '10000001-0000-0000-0000-000000000002', rank: 2, phase1_score: 38.2, technical_score: 17.5, presentation_score: 15.0, final_score: 70.7 },
-    { team_id: '10000001-0000-0000-0000-000000000003', rank: 3, phase1_score: 35.0, technical_score: 16.0, presentation_score: 14.5, final_score: 65.5 },
-    { team_id: '10000001-0000-0000-0000-000000000004', rank: 4, phase1_score: 30.1, technical_score: 15.0, presentation_score: 13.0, final_score: 58.1 },
-    { team_id: '10000001-0000-0000-0000-000000000005', rank: 5, phase1_score: 28.0, technical_score: 14.5, presentation_score: 12.0, final_score: 54.5 },
+    { team_id: '10000001-0000-0000-0000-000000000001', team_code: 'A', team_name: 'Team A', rank: 1, phase1_score: 42.5, technical_score: 18.0, presentation_score: 16.5, final_score: 77.0 },
+    { team_id: '10000001-0000-0000-0000-000000000002', team_code: 'B', team_name: 'Team B', rank: 2, phase1_score: 38.2, technical_score: 17.5, presentation_score: 15.0, final_score: 70.7 },
+    { team_id: '10000001-0000-0000-0000-000000000003', team_code: 'C', team_name: 'Team C', rank: 3, phase1_score: 35.0, technical_score: 16.0, presentation_score: 14.5, final_score: 65.5 },
+    { team_id: '10000001-0000-0000-0000-000000000004', team_code: 'D', team_name: 'Team D', rank: 4, phase1_score: 30.1, technical_score: 15.0, presentation_score: 13.0, final_score: 58.1 },
+    { team_id: '10000001-0000-0000-0000-000000000005', team_code: 'E', team_name: 'Team E', rank: 5, phase1_score: 28.0, technical_score: 14.5, presentation_score: 12.0, final_score: 54.5 },
   ],
 
   dailyScores: [

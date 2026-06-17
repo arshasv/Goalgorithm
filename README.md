@@ -1,4 +1,4 @@
-# GOALGORITHM — FIFA Challenge Scoring System
+# GOALGORITHM — GOALGORITHM Scoring System
 
 Full-stack tournament scoring platform for evaluating AI match prediction teams. Organizers upload rosters, teams submit predictions, and the system automatically computes scores across three phases — producing a final leaderboard out of **100 marks**.
 
@@ -125,7 +125,7 @@ Full-stack tournament scoring platform for evaluating AI match prediction teams.
 - **Single Page Application** — client-side routing via hash-based Router
 - **Organizer Dashboard** — stat cards (teams, predictions, top score), leaderboard preview, recent teams list, quick action buttons
 - **Team Leader Dashboard** — profile management, member list, CSV-managed badge
-- **Light/Dark theme** — FIFA Executive (light) and FIFA Night Stadium (dark) with persistent toggle
+- **Light/Dark theme** — GOALGORITHM Executive (light) and GOALGORITHM Night Stadium (dark) with persistent toggle
 - **Responsive grid layout** — card-based UI with staggered animations, skeleton loading states
 - **Toast notifications** — success/error/info feedback for all actions
 - **Modal system** — confirmations, forms, detail views
@@ -217,6 +217,9 @@ fifa-scoring-system/
 | `/api/v1/teams/my-team/members` | POST | Add team member |
 | `/api/v1/teams/my-team/members/{id}` | DELETE | Remove team member |
 | `/api/v1/teams/{team_id}/members` | GET | List team members |
+| `/api/v1/matches` | GET/POST | List/create matches |
+| `/api/v1/matches/upload-csv` | POST | Upload matches CSV schedule |
+| `/api/v1/matches/{match_id}` | PUT/DELETE | Update/delete match |
 | `/api/v1/predictions` | POST | Submit prediction |
 | `/api/v1/actual-results` | POST | Enter match result |
 | `/api/v1/calculate-match-score` | POST | Trigger match scoring |

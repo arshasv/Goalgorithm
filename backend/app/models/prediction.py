@@ -18,7 +18,9 @@ class PredictionModel(Base):
     team_id: Mapped[str] = mapped_column(String(255), nullable=False)
     match_id: Mapped[str] = mapped_column(String(255), nullable=False)
     submission_id: Mapped[str] = mapped_column(String(255), nullable=False)
-    idempotency_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    idempotency_key: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )
     status: Mapped[PredictionStatus] = mapped_column(
         SAEnum(PredictionStatus, name="prediction_status", create_constraint=True),
         nullable=False,

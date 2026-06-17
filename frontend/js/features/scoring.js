@@ -34,7 +34,7 @@ Router.register('scoring', () => {
   document.getElementById('score-cards').innerHTML = mockScores.map((s, i) => `
     <div class="score-breakdown-card ${s.rank===1?'rank-1-card':''}" style="animation:slideUp ${400+i*100}ms var(--ease-out) both">
       <div class="card-header">
-        <div style="display:flex;align-items:center;gap:var(--space-sm)">${Utils.rankBadge(s.rank)}<strong style="font-family:var(--font-display);text-transform:uppercase;letter-spacing:0.03em">Team ${s.code} — ${s.name}</strong></div>
+        <div style="display:flex;align-items:center;gap:var(--space-sm)">${Utils.rankBadge(s.rank)}<strong style="font-family:var(--font-display);text-transform:uppercase;letter-spacing:0.03em">${Utils.formatTeamDisplay({team_id: s.code, name: s.name})}</strong></div>
         ${Utils.gradeBadge(s.grade)}
       </div>
       <div class="dimension-row">

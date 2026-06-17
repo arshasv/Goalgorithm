@@ -3,7 +3,6 @@
     "team_id": "Team A",
     "match_id": "match-001",
     "submission_id": "sub-a-01",
-    "idempotency_key": "idem-a-01",
     "match_prediction": {
       "predicted_winner": "home",
       "predicted_scoreline": {
@@ -62,7 +61,6 @@
     "team_id": "Team B",
     "match_id": "match-001",
     "submission_id": "sub-b-01",
-    "idempotency_key": "idem-b-01",
     "match_prediction": {
       "predicted_winner": "home",
       "predicted_scoreline": {
@@ -128,7 +126,6 @@
     "team_id": "Team C",
     "match_id": "match-001",
     "submission_id": "sub-c-01",
-    "idempotency_key": "idem-c-01",
     "match_prediction": {
       "predicted_winner": "home",
       "predicted_scoreline": {
@@ -180,7 +177,6 @@
     "team_id": "Team D",
     "match_id": "match-001",
     "submission_id": "sub-d-01",
-    "idempotency_key": "idem-d-01",
     "match_prediction": {
       "predicted_winner": "draw",
       "predicted_scoreline": {
@@ -239,7 +235,6 @@
     "team_id": "Team E",
     "match_id": "match-001",
     "submission_id": "sub-e-01",
-    "idempotency_key": "idem-e-01",
     "match_prediction": {
       "predicted_winner": "away",
       "predicted_scoreline": {

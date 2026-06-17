@@ -78,7 +78,7 @@ class PredictionSubmission(BaseModel):
     team_id: str = Field(..., min_length=1)
     match_id: str = Field(..., min_length=1)
     submission_id: str = Field(..., min_length=1)
-    idempotency_key: str = Field(..., min_length=1)
+    idempotency_key: str | None = None
     match_prediction: MatchPrediction
     player_predictions: List[PlayerPrediction]
 

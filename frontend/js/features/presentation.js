@@ -33,7 +33,7 @@ Router.register('presentation', () => {
           </tr></thead>
           <tbody>${presData.map((t,i)=>`
             <tr style="animation:fadeIn ${300+i*80}ms var(--ease-out) both">
-              <td style="font-weight:600;font-family:var(--font-display);text-transform:uppercase">Team ${t.team} — ${t.name}</td>
+              <td style="font-weight:600;font-family:var(--font-display);text-transform:uppercase">Team ${t.team}</td>
               <td class="score-cell"><input class="form-input score-input" type="number" min="0" max="20" value="${t.ai_exp}" id="p-${t.team}-ai" onchange="updatePresTotal('${t.team}')" oninput="validateScoreInput(this,20)"></td>
               <td class="score-cell"><input class="form-input score-input" type="number" min="0" max="15" value="${t.qa}" id="p-${t.team}-qa" onchange="updatePresTotal('${t.team}')" oninput="validateScoreInput(this,15)"></td>
               <td class="score-cell"><input class="form-input score-input" type="number" min="0" max="15" value="${t.delivery}" id="p-${t.team}-del" onchange="updatePresTotal('${t.team}')" oninput="validateScoreInput(this,15)"></td>
@@ -104,7 +104,7 @@ function showPresResults(payload) {
     </tr></thead>
     <tbody>${ranked.map((r, i)=>`<tr class="rank-${r.rank<=3?r.rank:'n'}" style="animation:fadeIn ${400+i*80}ms var(--ease-out) both">
       <td>${Utils.rankBadge(r.rank)}</td>
-      <td style="font-weight:600;font-family:var(--font-display);text-transform:uppercase">${(() => { const pt = presData.find(p => p.team === r.team_id); return pt ? `Team ${pt.team} — ${pt.name}` : r.team_id; })()}</td>
+      <td style="font-weight:600;font-family:var(--font-display);text-transform:uppercase">${(() => { const pt = presData.find(p => p.team === r.team_id); return pt ? `Team ${pt.team}` : r.team_id; })()}</td>
       <td class="score-cell">${r.raw}/50</td>
       <td>${Utils.gradeBadge(r.grade)}</td>
       <td class="score-cell">${r.mult}×</td>

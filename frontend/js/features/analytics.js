@@ -9,8 +9,8 @@ Router.register('analytics', () => {
         <p class="page-subtitle">Score progression, dimension profiles and cross-team comparison</p>
       </div>
       <div class="page-header-actions">
-          <select class="form-select" style="width:200px">
-            <option>All Teams</option><option>Team A — Team A</option><option>Team B — Team B</option><option>Team C — Team C</option><option>Team D — Team D</option><option>Team E — Team E</option>
+            <select class="form-select" style="width:200px">
+            <option>All Teams</option><option>Team A</option><option>Team B</option><option>Team C</option><option>Team D</option><option>Team E</option>
           </select>
       </div>
     </div>
@@ -90,7 +90,7 @@ Router.register('analytics', () => {
   const perMatch=[{code:'A',name:'Team A',base:25,grade:'A'},{code:'B',name:'Team B',base:17,grade:'B'},{code:'C',name:'Team C',base:15,grade:'B'},{code:'D',name:'Team D',base:7,grade:'B'},{code:'E',name:'Team E',base:0,grade:'C'}];
   document.getElementById('match-bars').innerHTML=perMatch.map((t,i)=>`
     <div style="display:flex;align-items:center;gap:var(--space-md);margin-bottom:var(--space-sm);animation:fadeInUp ${500+i*80}ms var(--ease-out) both">
-      <span style="width:120px;font-size:var(--text-sm);text-align:right;font-weight:600;font-family:var(--font-display);text-transform:uppercase">Team ${t.code} — ${t.name}</span>
+      <span style="width:120px;font-size:var(--text-sm);text-align:right;font-weight:600;font-family:var(--font-display);text-transform:uppercase">${Utils.formatTeamDisplay({team_id: t.code, name: t.name})}</span>
       <div style="flex:1"><div class="progress-bar" style="height:20px"><div class="progress-fill" style="width:${(t.base/25)*100}%;background:${i===0?'var(--color-chart-1)':'var(--color-chart-2)'}"></div></div></div>
       <span style="font-family:var(--font-data);font-weight:700;width:40px">${t.base}/25</span>
       ${Utils.gradeBadge(t.grade)}

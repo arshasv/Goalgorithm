@@ -6,6 +6,12 @@ const Router = {
   current: null,
   register(name, fn) { this.routes[name] = fn; },
   async navigate(name, params={}) {
+    // Close any open modals, overlays, and dialogs before changing the route
+    document.querySelectorAll('.modal-overlay').forEach(el => el.remove());
+    if (typeof Modal !== 'undefined' && typeof Modal.hide === 'function') {
+      Modal.hide();
+    }
+
     const isAuth = Auth.requireAuth();
     if (!isAuth) return;
 
@@ -42,9 +48,9 @@ const Router = {
   },
   _getAllowedRoutes() {
     if (Auth.isOrganizer()) {
-      return ['dashboard', 'leaderboard', 'org-teams', 'matches', 'scoring', 'predictions', 'technical', 'presentation', 'analytics', 'final-scores', 'scoring-config', 'model-management'];
+      return ['dashboard', 'leaderboard', 'teams', 'matches', 'scoring', 'predictions', 'technical', 'presentation', 'analytics', 'match-results', 'scoring-config', 'prediction-upload'];
     }
-    return ['team-dashboard', 'matches', 'predictions', 'leaderboard', 'final-scores', 'model-submission'];
+    return ['team-dashboard', 'matches', 'my-predictions', 'predictions', 'leaderboard', 'match-results', 'submit-predictions'];
   },
   init() {
     if (!Auth.isAuthenticated()) {
@@ -164,7 +170,8 @@ const Utils = {
   },
   statusBadge(status) {
     const map = {scheduled: 'status-scheduled', frozen: 'status-frozen', completed: 'status-completed', scored: 'status-scored'};
-    return `<span class="badge ${map[status] || 'badge-info'}">${status || 'unknown'}</span>`;
+    const label = status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Unknown';
+    return `<span class="badge ${map[status] || 'badge-info'}">${label}</span>`;
   },
   skeleton(rows=3) {
     return Array(rows).fill(0).map(() => `<tr><td colspan="10"><div class="skeleton skeleton-text" style="width:${60 + Math.random() * 30}%"></div></td></tr>`).join('');
@@ -176,6 +183,91 @@ const Utils = {
     const parent = document.querySelector(parentSelector);
     if (!parent) return;
     parent.classList.add('animate-stagger');
+  },
+  formatTeamDisplay(team) {
+    if (!team) return '—';
+
+    let code = '';
+    let name = '';
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+    const findInCaches = (identifier) => {
+      if (!identifier) return null;
+      let found = null;
+      if (window._teamsCache && Array.isArray(window._teamsCache)) {
+        found = window._teamsCache.find(t => t.id === identifier || t.team_id === identifier || t.code === identifier || t.name === identifier || t.team_name === identifier);
+      }
+      if (!found && typeof MockData !== 'undefined' && MockData.teams) {
+        found = MockData.teams.find(t => t.id === identifier || t.team_id === identifier || t.code === identifier || t.name === identifier || t.team_name === identifier);
+      }
+      return found;
+    };
+
+    if (typeof team === 'string') {
+      const trimmed = team.trim();
+      const resolved = findInCaches(trimmed);
+      if (resolved) {
+        team = resolved;
+      } else if (UUID_RE.test(trimmed)) {
+        return 'Team — Unknown';
+      } else if (['A', 'B', 'C', 'D', 'E'].includes(trimmed.toUpperCase())) {
+        code = trimmed.toUpperCase();
+        name = `Team ${code}`;
+        const fromCache = findInCaches(code);
+        if (fromCache) {
+          name = fromCache.name || fromCache.team_name || name;
+        }
+      } else {
+        name = trimmed;
+        if (name.startsWith('Team ')) {
+          const possibleCode = name.substring(5).trim();
+          if (['A', 'B', 'C', 'D', 'E'].includes(possibleCode.toUpperCase())) {
+            code = possibleCode.toUpperCase();
+            const fromCache = findInCaches(code);
+            if (fromCache) {
+              name = fromCache.name || fromCache.team_name || name;
+            }
+          }
+        }
+        if (!code) {
+          const fromCache = findInCaches(name);
+          if (fromCache) {
+            code = fromCache.code || fromCache.team_id || '';
+          }
+        }
+      }
+    }
+
+    if (typeof team === 'object' && team !== null) {
+      code = [team.team_code, team.team_id, team.code].find(v => v && !UUID_RE.test(v)) || '';
+      name = team.name || team.team_name || '';
+      if (!code && team.id && UUID_RE.test(team.id)) {
+        const fromCache = findInCaches(team.id);
+        if (fromCache) {
+          code = fromCache.code || fromCache.team_id || '';
+          if (!name) name = fromCache.name || fromCache.team_name || '';
+        }
+      }
+    }
+
+    if (code) {
+      code = code.toUpperCase();
+      const actualName = name || `Team ${code}`;
+      if (actualName === `Team ${code}` || actualName === code) {
+        const fromCache = findInCaches(code);
+        if (fromCache && fromCache.name && fromCache.name !== `Team ${code}` && fromCache.name !== code) {
+          return `Team ${code} — ${fromCache.name}`;
+        }
+        return `Team ${code} — Team ${code}`;
+      }
+      return `Team ${code} — ${actualName}`;
+    }
+
+    if (name) {
+      return name;
+    }
+
+    return '—';
   },
   teamBadge(teamName, size=48) {
     const initials = teamName.substring(0, 2).toUpperCase();
@@ -322,8 +414,35 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
+  window._teamsCache = [];
+  if (typeof TeamService !== 'undefined') {
+    const originalListTeams = TeamService.listTeams;
+    TeamService.listTeams = async function(...args) {
+      const teams = await originalListTeams.apply(this, args);
+      if (Array.isArray(teams)) {
+        window._teamsCache = teams;
+      }
+      return teams;
+    };
+
+    const originalGetMyTeam = TeamService.getMyTeam;
+    TeamService.getMyTeam = async function(...args) {
+      const team = await originalGetMyTeam.apply(this, args);
+      if (team && team.id) {
+        const idx = window._teamsCache.findIndex(t => t.id === team.id);
+        if (idx !== -1) {
+          window._teamsCache[idx] = team;
+        } else {
+          window._teamsCache.push(team);
+        }
+      }
+      return team;
+    };
+
+    TeamService.listTeams().catch(() => {});
+  }
+
   setupRoleUI();
   Sidebar.init();
   ScrollAnim.init();
-  Router.init();
 });

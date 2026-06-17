@@ -46,7 +46,6 @@ class TestPredictionSchema:
             "team_id": "",
             "match_id": "m-1",
             "submission_id": "s-1",
-            "idempotency_key": "k-1",
             "match_prediction": {
                 "predicted_winner": "home",
                 "predicted_scoreline": {"home_team_goals": 1, "away_team_goals": 0},
@@ -78,7 +77,6 @@ class TestPredictionSchema:
             "team_id": "t-1",
             "match_id": "m-1",
             "submission_id": "s-1",
-            "idempotency_key": "k-1",
             "match_prediction": {
                 "predicted_winner": "home",
                 "predicted_scoreline": {"home_team_goals": -1, "away_team_goals": 0},
@@ -110,7 +108,6 @@ class TestPredictionSchema:
             "team_id": "t-1",
             "match_id": "m-1",
             "submission_id": "s-1",
-            "idempotency_key": "k-1",
             "match_prediction": {
                 "predicted_winner": "invalid",
                 "predicted_scoreline": {"home_team_goals": 1, "away_team_goals": 0},
@@ -142,7 +139,6 @@ class TestPredictionSchema:
             "team_id": "t-1",
             "match_id": "m-1",
             "submission_id": "s-1",
-            "idempotency_key": "k-1",
             "match_prediction": {
                 "predicted_winner": "home",
                 "predicted_scoreline": {"home_team_goals": 1, "away_team_goals": 0},
@@ -174,7 +170,6 @@ class TestPredictionSchema:
             "team_id": "t-1",
             "match_id": "m-1",
             "submission_id": "s-1",
-            "idempotency_key": "k-1",
             "match_prediction": {
                 "predicted_winner": "home",
                 "predicted_scoreline": {"home_team_goals": 1, "away_team_goals": 0},
@@ -198,7 +193,6 @@ class TestPredictionSchema:
             "team_id": "t-1",
             "match_id": "m-1",
             "submission_id": "s-1",
-            "idempotency_key": "k-1",
             "match_prediction": {
                 "predicted_winner": "home",
                 "predicted_scoreline": {"home_team_goals": 1, "away_team_goals": 0},

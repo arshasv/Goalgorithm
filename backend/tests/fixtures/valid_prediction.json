@@ -2,7 +2,6 @@
   "team_id": "team-001",
   "match_id": "match-045",
   "submission_id": "sub-789",
-  "idempotency_key": "key-abc-123",
   "match_prediction": {
     "predicted_winner": "home",
     "predicted_scoreline": {

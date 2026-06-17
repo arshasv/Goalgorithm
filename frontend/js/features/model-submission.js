@@ -1,6 +1,6 @@
 /* Team Leader Model Submission Page */
 
-Router.register('model-submission', async () => {
+Router.register('submit-predictions', async () => {
   const main = document.getElementById('page-content');
   if (!Auth.isTeamLeader()) {
     main.innerHTML = '<div class="empty-state"><div class="empty-icon">🔒</div><h2 class="empty-title">Access Denied</h2></div>';

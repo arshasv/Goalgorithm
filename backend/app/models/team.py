@@ -51,9 +51,10 @@ class TeamModel(Base):
         nullable=False,
     )
 
-    team_leader_name: Mapped[str | None] = mapped_column(
+    team_leader_name: Mapped[str] = mapped_column(
         String(255),
-        nullable=True,
+        nullable=False,
+        server_default="",
     )
 
     registered_at: Mapped[datetime] = mapped_column(

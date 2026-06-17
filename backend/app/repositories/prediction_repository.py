@@ -43,7 +43,9 @@ class PredictionRepository(BaseRepository[PredictionModel]):
             .all()
         )
 
-    def get_by_idempotency_key(self, key: str) -> PredictionModel | None:
+    def get_by_idempotency_key(
+        self, key: str
+    ) -> PredictionModel | None:
         return self.db.execute(
             select(PredictionModel).where(
                 PredictionModel.idempotency_key == key

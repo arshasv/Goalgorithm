@@ -8,7 +8,7 @@ Participant Team (submission), Organizer (view history), System (automated valid
 
 ## Input
 Prediction JSON per team per match:
-- `team_id`, `match_id`, `submission_id`, `idempotency_key`
+- `team_id`, `match_id`, `submission_id`
 - `match_prediction`: predicted_winner, predicted_scoreline, probabilities, clean_sheet_probability, first_goal_team, both_teams_to_score_probability, total_goals_prediction
 - `player_predictions`: list of per-player predictions (player_id, player_name, goal_probability, predicted_goals, assist_probability)
 
@@ -24,8 +24,11 @@ Prediction JSON per team per match:
 - `first_goal_team` must be `home`, `away`, or `none`
 - Probability fields: 0–100
 - Scoreline goals: non-negative integers
+- `goal_scorers` array lengths must exactly match the `predicted_scoreline` goals
 - `player_predictions` must not be empty
-- `team_id`, `match_id`, `submission_id`, `idempotency_key` must be non-empty strings
+- `team_id`, `match_id`, `submission_id` must be non-empty strings
+
+> **Format Reference**: For an exact JSON schema, required field rules, and a full JSON example, see the [Prediction Format Reference](../api/prediction_format_reference.md) and the root `sample_prediction.json` file.
 
 ## Duplicate Handling
 - A unique constraint on `(team_id, match_id)` prevents two predictions for the same team in the same match

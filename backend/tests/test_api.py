@@ -96,7 +96,7 @@ class TestAuthAPI:
             "name": "Player One",
             "employee_id": "EMP001",
         }, headers=team_leader_headers)
-        assert resp.status_code == 201
+        assert resp.status_code == 403
 
     def test_login(self, client, team_leader):
         resp = client.post("/api/v1/auth/login", json={
@@ -259,8 +259,7 @@ class TestTeamAPI:
             "name": "Player One",
             "employee_id": "EMP001",
         }, headers=team_leader_headers)
-        assert resp.status_code == 201
-        assert resp.json()["name"] == "Player One"
+        assert resp.status_code == 403
 
     def test_list_teams_as_organizer(self, client, organizer_headers, team_a):
         resp = client.get("/api/v1/teams", headers=organizer_headers)
@@ -268,103 +267,97 @@ class TestTeamAPI:
         assert len(resp.json()) >= 1
 
     def test_remove_member(self, client, team_leader_headers):
-        # first add a member
-        resp = client.post("/api/v1/teams/my-team/members", json={
-            "name": "To Be Removed",
-            "employee_id": "TBR001",
-        }, headers=team_leader_headers)
-        assert resp.status_code == 201
-        member_id = resp.json()["id"]
+        del_resp = client.delete("/api/v1/teams/my-team/members/c3b0ac48-1111-2222-3333-444455556666", headers=team_leader_headers)
+        assert del_resp.status_code == 403
 
-        # delete the member
-        del_resp = client.delete(f"/api/v1/teams/my-team/members/{member_id}", headers=team_leader_headers)
+    def test_organizer_manage_members(self, client, organizer_headers, team_a):
+        # Organizer adds member
+        add_resp = client.post(f"/api/v1/teams/{team_a.id}/members", json={
+            "name": "Organizer Added",
+            "employee_id": "ORG001"
+        }, headers=organizer_headers)
+        assert add_resp.status_code == 201
+        member_id = add_resp.json()["id"]
+
+        # Organizer updates member
+        update_resp = client.put(f"/api/v1/teams/{team_a.id}/members/{member_id}", json={
+            "name": "Organizer Updated",
+            "employee_id": "ORG002"
+        }, headers=organizer_headers)
+        assert update_resp.status_code == 200
+
+        # Organizer deletes member
+        del_resp = client.delete(f"/api/v1/teams/{team_a.id}/members/{member_id}", headers=organizer_headers)
         assert del_resp.status_code == 200
-        assert del_resp.json()["message"] == "Member removed"
 
-    def test_csv_upload_and_locks(self, client, organizer_headers, team_leader_headers, team_a):
-        # 1. Test CSV upload with new and existing teams
+    def test_csv_upload_teams(self, client, organizer_headers, db_session):
+        # Test CSV upload with new and existing teams
         csv_data = (
-            "SL No,EmployeeID,Name,Seniority,Gender,Football Knowledge,Group\n"
-            "1,EMP001,CSV Player 1,Senior,M,Football,A\n"
-            "2,EMP002,CSV Player 2,Senior,M,Football,B\n"
+            "team_code,team_name,team_leader\n"
+            "A,Alpha Team,Alice\n"
+            "B,Beta Team,Bob\n"
         )
-        files = {"file": ("members.csv", csv_data, "text/csv")}
-        resp = client.post("/api/v1/teams/upload-members-csv", files=files, headers=organizer_headers)
+        files = {"file": ("teams.csv", csv_data, "text/csv")}
+        resp = client.post("/api/v1/teams/upload-csv", files=files, headers=organizer_headers)
         assert resp.status_code == 200
-        assert "Successfully imported members CSV" in resp.json()["message"]
+        body = resp.json()
+        assert "Created 2 teams" in body["message"]
+        assert "updated 0 teams" in body["message"]
 
-        # 2. Verify Team A has is_csv_managed = True
-        team_resp = client.get("/api/v1/teams/my-team", headers=team_leader_headers)
-        assert team_resp.status_code == 200
-        team_body = team_resp.json()
-        assert team_body["is_csv_managed"] is True
-        assert len(team_body["members"]) >= 1
-        assert team_body["members"][0]["name"] == "CSV Player 1"
-        member_id = team_body["members"][0]["id"]
-
-        # 3. Test that manual member addition is locked
-        add_resp = client.post("/api/v1/teams/my-team/members", json={
-            "name": "Blocked Player",
-            "employee_id": "EMP999",
-        }, headers=team_leader_headers)
-        assert add_resp.status_code == 400
-        assert "Manual member addition is locked" in add_resp.json()["detail"]
-
-        # 4. Test that manual member removal is locked
-        del_resp = client.delete(f"/api/v1/teams/my-team/members/{member_id}", headers=team_leader_headers)
-        assert del_resp.status_code == 400
-        assert "Manual member removal is locked" in del_resp.json()["detail"]
-
-        # 5. Test that uploading CSV to a team with manual members fails
-        reg_resp = client.post("/api/v1/auth/register", json={
-            "username": "user_manual_test",
-            "email": "manualtest@gmail.com",
-            "password": "password123",
-            "team_name": "D",
-            "team_leader_name": "Manual Leader",
-        })
-        assert reg_resp.status_code == 201
-        headers = {"Authorization": f"Bearer {reg_resp.json()['access_token']}"}
-
-        # Add member manually
-        client.post("/api/v1/teams/my-team/members", json={
-            "name": "Manual Player",
-            "employee_id": "MAN001",
-        }, headers=headers)
-
-        # Upload CSV targeting "Team D" (D group) - this team already has manual members
-        csv_data_fail = (
-            "SL No,EmployeeID,Name,Seniority,Gender,Football Knowledge,Group\n"
-            "1,MAN002,CSV Player,Junior,F,Football,D\n"
+        # Upload again — should update
+        csv_data2 = (
+            "team_code,team_name,team_leader\n"
+            "A,Alpha Updated,Alice Smith\n"
+            "C,Charlie Team,Charlie\n"
         )
-        files_fail = {"file": ("members_fail.csv", csv_data_fail, "text/csv")}
-        resp_fail = client.post("/api/v1/teams/upload-members-csv", files=files_fail, headers=organizer_headers)
-        assert resp_fail.status_code == 400
-        assert "already contains manually added members" in resp_fail.json()["detail"]
+        files2 = {"file": ("teams2.csv", csv_data2, "text/csv")}
+        resp2 = client.post("/api/v1/teams/upload-csv", files=files2, headers=organizer_headers)
+        assert resp2.status_code == 200
+        body2 = resp2.json()
+        assert "Created 1 teams" in body2["message"]
+        assert "updated 1 teams" in body2["message"]
 
-    def test_xlsx_upload(self, client, organizer_headers, team_leader_headers, team_a):
+        # Verify Team A was updated
+        teams_resp = client.get("/api/v1/teams", headers=organizer_headers)
+        assert teams_resp.status_code == 200
+        teams = teams_resp.json()
+        team_a = next(t for t in teams if t["team_code"] == "A")
+        assert team_a["team_name"] == "Alpha Updated"
+        assert team_a["team_leader"] == "Alice Smith"
+
+    def test_xlsx_upload_teams(self, client, organizer_headers):
         import openpyxl
         import io
         
         wb = openpyxl.Workbook()
         ws = wb.active
-        ws.append(["SL No", "EmployeeID", "Name", "Seniority", "Gender", "Football Knowledge", "Group"])
-        ws.append([1, "EMP001", "Excel Player 1", "Senior", "M", "Football", "A"])
+        ws.append(["team_code", "team_name", "team_leader"])
+        ws.append(["A", "Excel Team", "Excel Leader"])
         
         file_stream = io.BytesIO()
         wb.save(file_stream)
         file_stream.seek(0)
         
-        files = {"file": ("members.xlsx", file_stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}
+        files = {"file": ("teams.xlsx", file_stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}
+        resp = client.post("/api/v1/teams/upload-csv", files=files, headers=organizer_headers)
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "Created 1 teams" in body["message"]
+
+    def test_upload_members_csv(self, client, organizer_headers):
+        csv_data = "group,name,employee_id\nA,Alice,E001\nA,Bob,E002\n"
+        files = {"file": ("members.csv", csv_data, "text/csv")}
         resp = client.post("/api/v1/teams/upload-members-csv", files=files, headers=organizer_headers)
         assert resp.status_code == 200
-        assert "Successfully imported members CSV" in resp.json()["message"]
-        
-        team_resp = client.get("/api/v1/teams/my-team", headers=team_leader_headers)
-        assert team_resp.status_code == 200
-        team_body = team_resp.json()
-        assert team_body["is_csv_managed"] is True
-        assert len(team_body["members"]) == 1
-        assert team_body["members"][0]["name"] == "Excel Player 1"
-        assert team_body["members"][0]["employee_id"] == "EMP001"
+        body = resp.json()
+        assert "Successfully imported members" in body["message"]
+
+    def test_upload_teams_forbidden_for_team_leader(self, client, team_leader_headers):
+        csv_data = "team_code,team_name,team_leader\nA,TL Team,TL Leader\n"
+        files = {"file": ("teams.csv", csv_data, "text/csv")}
+        resp = client.post("/api/v1/teams/upload-csv", files=files, headers=team_leader_headers)
+        assert resp.status_code == 403
+        resp_mem = client.post("/api/v1/teams/upload-members-csv", files=files, headers=team_leader_headers)
+        assert resp_mem.status_code == 403
+
 

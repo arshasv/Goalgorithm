@@ -20,7 +20,18 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     op.add_column('teams', sa.Column('team_id', sa.String(1), nullable=True))
     op.execute(
-        "UPDATE teams SET team_id = UPPER(SUBSTRING(TRIM(REVERSE(TRIM(name))), 1, 1)) WHERE name IS NOT NULL"
+        """
+        UPDATE teams 
+        SET team_id = CASE 
+            WHEN name ILIKE '%Alpha%' THEN 'A'
+            WHEN name ILIKE '%Beta%' THEN 'B'
+            WHEN name ILIKE '%Gamma%' THEN 'C'
+            WHEN name ILIKE '%Delta%' THEN 'D'
+            WHEN name ILIKE '%Epsilon%' THEN 'E'
+            ELSE SUBSTRING(name, 1, 1) 
+        END
+        WHERE name IS NOT NULL
+        """
     )
     op.alter_column('teams', 'team_id', nullable=False)
     op.create_unique_constraint('uq_teams_team_id', 'teams', ['team_id'])

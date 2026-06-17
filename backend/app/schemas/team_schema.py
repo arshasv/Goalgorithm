@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
 
 
 class TeamMemberCreate(BaseModel):
@@ -30,12 +31,35 @@ class TeamMemberResponse(BaseModel):
 
 
 
+class TeamCreate(BaseModel):
+    team_code: str = Field(
+        ...,
+        min_length=1,
+        max_length=1,
+    )
+    team_name: str = Field(
+        ...,
+        min_length=1,
+        max_length=255
+    )
+    team_leader: str = Field(
+        ...,
+        max_length=255
+    )
+
+
 class TeamUpdate(BaseModel):
 
     name: str | None = Field(
         default=None,
         min_length=1,
         max_length=255
+    )
+
+    team_code: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=1,
     )
 
     team_leader_name: str | None = None
@@ -57,9 +81,15 @@ class TeamResponse(BaseModel):
     name: str
 
     # returning for old frontend compatibility
-    code: str
+    code: str = ""
 
-    team_leader_name: str | None = None
+    team_code: str = ""
+
+    team_name: str = ""
+
+    team_leader: str = ""
+
+    team_leader_name: str = ""
 
     registered_at: datetime
 
@@ -68,3 +98,11 @@ class TeamResponse(BaseModel):
     is_csv_managed: bool = False
 
     members: list[TeamMemberResponse] = []
+
+    @model_validator(mode="after")
+    def populate_aliases(self) -> "TeamResponse":
+        self.team_code = self.team_code or self.team_id or ""
+        self.team_name = self.team_name or self.name or ""
+        self.team_leader = self.team_leader or self.team_leader_name or ""
+        self.code = self.code or self.team_id or ""
+        return self

@@ -46,7 +46,7 @@ function renderTechTable() {
   if (!tb) return;
   tb.innerHTML = techData.map((t,i)=>`
     <tr style="animation:fadeIn ${300+i*80}ms var(--ease-out) both">
-      <td style="font-weight:600;font-family:var(--font-display);text-transform:uppercase">Team ${t.team} — ${t.name}</td>
+      <td style="font-weight:600;font-family:var(--font-display);text-transform:uppercase">Team ${t.team}</td>
       ${['code','backend','teamwork','ai'].map(k=>`
         <td class="score-cell">
           <input class="form-input score-input" type="number" min="0" max="5" value="${t[k]}"

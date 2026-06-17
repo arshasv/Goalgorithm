@@ -1,6 +1,6 @@
 /* Predictions Log — real API with fallback */
 
-Router.register('predictions', async () => {
+const predictionsHandler = async () => {
   const main = document.getElementById('page-content');
 
   main.innerHTML = `
@@ -17,7 +17,9 @@ Router.register('predictions', async () => {
   `;
 
   await loadPredictions();
-});
+};
+Router.register('predictions', predictionsHandler);
+Router.register('my-predictions', predictionsHandler);
 
 async function loadPredictions() {
   const container = document.getElementById('pred-log-content');
@@ -81,10 +83,9 @@ async function loadPredictions() {
               <thead><tr><th>Team</th><th>Match</th><th>Winner</th><th>Scoreline</th><th>Status</th><th>Submitted</th></tr></thead>
               <tbody id="pred-tbody">
                 ${preds.map(p => {
-                  const pteam = teams.find(t => t.id === p.team_id);
-                  const pteamDisplay = pteam ? `Team ${pteam.team_id || pteam.code} — ${pteam.name}` : '—';
+                  const pteam = p.team_code ? p : (teams.find(t => t.id === p.team_id) || p.team_id);
                   return `<tr class="pred-row" style="cursor:pointer" onclick="showPredDetail('${p.id}')">
-                    <td><strong>${pteamDisplay}</strong></td>
+                    <td><strong>${Utils.formatTeamDisplay(pteam)}</strong></td>
                     <td style="font-family:var(--font-data);font-size:var(--text-xs)">${p.match_id || '—'}</td>
                     <td>${Utils.predictionPick('Home', 'Away', p.match_prediction?.predicted_winner)}</td>
                     <td style="font-family:var(--font-score);font-size:var(--text-lg)">${p.match_prediction?.predicted_scoreline?.home_team_goals ?? '?'} – ${p.match_prediction?.predicted_scoreline?.away_team_goals ?? '?'}</td>

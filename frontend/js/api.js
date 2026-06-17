@@ -54,8 +54,12 @@ const TeamService = {
   addMember: (data) => Api.post('/teams/my-team/members', data),
   removeMember: (id) => Api.delete(`/teams/my-team/members/${id}`),
   listTeams: () => Api.get('/teams'),
+  createTeam: (data) => Api.post('/teams', data),
   updateTeam: (id, data) => Api.put(`/teams/${id}`, data),
-  uploadMembersCsv: (formData) => Api.request('POST', '/teams/upload-members-csv', formData, true),
+  uploadTeamsCsv: (formData) => Api.request('POST', '/teams/upload-csv', formData, true),
+  addTeamMemberAdmin: (teamId, data) => Api.post(`/teams/${teamId}/members`, data),
+  removeTeamMemberAdmin: (teamId, memberId) => Api.delete(`/teams/${teamId}/members/${memberId}`),
+  updateTeamMemberAdmin: (teamId, memberId, data) => Api.put(`/teams/${teamId}/members/${memberId}`, data),
 };
 
 /* Prediction endpoints */
@@ -137,4 +141,11 @@ const ModelSubmissionService = {
   }
 };
 
-/* Match endpoints (if available) — currently managed client-side */
+/* Match endpoints */
+const MatchService = {
+  list: () => Api.get('/matches'),
+  create: (data) => Api.post('/matches', data),
+  update: (id, data) => Api.put(`/matches/${id}`, data),
+  remove: (id) => Api.delete(`/matches/${id}`),
+  uploadCsv: (formData) => Api.request('POST', '/matches/upload-csv', formData, true),
+};

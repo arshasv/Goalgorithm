@@ -77,11 +77,9 @@ async function loadOrgDashboard() {
             : `<div class="table-wrapper"><table>
                 <thead><tr><th>Rank</th><th>Team</th><th>Score</th></tr></thead>
                 <tbody>${leaderboard.slice(0, 5).map(e => {
-                  const lbTeam = teams.find(t => t.id === e.team_id);
-                  const lbName = lbTeam ? `Team ${lbTeam.team_id || lbTeam.code} — ${lbTeam.name}` : '—';
                   return `<tr>
                     <td>${Utils.rankBadge(e.rank)}</td>
-                    <td>${lbName}</td>
+                    <td>${Utils.formatTeamDisplay(e)}</td>
                     <td><strong>${Utils.fmt1(e.final_score)}</strong></td>
                   </tr>`;
                 }).join('')}</tbody>
@@ -92,14 +90,14 @@ async function loadOrgDashboard() {
         <div class="card">
           <div class="card-header">
             <div class="card-title">👥 Recent Teams</div>
-            <a class="btn btn-ghost btn-sm" onclick="Router.navigate('org-teams')">View All</a>
+            <a class="btn btn-ghost btn-sm" onclick="Router.navigate('teams')">View All</a>
           </div>
           ${teams.length === 0
             ? '<div style="padding:var(--space-lg);text-align:center;color:var(--color-text-muted)">No teams registered</div>'
             : `<div style="padding:var(--space-md)">
                 ${teams.slice(0, 5).map(t => `
                   <div class="activity-item" style="display:flex;justify-content:space-between;align-items:center;padding:var(--space-sm) 0">
-                    <span>${Utils.teamBadge(t.name, 32)} Team ${t.team_id || t.code} — ${t.name}</span>
+                    <span>${Utils.teamBadge(t.name, 32)} ${Utils.formatTeamDisplay(t)}</span>
                   </div>
                 `).join('')}
               </div>`

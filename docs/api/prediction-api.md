@@ -12,7 +12,6 @@ POST
   "team_id": "team-001",
   "match_id": "match-045",
   "submission_id": "sub-a-01",
-  "idempotency_key": "idem-a-01",
   "match_prediction": {
     "predicted_winner": "home",
     "predicted_scoreline": {

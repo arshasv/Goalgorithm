@@ -2,7 +2,6 @@
   "team_id": "",
   "match_id": "match-045",
   "submission_id": "sub-790",
-  "idempotency_key": "key-abc-124",
   "match_prediction": {
     "predicted_winner": "invalid_value",
     "predicted_scoreline": {

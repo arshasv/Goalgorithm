@@ -269,7 +269,7 @@ Deeply nested Pydantic models:
 - `Probabilities` — 3 floats, each 0-100
 - `MatchPrediction` — winner (enum), scoreline, probabilities, first_goal_team, goal_scorers, plus **field validators** enforcing business rules
 - `PlayerPrediction` — per-player prediction
-- `PredictionSubmission` — top-level: team_id, match_id, submission_id, idempotency_key, match_prediction, player_predictions. Has a `model_validator` that enforces the non-empty player list.
+- `PredictionSubmission` — top-level: team_id, match_id, submission_id, match_prediction, player_predictions. Has a `model_validator` that enforces the non-empty player list.
 
 #### `backend/app/api/prediction_routes.py`
 - `GET /predictions` — organizer sees all, team leader sees own team's
@@ -280,7 +280,7 @@ Deeply nested Pydantic models:
 
 #### `backend/app/models/prediction.py`
 Two models:
-- `PredictionModel` (table `predictions`): id (UUID PK), team_id FK, match_id FK, submission_id, idempotency_key, status (PredictionStatus enum), predicted_winner, probabilities (JSON), scoreline fields, goal_scorers (JSON), raw_payload (JSON), submitted_at. Has `player_predictions` relationship (cascade delete).
+- `PredictionModel` (table `predictions`): id (UUID PK), team_id FK, match_id FK, submission_id, status (PredictionStatus enum), predicted_winner, probabilities (JSON), scoreline fields, goal_scorers (JSON), raw_payload (JSON), submitted_at. Has `player_predictions` relationship (cascade delete).
 - `PlayerPredictionModel` (table `player_predictions`): id, prediction_id FK, player_id, player_name, predicted_goals, is_captain.
 
 The `raw_payload` column stores the entire original JSON — enabling audit/replay of every submission.
@@ -526,7 +526,7 @@ Core application controller:
 - Checks auth on load, shows/hides nav sections based on role
 
 #### `frontend/js/theme.js`
-`ThemeManager` — reads theme from `localStorage` (key: `fifa_theme`), falls back to `prefers-color-scheme`. Applies by setting `data-theme` attribute on `<html>`. Supports dark (FIFA Night Stadium) and light (FIFA Executive).
+`ThemeManager` — reads theme from `localStorage` (key: `fifa_theme`), falls back to `prefers-color-scheme`. Applies by setting `data-theme` attribute on `<html>`. Supports dark (GOALGORITHM Night Stadium) and light (GOALGORITHM Executive).
 
 #### `frontend/js/data/mockData.js`
 `DEMO_MODE` flag + `MockData` object. When the backend returns empty results (e.g. during development), the frontend falls back to this mock data. Contains:

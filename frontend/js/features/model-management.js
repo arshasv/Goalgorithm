@@ -1,6 +1,6 @@
 /* Organizer Model Management Page */
 
-Router.register('model-management', async () => {
+Router.register('prediction-upload', async () => {
   const main = document.getElementById('page-content');
   if (!Auth.isOrganizer()) {
     main.innerHTML = '<div class="empty-state"><div class="empty-icon">🔒</div><h2 class="empty-title">Access Denied</h2></div>';
@@ -126,8 +126,7 @@ async function loadModelManagement() {
               <div style="display:flex;align-items:center;gap:var(--space-sm)">
                 ${Utils.teamBadge(t.name, 24)}
                 <div>
-                  <div style="font-weight:500">${t.name}</div>
-                  <div style="font-size:var(--text-xs);color:var(--color-text-muted)">Team ${t.team_id || t.code}</div>
+                  <div style="font-weight:500">${Utils.formatTeamDisplay(t)}</div>
                 </div>
               </div>
             </td>
@@ -157,8 +156,7 @@ async function loadModelManagement() {
               <div style="display:flex;align-items:center;gap:var(--space-sm)">
                 ${idx === 0 ? Utils.teamBadge(t.name, 24) : '<div style="width:24px"></div>'}
                 <div>
-                  <div style="font-weight:500">${idx === 0 ? t.name : ''}</div>
-                  <div style="font-size:var(--text-xs);color:var(--color-text-muted)">${idx === 0 ? `Team ${t.team_id || t.code}` : ''}</div>
+                  <div style="font-weight:500">${idx === 0 ? Utils.formatTeamDisplay(t) : ''}</div>
                 </div>
               </div>
             </td>

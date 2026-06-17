@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import (
     get_current_team,
     get_current_user,
+    get_current_organizer,
 )
 
 from app.database.session import get_db
@@ -15,10 +16,13 @@ from app.models.user import UserModel
 
 from app.schemas.team_schema import (
     TeamMemberCreate,
+    TeamCreate,
     TeamUpdate,
     TeamResponse,
 )
 
+
+VALID_TEAM_IDS = {"A", "B", "C", "D", "E"}
 
 router = APIRouter(
     prefix="/teams",
@@ -58,9 +62,12 @@ def get_my_team(
 @router.put("/my-team")
 def update_my_team(
     body: TeamUpdate,
+    current_user: UserModel = Depends(get_current_user),
     team: TeamModel = Depends(get_current_team),
     db: Session = Depends(get_db),
 ):
+    if current_user.role != UserRole.ORGANIZER:
+        raise HTTPException(status_code=403, detail="Only organizers can update team details.")
 
     if body.name is not None:
 
@@ -91,9 +98,12 @@ def update_my_team(
 @router.post("/my-team/members", status_code=201)
 def add_member(
     body: TeamMemberCreate,
+    current_user: UserModel = Depends(get_current_user),
     team: TeamModel = Depends(get_current_team),
     db: Session = Depends(get_db),
 ):
+    if current_user.role != UserRole.ORGANIZER:
+        raise HTTPException(status_code=403, detail="Only organizers can add team members.")
 
     if team.is_csv_managed:
         raise HTTPException(
@@ -135,100 +145,50 @@ def list_teams(
 
 
 
-@router.put("/{team_id}")
-def update_team(
-    team_id: str,
-    body: TeamUpdate,
-    current_user: UserModel = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-
-    team = (
-        db.query(TeamModel)
-        .filter(
-            TeamModel.id == team_id
-        )
-        .first()
-    )
-
-
-    if not team:
-        raise HTTPException(
-            status_code=404,
-            detail="Team not found"
-        )
-
-
-    if body.name:
-        team.name = body.name
-
-
-    if body.team_leader_name:
-        team.team_leader_name = body.team_leader_name
-
-
-    if body.is_active is not None:
-        team.is_active = body.is_active
-
-
-    db.commit()
-
-
-    return {
-        "message": "Team updated",
-        "team_id": team_id,
-    }
-
-
-@router.delete("/my-team/members/{member_id}")
-def remove_member(
-    member_id: str,
-    team: TeamModel = Depends(get_current_team),
-    db: Session = Depends(get_db),
-):
-    if team.is_csv_managed:
-        raise HTTPException(
-            status_code=400,
-            detail="Manual member removal is locked for this team as its members are managed via CSV."
-        )
-
-    import uuid
-    try:
-        member_uuid = uuid.UUID(member_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid member ID format")
-
-    member = (
-        db.query(TeamMemberModel)
-        .filter(
-            TeamMemberModel.team_id == team.id,
-            TeamMemberModel.id == member_uuid
-        )
-        .first()
-    )
-    if not member:
-        raise HTTPException(status_code=404, detail="Member not found")
-
-    db.delete(member)
-    db.commit()
-
-    return {"message": "Member removed"}
-
-
-VALID_TEAM_IDS = {"A", "B", "C", "D", "E"}
-
-@router.post("/upload-members-csv")
-def upload_members_csv(
-    file: UploadFile = File(...),
+@router.post("", status_code=201)
+def create_team(
+    body: TeamCreate,
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     if current_user.role != UserRole.ORGANIZER:
-        raise HTTPException(status_code=403, detail="Only organizers can upload files.")
+        raise HTTPException(status_code=403, detail="Only organizers can create teams.")
 
+    team_code = body.team_code.strip().upper()
+    if team_code not in VALID_TEAM_IDS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid team_code '{team_code}'. Must be one of: {', '.join(sorted(VALID_TEAM_IDS))}"
+        )
+
+    existing = db.query(TeamModel).filter(TeamModel.team_id == team_code).first()
+    if existing:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Team with code '{team_code}' already exists."
+        )
+
+    import uuid
+    team = TeamModel(
+        id=uuid.uuid4(),
+        team_id=team_code,
+        name=body.team_name.strip(),
+        code=team_code,
+        team_leader_name=body.team_leader.strip(),
+        is_csv_managed=False,
+    )
+
+    db.add(team)
+    db.commit()
+    db.refresh(team)
+
+    return TeamResponse.model_validate(team)
+
+
+
+def parse_uploaded_file(file: UploadFile) -> tuple[list[str], list[dict]]:
     import csv
     import io
-
     filename = file.filename.lower()
     data_rows = []
     headers = []
@@ -257,15 +217,12 @@ def upload_members_csv(
             rows = list(sheet.iter_rows(values_only=True))
             if not rows:
                 raise HTTPException(status_code=400, detail="Excel file is empty.")
-            
             header_row_idx = 0
             while header_row_idx < len(rows) and all(v is None for v in rows[header_row_idx]):
                 header_row_idx += 1
             if header_row_idx >= len(rows):
                 raise HTTPException(status_code=400, detail="Excel file is empty.")
-            
             headers = [str(h).strip().lower().replace(" ", "_") if h is not None else "" for h in rows[header_row_idx]]
-            
             for r in rows[header_row_idx + 1:]:
                 if all(v is None or str(v).strip() == "" for v in r):
                     continue
@@ -322,68 +279,372 @@ def upload_members_csv(
             detail="Unsupported file format. Please upload a .csv, .xls, or .xlsx file."
         )
 
-    group_col = next((h for h in headers if h == "group"), None)
-    name_col = next((h for h in headers if h == "name" or "member" in h), None)
+    return headers, data_rows
 
-    if not group_col or not name_col:
-        raise HTTPException(
-            status_code=400,
-            detail="Uploaded file must contain at least Group and Name columns."
-        )
 
-    db_teams_to_update = {}
-    new_members = []
+def process_file_contents(file: UploadFile, db: Session):
+    import uuid
+    headers, data_rows = parse_uploaded_file(file)
+    clean_headers = [h for h in headers if h]
 
-    for row in data_rows:
-        group_value = (row.get(group_col) or "").strip().upper()
-        member_name = (row.get(name_col) or "").strip()
-        if not group_value or not member_name:
-            continue
+    is_team_upload = "team_code" in clean_headers or "team_name" in clean_headers or "team_leader" in clean_headers
+    is_member_upload = "group" in clean_headers
 
-        if group_value not in VALID_TEAM_IDS:
-            continue
+    if is_team_upload:
+        if set(clean_headers) != {"team_code", "team_name", "team_leader"}:
+            raise HTTPException(
+                status_code=400,
+                detail="Column headers must contain exactly 'team_code', 'team_name', and 'team_leader'."
+            )
+        created = 0
+        updated = 0
 
-        team_id_val = group_value
+        for row in data_rows:
+            team_code = (row.get("team_code") or "").strip().upper()
+            team_name = (row.get("team_name") or "").strip()
+            team_leader = (row.get("team_leader") or "").strip()
+            if not team_code or not team_name:
+                continue
+            if team_code not in VALID_TEAM_IDS:
+                continue
 
-        if team_id_val not in db_teams_to_update:
-            team = db.query(TeamModel).filter(TeamModel.team_id == team_id_val).first()
+            team = db.query(TeamModel).filter(TeamModel.team_id == team_code).first()
             if team:
-                if not team.is_csv_managed:
-                    existing_count = db.query(TeamMemberModel).filter(TeamMemberModel.team_id == team.id).count()
-                    if existing_count > 0:
-                        raise HTTPException(
-                            status_code=400,
-                            detail=f"Team '{team.name}' already contains manually added members. A team can only use CSV-managed or manual members, not both."
-                        )
-                team.is_csv_managed = True
+                team.name = team_name
+                team.team_leader_name = team_leader
+                updated += 1
             else:
                 team = TeamModel(
-                    team_id=team_id_val,
-                    name=f"Team {team_id_val}",
-                    code=team_id_val,
-                    is_csv_managed=True
+                    id=uuid.uuid4(),
+                    team_id=team_code,
+                    name=team_name,
+                    code=team_code,
+                    team_leader_name=team_leader,
+                    is_csv_managed=False,
                 )
                 db.add(team)
-                db.flush()
-            db_teams_to_update[team_id_val] = team
+                created += 1
 
-        team = db_teams_to_update[team_id_val]
+        db.commit()
+        return {
+            "message": f"Upload complete. Created {created} teams, updated {updated} teams."
+        }
 
-        employee_id = (row.get("employeeid") or row.get("employee_id") or "").strip()
+    elif is_member_upload:
+        group_col = next((h for h in clean_headers if h == "group"), None)
+        name_col = next((h for h in clean_headers if h == "name" or "member" in h), None)
 
-        member = TeamMemberModel(
-            team_id=team.id,
-            name=member_name,
-            employee_id=employee_id if employee_id else None
+        if not group_col or not name_col:
+            raise HTTPException(
+                status_code=400,
+                detail="Uploaded file must contain at least Group and Name columns."
+            )
+
+        db_teams_to_update = {}
+        new_members = []
+
+        for row in data_rows:
+            group_value = (row.get(group_col) or "").strip().upper()
+            member_name = (row.get(name_col) or "").strip()
+            if not group_value or not member_name:
+                continue
+
+            if group_value not in VALID_TEAM_IDS:
+                continue
+
+            team_id_val = group_value
+
+            if team_id_val not in db_teams_to_update:
+                team = db.query(TeamModel).filter(TeamModel.team_id == team_id_val).first()
+                if team:
+                    if not team.is_csv_managed:
+                        existing_count = db.query(TeamMemberModel).filter(TeamMemberModel.team_id == team.id).count()
+                        if existing_count > 0:
+                            raise HTTPException(
+                                status_code=400,
+                                detail=f"Team '{team.name}' already contains manually added members. A team can only use CSV-managed or manual members, not both."
+                            )
+                    team.is_csv_managed = True
+                else:
+                    team = TeamModel(
+                        team_id=team_id_val,
+                        name=f"Team {team_id_val}",
+                        code=team_id_val,
+                        is_csv_managed=True
+                    )
+                    db.add(team)
+                    db.flush()
+                db_teams_to_update[team_id_val] = team
+
+            team = db_teams_to_update[team_id_val]
+
+            employee_id = (row.get("employeeid") or row.get("employee_id") or "").strip()
+
+            member = TeamMemberModel(
+                team_id=team.id,
+                name=member_name,
+                employee_id=employee_id if employee_id else None
+            )
+            new_members.append(member)
+
+        for team in db_teams_to_update.values():
+            db.query(TeamMemberModel).filter(TeamMemberModel.team_id == team.id).delete()
+
+        db.add_all(new_members)
+        db.commit()
+
+        return {
+            "message": f"Successfully imported members CSV/Excel file. Updated {len(db_teams_to_update)} teams with {len(new_members)} members."
+        }
+
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="Unsupported column headers. Please upload a file with either team columns (team_code, team_name, team_leader) or member columns (group, name)."
         )
-        new_members.append(member)
 
-    for team in db_teams_to_update.values():
-        db.query(TeamMemberModel).filter(TeamMemberModel.team_id == team.id).delete()
 
-    db.add_all(new_members)
+@router.post("/upload-csv")
+def upload_teams_csv(
+    file: UploadFile = File(...),
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if current_user.role != UserRole.ORGANIZER:
+        raise HTTPException(status_code=403, detail="Only organizers can upload files.")
+    return process_file_contents(file, db)
+
+
+@router.post("/upload-members-csv")
+def upload_members_csv(
+    file: UploadFile = File(...),
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if current_user.role != UserRole.ORGANIZER:
+        raise HTTPException(status_code=403, detail="Only organizers can upload files.")
+    return process_file_contents(file, db)
+
+
+
+@router.put("/{team_id}")
+def update_team(
+    team_id: str,
+    body: TeamUpdate,
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if current_user.role != UserRole.ORGANIZER:
+        raise HTTPException(status_code=403, detail="Only organizers can update teams.")
+
+    import uuid
+    try:
+        team_uuid = uuid.UUID(team_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid team ID format")
+
+    team = (
+        db.query(TeamModel)
+        .filter(
+            TeamModel.id == team_uuid
+        )
+        .first()
+    )
+
+
+    if not team:
+        raise HTTPException(
+            status_code=404,
+            detail="Team not found"
+        )
+
+
+    if body.name is not None:
+        team.name = body.name
+
+    if body.team_code is not None:
+        new_code = body.team_code.strip().upper()
+        if new_code not in VALID_TEAM_IDS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid team_code '{new_code}'. Must be one of: {', '.join(sorted(VALID_TEAM_IDS))}"
+            )
+        existing = db.query(TeamModel).filter(TeamModel.team_id == new_code, TeamModel.id != team_uuid).first()
+        if existing:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Team with code '{new_code}' already exists."
+            )
+        team.team_id = new_code
+        team.code = new_code
+
+    if body.team_leader_name is not None:
+        team.team_leader_name = body.team_leader_name
+
+
+    if body.is_active is not None:
+        team.is_active = body.is_active
+
+
     db.commit()
 
+
     return {
-        "message": f"Successfully imported members CSV/Excel file. Updated {len(db_teams_to_update)} teams with {len(new_members)} members."
+        "message": "Team updated",
+        "team_id": str(team.id),
     }
+
+
+@router.delete("/my-team/members/{member_id}")
+def remove_member(
+    member_id: str,
+    current_user: UserModel = Depends(get_current_user),
+    team: TeamModel = Depends(get_current_team),
+    db: Session = Depends(get_db),
+):
+    if current_user.role != UserRole.ORGANIZER:
+        raise HTTPException(status_code=403, detail="Only organizers can remove team members.")
+    if team.is_csv_managed:
+        raise HTTPException(
+            status_code=400,
+            detail="Manual member removal is locked for this team as its members are managed via CSV."
+        )
+
+    import uuid
+    try:
+        member_uuid = uuid.UUID(member_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid member ID format")
+
+    member = (
+        db.query(TeamMemberModel)
+        .filter(
+            TeamMemberModel.team_id == team.id,
+            TeamMemberModel.id == member_uuid
+        )
+        .first()
+    )
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+
+    db.delete(member)
+    db.commit()
+
+    return {"message": "Member removed"}
+
+
+@router.get("/{team_id}/members")
+def list_team_members_admin(
+    team_id: str,
+    _organizer: UserModel = Depends(get_current_organizer),
+    db: Session = Depends(get_db),
+):
+    import uuid
+    try:
+        team_uuid = uuid.UUID(team_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid team ID format")
+    team = db.query(TeamModel).filter(TeamModel.id == team_uuid).first()
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+    members = db.query(TeamMemberModel).filter(TeamMemberModel.team_id == team.id).all()
+    return members
+
+
+@router.post("/{team_id}/members", status_code=201)
+def add_team_member_admin(
+    team_id: str,
+    body: TeamMemberCreate,
+    _organizer: UserModel = Depends(get_current_organizer),
+    db: Session = Depends(get_db),
+):
+    import uuid
+    try:
+        team_uuid = uuid.UUID(team_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid team ID format")
+    team = db.query(TeamModel).filter(TeamModel.id == team_uuid).first()
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+    if team.is_csv_managed:
+        raise HTTPException(
+            status_code=400,
+            detail="Manual member addition is locked for this team as its members are managed via CSV."
+        )
+    member = TeamMemberModel(
+        team_id=team.id,
+        name=body.name,
+        employee_id=body.employee_id,
+    )
+    db.add(member)
+    db.commit()
+    db.refresh(member)
+    return member
+
+
+@router.delete("/{team_id}/members/{member_id}")
+def remove_team_member_admin(
+    team_id: str,
+    member_id: str,
+    _organizer: UserModel = Depends(get_current_organizer),
+    db: Session = Depends(get_db),
+):
+    import uuid
+    try:
+        team_uuid = uuid.UUID(team_id)
+        member_uuid = uuid.UUID(member_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid UUID format")
+    team = db.query(TeamModel).filter(TeamModel.id == team_uuid).first()
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+    if team.is_csv_managed:
+        raise HTTPException(
+            status_code=400,
+            detail="Manual member removal is locked for this team as its members are managed via CSV."
+        )
+    member = db.query(TeamMemberModel).filter(
+        TeamMemberModel.team_id == team.id,
+        TeamMemberModel.id == member_uuid
+    ).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+    db.delete(member)
+    db.commit()
+    return {"message": "Member removed"}
+
+
+@router.put("/{team_id}/members/{member_id}")
+def update_team_member_admin(
+    team_id: str,
+    member_id: str,
+    body: TeamMemberCreate,
+    _organizer: UserModel = Depends(get_current_organizer),
+    db: Session = Depends(get_db),
+):
+    import uuid
+    try:
+        team_uuid = uuid.UUID(team_id)
+        member_uuid = uuid.UUID(member_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid UUID format")
+    team = db.query(TeamModel).filter(TeamModel.id == team_uuid).first()
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+    if team.is_csv_managed:
+        raise HTTPException(
+            status_code=400,
+            detail="Manual member edit is locked for this team as its members are managed via CSV."
+        )
+    member = db.query(TeamMemberModel).filter(
+        TeamMemberModel.team_id == team.id,
+        TeamMemberModel.id == member_uuid
+    ).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+    
+    member.name = body.name
+    member.employee_id = body.employee_id
+    db.commit()
+    db.refresh(member)
+    return member

@@ -18,7 +18,31 @@ Router.register('team-dashboard', async () => {
         <button class="btn btn-secondary" onclick="refreshTeamDashboard()">🔄 Refresh</button>
       </div>
     </div>
-    <div id="td-content">${Utils.skeletonCards(3)}</div>
+    <div id="td-stats-container">
+      <div class="grid-3" style="margin-bottom:var(--space-xl)">
+        <div class="card stat-card">
+          <div class="stat-label">Team Rank</div>
+          <div class="stat-value" id="td-stat-rank" style="font-family:var(--font-score);font-size:var(--text-4xl)"><div class="skeleton skeleton-text" style="width:60%"></div></div>
+        </div>
+        <div class="card stat-card">
+          <div class="stat-label">Total Score</div>
+          <div class="stat-value" id="td-stat-score" style="font-family:var(--font-score);font-size:var(--text-4xl)"><div class="skeleton skeleton-text" style="width:40%"></div></div>
+        </div>
+        <div class="card stat-card">
+          <div class="stat-label">Predictions</div>
+          <div class="stat-value" id="td-stat-preds" style="font-family:var(--font-score);font-size:var(--text-4xl)"><div class="skeleton skeleton-text" style="width:30%"></div></div>
+        </div>
+      </div>
+    </div>
+    <div id="td-content">
+      <div class="tabs" style="margin-bottom:var(--space-lg)">
+        <button class="tab-btn active" onclick="switchTDTab('profile', this)">Team Profile</button>
+        <button class="tab-btn" onclick="switchTDTab('members', this)">Members</button>
+        <button class="tab-btn" onclick="switchTDTab('predictions', this)">My Predictions</button>
+        <button class="tab-btn" onclick="switchTDTab('scores', this)">Match Scores</button>
+      </div>
+      <div id="td-tab-content"></div>
+    </div>
   `;
 
   await loadTeamDashboard();
@@ -29,8 +53,7 @@ let _tdLeaderboard = [];
 let _tdPredictions = [];
 
 async function loadTeamDashboard() {
-  const container = document.getElementById('td-content');
-  if (!container) return;
+  if (!document.getElementById('td-content')) return;
 
   try {
     const team = await TeamService.getMyTeam();
@@ -40,51 +63,64 @@ async function loadTeamDashboard() {
       _tdLeaderboard = MockData.leaderboard;
     }
 
-    const myRank = _tdLeaderboard.findIndex(e => e.team_id === team.id) + 1;
-    const myEntry = _tdLeaderboard.find(e => e.team_id === team.id);
+    const isMyEntry = (e) => {
+      if (!team) return false;
+      const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const tcode = [team.team_id, team.code].find(v => v && !UUID_RE.test(v)) || '';
+      const ecode = [e.team_code, e.team_id].find(v => v && !UUID_RE.test(v)) || '';
+      return (e.team_id === team.id) || (ecode && tcode && ecode.toUpperCase() === tcode.toUpperCase());
+    };
 
-    _tdPredictions = await PredictionService.list().catch(() => []);
+    const myRank = _tdLeaderboard.findIndex(isMyEntry) + 1;
+    const myEntry = _tdLeaderboard.find(isMyEntry);
+
+    const isMyPrediction = (p) => {
+      if (!team) return false;
+      const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const tcode = [team.team_id, team.code].find(v => v && !UUID_RE.test(v)) || '';
+      const pcode = [p.team_code, p.team_id].find(v => v && !UUID_RE.test(v)) || '';
+      return (p.team_id === team.id) || (pcode && tcode && pcode.toUpperCase() === tcode.toUpperCase());
+    };
+
+    const allPreds = await PredictionService.list().catch(() => []);
+    _tdPredictions = allPreds.filter(isMyPrediction);
     if (DEMO_MODE && !_tdPredictions.length) {
-      _tdPredictions = MockData.predictions.filter(p => p.team_id === team.id);
+      _tdPredictions = MockData.predictions.filter(isMyPrediction);
     }
 
-    container.innerHTML = `
-      <div class="grid-3" style="margin-bottom:var(--space-xl)">
-        <div class="card stat-card" style="animation:fadeInUp 0.4s ease-out">
-          <div class="stat-label">Team Rank</div>
-          <div class="stat-value" style="font-family:var(--font-score);font-size:var(--text-4xl)">
-            ${myRank > 0 ? `#${myRank}` : 'Not yet calculated'}
-          </div>
-        </div>
-        <div class="card stat-card" style="animation:fadeInUp 0.5s ease-out">
-          <div class="stat-label">Total Score</div>
-          <div class="stat-value" style="font-family:var(--font-score);font-size:var(--text-4xl)">
-            ${myEntry ? Utils.fmt1(myEntry.final_score) : '—'}
-          </div>
-        </div>
-        <div class="card stat-card" style="animation:fadeInUp 0.6s ease-out">
-          <div class="stat-label">Predictions</div>
-          <div class="stat-value" style="font-family:var(--font-score);font-size:var(--text-4xl)">
-            ${_tdPredictions.length}
-          </div>
-        </div>
-      </div>
+    const rankEl = document.getElementById('td-stat-rank');
+    if (rankEl) rankEl.textContent = myRank > 0 ? `#${myRank}` : 'Not yet calculated';
 
-      <div class="tabs" style="margin-bottom:var(--space-lg)">
-        <button class="tab-btn active" onclick="switchTDTab('profile', this)">Team Profile</button>
-        <button class="tab-btn" onclick="switchTDTab('members', this)">Members</button>
-        <button class="tab-btn" onclick="switchTDTab('predictions', this)">My Predictions (${_tdPredictions.length})</button>
-        <button class="tab-btn" onclick="switchTDTab('scores', this)">Match Scores</button>
-      </div>
-      <div id="td-tab-content"></div>
-    `;
+    const scoreEl = document.getElementById('td-stat-score');
+    if (scoreEl) scoreEl.textContent = myEntry ? Utils.fmt1(myEntry.final_score) : '—';
+
+    const predsEl = document.getElementById('td-stat-preds');
+    if (predsEl) predsEl.textContent = _tdPredictions.length;
+
+    const tabPreds = document.querySelector('.tab-btn:nth-child(3)');
+    if (tabPreds) tabPreds.textContent = `My Predictions (${_tdPredictions.length})`;
 
     switchTDTab('profile');
-    animateCounters(container);
+    animateCounters(document.getElementById('td-stats-container'));
     Utils.staggerChildren('.grid-3');
 
   } catch(err) {
-    container.innerHTML = `<div class="alert alert-error">Failed to load dashboard: ${err.message}</div>`;
+    const rankEl = document.getElementById('td-stat-rank');
+    if (rankEl) rankEl.textContent = 'Rank --';
+
+    const scoreEl = document.getElementById('td-stat-score');
+    if (scoreEl) scoreEl.textContent = 'Score 0';
+
+    const predsEl = document.getElementById('td-stat-preds');
+    if (predsEl) predsEl.textContent = 'Predictions 0';
+
+    const tabPreds = document.querySelector('.tab-btn:nth-child(3)');
+    if (tabPreds) tabPreds.textContent = 'My Predictions';
+    
+    const tc = document.getElementById('td-tab-content');
+    if (tc) switchTDTab('profile');
+    
+    Toast.error('Failed to load dashboard: ' + err.message);
   }
 }
 
@@ -109,39 +145,32 @@ function renderTDProfile(container) {
   container.innerHTML = `
     <div class="card" style="max-width:600px">
       <div class="card-header">
-        <div class="card-title">${Utils.teamBadge(_tdTeam.name, 40)} Team ${_tdTeam.team_id || _tdTeam.code} — ${_tdTeam.name}</div>
+        <div class="card-title">${Utils.teamBadge(_tdTeam.name, 40)} ${Utils.formatTeamDisplay(_tdTeam)}</div>
       </div>
-      <div style="padding:var(--space-lg)">
-        <div class="form-group" style="margin-bottom:var(--space-md)">
-          <label class="form-label">Team Name <span style="color:var(--color-text-muted);font-weight:400">(Team ${_tdTeam.team_id || _tdTeam.code})</span></label>
-          <input class="form-input" id="td-name" value="${_tdTeam.name || ''}" placeholder="Custom team name">
+      <div style="padding:var(--space-lg);display:flex;flex-direction:column;gap:var(--space-md)">
+        <div>
+          <span style="display:block;font-size:var(--text-sm);color:var(--color-text-muted)">Team Code</span>
+          <span style="font-family:var(--font-data);font-size:var(--text-base)">${_tdTeam.team_id || _tdTeam.code || '—'}</span>
         </div>
-        <div class="form-group" style="margin-bottom:var(--space-md)">
-          <label class="form-label">Team Leader</label>
-          <input class="form-input" id="td-leader" value="${_tdTeam.team_leader_name || ''}" placeholder="Team leader name">
+        <div>
+          <span style="display:block;font-size:var(--text-sm);color:var(--color-text-muted)">Team Name</span>
+          <span style="font-size:var(--text-base)">${_tdTeam.name || '—'}</span>
         </div>
-        <button class="btn btn-primary" onclick="saveTeamProfile()">Save Changes</button>
+        <div>
+          <span style="display:block;font-size:var(--text-sm);color:var(--color-text-muted)">Team Leader</span>
+          <span style="font-size:var(--text-base)">${_tdTeam.team_leader_name || '—'}</span>
+        </div>
+        <div>
+          <span style="display:block;font-size:var(--text-sm);color:var(--color-text-muted)">Status</span>
+          <span class="badge ${_tdTeam.is_active ? 'badge-success' : 'badge-error'}">${_tdTeam.is_active ? 'Active' : 'Inactive'}</span>
+        </div>
       </div>
     </div>
   `;
 }
 
 async function saveTeamProfile() {
-  const name = document.getElementById('td-name')?.value.trim();
-  const leader = document.getElementById('td-leader')?.value.trim();
-  const payload = {};
-  if (name) payload.name = name;
-  payload.team_leader_name = leader || null;
-  try {
-    await TeamService.updateMyTeam(payload);
-    Toast.success('Team profile updated');
-    _tdTeam.name = name || _tdTeam.name;
-    _tdTeam.team_leader_name = leader || null;
-    const tc = document.getElementById('td-tab-content');
-    if (tc) renderTDProfile(tc);
-  } catch(err) {
-    Toast.error(err.message || 'Failed to update team');
-  }
+  Toast.error('Editing team profile is restricted to organizers.');
 }
 
 function renderTDMembers(container) {
@@ -151,12 +180,13 @@ function renderTDMembers(container) {
   }
   const members = _tdTeam.members || [];
   const isCsvManaged = _tdTeam.is_csv_managed || false;
+  const canManage = Auth.isOrganizer() && !isCsvManaged;
 
   let rows = members.map((m, i) => `
     <tr>
       <td>${m.name}</td>
       <td>${m.employee_id || '—'}</td>
-      ${isCsvManaged ? '' : `<td><button class="btn btn-danger btn-sm" onclick="removeMember('${m.id}')">Remove</button></td>`}
+      ${canManage ? `<td><button class="btn btn-danger btn-sm" onclick="removeMember('${m.id}')">Remove</button></td>` : ''}
     </tr>
   `).join('');
 
@@ -164,7 +194,7 @@ function renderTDMembers(container) {
     <div class="card">
       <div class="card-header">
         <div class="card-title">Team Members ${isCsvManaged ? '<span class="badge badge-info" style="margin-left:var(--space-sm)">CSV Managed</span>' : ''}</div>
-        ${isCsvManaged ? '' : '<button class="btn btn-primary btn-sm" onclick="showAddMemberForm()">+ Add Member</button>'}
+        ${canManage ? '<button class="btn btn-primary btn-sm" onclick="showAddMemberForm()">+ Add Member</button>' : ''}
       </div>
       <div class="table-wrapper" style="margin:var(--space-md)">
         <table>
@@ -172,10 +202,10 @@ function renderTDMembers(container) {
             <tr>
               <th>Name</th>
               <th>Employee ID</th>
-              ${isCsvManaged ? '' : '<th></th>'}
+              ${canManage ? '<th></th>' : ''}
             </tr>
           </thead>
-          <tbody>${rows || `<tr><td colspan="${isCsvManaged ? 2 : 3}" style="text-align:center;color:var(--color-text-muted)">No members added yet</td></tr>`}</tbody>
+          <tbody>${rows || `<tr><td colspan="${canManage ? 3 : 2}" style="text-align:center;color:var(--color-text-muted)">No members added yet</td></tr>`}</tbody>
         </table>
       </div>
     </div>

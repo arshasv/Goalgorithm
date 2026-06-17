@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime, timezone
+from typing import Optional
 
 from sqlalchemy import DateTime, Enum as SAEnum, Integer, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
@@ -19,6 +20,7 @@ class MatchModel(Base):
     away_team_name: Mapped[str] = mapped_column(String(255), nullable=False)
     scheduled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     freeze_deadline: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    round: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     status: Mapped[MatchStatus] = mapped_column(
         SAEnum(MatchStatus, name="match_status", create_constraint=True),
         nullable=False,
@@ -27,3 +29,4 @@ class MatchModel(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
+

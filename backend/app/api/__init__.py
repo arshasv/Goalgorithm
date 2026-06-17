@@ -10,6 +10,7 @@ from app.api.scores_routes import router as scores_router
 from app.api.scoring_config_routes import router as scoring_config_router
 from app.api.model_submission_routes import team_model_router, admin_model_router
 from app.api.upload_window_routes import router as upload_window_router
+from app.api.match_routes import router as match_router
 
 router = APIRouter()
 
@@ -24,3 +25,4 @@ router.include_router(scoring_config_router)
 router.include_router(team_model_router)
 router.include_router(admin_model_router)
 router.include_router(upload_window_router)
+router.include_router(match_router)
