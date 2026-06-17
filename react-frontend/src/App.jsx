@@ -9,6 +9,7 @@ import TeamLeaderDashboard from './pages/dashboard/TeamLeaderDashboard';
 import TeamsView from './pages/teams/TeamsView';
 import MatchesView from './pages/matches/MatchesView';
 import ScoringView from './pages/scoring/ScoringView';
+import LeaderboardView from './pages/leaderboard/LeaderboardView';
 
 const PrivateRoute = ({ element, roleRequired }) => {
   const { isAuthenticated, user, loading } = useAuth();
@@ -72,7 +73,10 @@ const App = () => {
               element={<PrivateRoute element={<ScoringView />} roleRequired="ORGANIZER" />} 
             />
             
-            <Route path="/leaderboard" element={<div>Leaderboard Feature Placeholder</div>} />
+            <Route 
+              path="/leaderboard" 
+              element={<PrivateRoute element={<LeaderboardView />} />} 
+            />
           </Route>
         </Routes>
       </Router>
