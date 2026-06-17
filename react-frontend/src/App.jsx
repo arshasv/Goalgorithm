@@ -10,6 +10,14 @@ import TeamsView from './pages/teams/TeamsView';
 import MatchesView from './pages/matches/MatchesView';
 import ScoringView from './pages/scoring/ScoringView';
 import LeaderboardView from './pages/leaderboard/LeaderboardView';
+import TechnicalView from './pages/technical/TechnicalView';
+import PresentationView from './pages/presentation/PresentationView';
+import PredictionsView from './pages/predictions/PredictionsView';
+import AnalyticsView from './pages/analytics/AnalyticsView';
+import FinalScoresView from './pages/finalscores/FinalScoresView';
+import ScoringConfigView from './pages/scoringconfig/ScoringConfigView';
+import ModelManagementView from './pages/modelmanagement/ModelManagementView';
+import ModelSubmissionView from './pages/modelsubmission/ModelSubmissionView';
 
 const PrivateRoute = ({ element, roleRequired }) => {
   const { isAuthenticated, user, loading } = useAuth();
@@ -62,11 +70,10 @@ const App = () => {
             
             <Route 
               path="/matches" 
-              element={<PrivateRoute element={<MatchesView />} roleRequired="ORGANIZER" />} 
+              element={<PrivateRoute element={<MatchesView />} />} 
             />
             
-            {/* Placeholders for upcoming feature migrations */}
-            <Route path="/predictions" element={<div>Predictions Feature Placeholder</div>} />
+            {/* Removed placeholders as migration is complete */}
             
             <Route 
               path="/scoring" 
@@ -76,6 +83,43 @@ const App = () => {
             <Route 
               path="/leaderboard" 
               element={<PrivateRoute element={<LeaderboardView />} />} 
+            />
+            
+            <Route 
+              path="/technical" 
+              element={<PrivateRoute element={<TechnicalView />} roleRequired="ORGANIZER" />} 
+            />
+            <Route 
+              path="/presentation" 
+              element={<PrivateRoute element={<PresentationView />} roleRequired="ORGANIZER" />} 
+            />
+            <Route 
+              path="/predictions" 
+              element={<PrivateRoute element={<PredictionsView />} roleRequired="ORGANIZER" />} 
+            />
+            <Route 
+              path="/my-predictions" 
+              element={<PrivateRoute element={<PredictionsView />} roleRequired="TEAM_LEADER" />} 
+            />
+            <Route 
+              path="/analytics" 
+              element={<PrivateRoute element={<AnalyticsView />} roleRequired="ORGANIZER" />} 
+            />
+            <Route 
+              path="/match-results" 
+              element={<PrivateRoute element={<FinalScoresView />} />} 
+            />
+            <Route 
+              path="/scoring-config" 
+              element={<PrivateRoute element={<ScoringConfigView />} roleRequired="ORGANIZER" />} 
+            />
+            <Route 
+              path="/prediction-upload" 
+              element={<PrivateRoute element={<ModelManagementView />} roleRequired="ORGANIZER" />} 
+            />
+            <Route 
+              path="/submit-predictions" 
+              element={<PrivateRoute element={<ModelSubmissionView />} roleRequired="TEAM_LEADER" />} 
             />
           </Route>
         </Routes>

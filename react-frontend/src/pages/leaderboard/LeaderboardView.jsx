@@ -3,10 +3,29 @@ import { LeaderboardService } from '../../api/leaderboardService';
 import { TeamService } from '../../api/teamService';
 import { useAuth } from '../../contexts/AuthContext';
 
-const LeaderboardView = () => {
-  const { user } = useAuth();
-  const isOrganizer = user?.role === 'ORGANIZER';
+const formatTeamDisplay = (e) => {
+  const code = e.team_code || e.code || '';
+  const name = e.team_name || e.name || '';
+  return code ? `${code} – ${name}` : name;
+};
 
+const fmt1 = (val) => (val != null ? Number(val).toFixed(1) : '0.0');
+
+const scoreColor = (val, max) => {
+  if (val === 0) return 'color:var(--color-status-error)';
+  if (val >= max) return 'color:var(--color-status-success)';
+  return '';
+};
+
+const rankBadge = (rank) => {
+  if (rank === 1) return <span className="rank-badge rank-badge-1">🏆</span>;
+  if (rank === 2) return <span className="rank-badge rank-badge-2">🥈</span>;
+  if (rank === 3) return <span className="rank-badge rank-badge-3">🥉</span>;
+  return <span className="rank-badge rank-badge-n">#{rank}</span>;
+};
+
+const LeaderboardView = () => {
+  const { isOrganizer } = useAuth();
   const [leaderboard, setLeaderboard] = useState([]);
   const [loading, setLoading] = useState(true);
   const [calculating, setCalculating] = useState(false);
@@ -25,9 +44,7 @@ const LeaderboardView = () => {
     }
   };
 
-  useEffect(() => {
-    loadLeaderboard();
-  }, []);
+  useEffect(() => { loadLeaderboard(); }, []);
 
   const handleCalculate = async () => {
     if (!window.confirm('Calculate leaderboard from all current scores?')) return;
@@ -41,8 +58,6 @@ const LeaderboardView = () => {
         technical_score: 0,
         presentation_score: 0
       }));
-      // Note: Phase 7 is just setting up the leaderboard integration.
-      // Since Phase 1/Tech/Pres scores aren't available yet, we push 0s or let backend compute if it auto-aggregates.
       await LeaderboardService.calculateLeaderboard(entries);
       await loadLeaderboard();
     } catch (err) {
@@ -52,80 +67,70 @@ const LeaderboardView = () => {
     }
   };
 
-  const getScoreColor = (score, max) => {
-    const ratio = score / max;
-    if (ratio >= 0.8) return 'color: var(--color-status-success)';
-    if (ratio >= 0.5) return 'color: var(--color-status-warning)';
-    return 'color: var(--color-status-error)';
-  };
-
-  const getRankBadge = (rank) => {
-    if (rank === 1) return <span className="rank-badge rank-1">🥇 1st</span>;
-    if (rank === 2) return <span className="rank-badge rank-2">🥈 2nd</span>;
-    if (rank === 3) return <span className="rank-badge rank-3">🥉 3rd</span>;
-    return <span className="rank-badge">{rank}th</span>;
-  };
-
   const topScore = leaderboard.length > 0 ? leaderboard[0].final_score : 0;
 
   return (
     <div>
       <div className="page-header">
         <div className="page-header-left">
-          <h1 className="page-title">🏆 Leaderboard</h1>
+          <h1 className="page-title">Leaderboard</h1>
           <p className="page-subtitle">Team rankings and phase scores</p>
         </div>
-        <div className="page-header-actions" style={{display: 'flex', gap: 'var(--space-md)'}}>
+        <div className="page-header-actions">
           <button className="btn btn-secondary" onClick={loadLeaderboard}>🔄 Refresh</button>
           {isOrganizer && (
-            <button 
-              className={`btn btn-primary ${calculating ? 'loading' : ''}`} 
+            <button
+              className={`btn btn-primary ${calculating ? 'loading' : ''}`}
               onClick={handleCalculate}
               disabled={calculating}
-            >
-              <span>{calculating ? 'Calculating...' : '⚡ Calculate'}</span>
-              {calculating && <span className="spinner"></span>}
-            </button>
+            >⚡ Calculate</button>
           )}
         </div>
       </div>
 
-      {error && <div className="alert alert-error" style={{marginBottom: 'var(--space-md)'}}>{error}</div>}
+      {error && <div className="alert alert-error" style={{marginBottom:'var(--space-md)'}}>{error}</div>}
 
       {loading ? (
-        <div style={{display: 'flex', justifyContent: 'center', padding: 'var(--space-xl)'}}>
-          <span className="spinner" style={{width: '32px', height: '32px', borderWidth: '4px'}}></span>
+        <div className="grid-3" style={{marginBottom:'var(--space-xl)'}}>
+          <div className="card stat-card">
+            <div className="stat-label">Total Teams</div>
+            <div className="stat-value" style={{fontFamily:'var(--font-score)',fontSize:'var(--text-4xl)'}}><div className="skeleton skeleton-text" style={{width:'60%'}}></div></div>
+          </div>
+          <div className="card stat-card">
+            <div className="stat-label">Top Score</div>
+            <div className="stat-value" style={{fontFamily:'var(--font-score)',fontSize:'var(--text-4xl)'}}><div className="skeleton skeleton-text" style={{width:'40%'}}></div></div>
+          </div>
+          <div className="card stat-card">
+            <div className="stat-label">Top Team</div>
+            <div className="stat-value" style={{fontFamily:'var(--font-display)',fontSize:'var(--text-xl)'}}><div className="skeleton skeleton-text" style={{width:'50%'}}></div></div>
+          </div>
         </div>
       ) : leaderboard.length === 0 ? (
         <div className="empty-state">
           <div className="empty-icon">🏆</div>
           <h2 className="empty-title">No Leaderboard Data</h2>
-          <p className="empty-desc">
-            {isOrganizer ? 'Calculate the leaderboard from the current scores.' : 'Leaderboard data will appear once the organizer calculates it.'}
-          </p>
+          <p className="empty-desc">{isOrganizer ? 'Calculate the leaderboard from the Scoring Engine page.' : 'Leaderboard data will appear once the organizer calculates it.'}</p>
         </div>
       ) : (
         <>
-          <div style={{display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-lg)', marginBottom: 'var(--space-xl)'}}>
+          <div className="grid-3" style={{marginBottom:'var(--space-xl)'}}>
             <div className="card stat-card">
               <div className="stat-label">Total Teams</div>
-              <div className="stat-value" style={{fontFamily: 'var(--font-score)', fontSize: 'var(--text-4xl)'}}>{leaderboard.length}</div>
+              <div className="stat-value" style={{fontFamily:'var(--font-score)',fontSize:'var(--text-4xl)'}}>{leaderboard.length}</div>
             </div>
             <div className="card stat-card">
               <div className="stat-label">Top Score</div>
-              <div className="stat-value" style={{fontFamily: 'var(--font-score)', fontSize: 'var(--text-4xl)'}}>{topScore.toFixed(1)}</div>
+              <div className="stat-value" style={{fontFamily:'var(--font-score)',fontSize:'var(--text-4xl)'}}>{fmt1(topScore)}</div>
             </div>
             <div className="card stat-card">
               <div className="stat-label">Top Team</div>
-              <div className="stat-value" style={{fontFamily: 'var(--font-display)', fontSize: 'var(--text-xl)'}}>
-                {leaderboard[0] ? (leaderboard[0].team_name || leaderboard[0].team_code) : '—'}
-              </div>
+              <div className="stat-value" style={{fontFamily:'var(--font-display)',fontSize:'var(--text-xl)'}}>{leaderboard[0] ? formatTeamDisplay(leaderboard[0]) : '—'}</div>
             </div>
           </div>
 
           <div className="card">
             <div className="table-wrapper">
-              <table style={{width: '100%', textAlign: 'left', borderCollapse: 'collapse'}}>
+              <table>
                 <thead>
                   <tr>
                     <th>Rank</th>
@@ -138,17 +143,17 @@ const LeaderboardView = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {leaderboard.map((e) => {
+                  {leaderboard.map(e => {
                     const rankClass = e.rank <= 3 ? `rank-${e.rank}` : '';
                     return (
-                      <tr key={e.team_id} className={rankClass} style={{cursor: 'pointer'}}>
+                      <tr key={e.team_id} className={rankClass} style={{cursor:'pointer'}}>
                         <td>{e.rank}</td>
-                        <td><strong>{e.team_name || e.team_code}</strong></td>
-                        <td><span className="score-num" style={{color: e.phase1_score >= 48 ? 'var(--color-status-success)' : 'inherit'}}>{e.phase1_score.toFixed(1)}</span></td>
-                        <td><span className="score-num">{e.technical_score.toFixed(1)}</span></td>
-                        <td><span className="score-num">{e.presentation_score.toFixed(1)}</span></td>
-                        <td><strong className="score-num" style={{fontSize: 'var(--text-lg)'}}>{e.final_score.toFixed(1)}</strong></td>
-                        <td>{getRankBadge(e.rank)}</td>
+                        <td><strong>{formatTeamDisplay(e)}</strong></td>
+                        <td><span className={`score-num ${scoreColor(e.phase1_score, 60)}`}>{fmt1(e.phase1_score)}</span></td>
+                        <td><span className={`score-num ${scoreColor(e.technical_score, 20)}`}>{fmt1(e.technical_score)}</span></td>
+                        <td><span className={`score-num ${scoreColor(e.presentation_score, 20)}`}>{fmt1(e.presentation_score)}</span></td>
+                        <td><strong className="score-num" style={{fontSize:'var(--text-lg)'}}>{fmt1(e.final_score)}</strong></td>
+                        <td>{rankBadge(e.rank)}</td>
                       </tr>
                     );
                   })}

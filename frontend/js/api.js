@@ -52,6 +52,7 @@ const TeamService = {
   getMyTeam: () => Api.get('/teams/my-team'),
   updateMyTeam: (data) => Api.put('/teams/my-team', data),
   addMember: (data) => Api.post('/teams/my-team/members', data),
+  updateMember: (id, data) => Api.put(`/teams/my-team/members/${id}`, data),
   removeMember: (id) => Api.delete(`/teams/my-team/members/${id}`),
   listTeams: () => Api.get('/teams'),
   createTeam: (data) => Api.post('/teams', data),

@@ -137,12 +137,10 @@ async function showOrgTeamDetail(teamId) {
       <tr>
         <td>${m.name}</td>
         <td>${m.employee_id || '—'}</td>
-        ${team.is_csv_managed ? '' : `
-          <td style="text-align:right">
-            <button class="btn btn-ghost btn-sm" onclick="showOrgEditMemberForm('${team.id}', '${m.id}', '${m.name.replace(/'/g, "\\'")}', '${(m.employee_id || '').replace(/'/g, "\\'")}')" title="Edit Member">✏️</button>
-            <button class="btn btn-ghost btn-sm" onclick="removeOrgMember('${team.id}', '${m.id}', '${m.name.replace(/'/g, "\\'")}')" title="Remove Member">🗑️</button>
-          </td>
-        `}
+        <td style="text-align:right">
+          <button class="btn btn-ghost btn-sm" onclick="showOrgEditMemberForm('${team.id}', '${m.id}', '${m.name.replace(/'/g, "\\'")}', '${(m.employee_id || '').replace(/'/g, "\\'")}')" title="Edit Member">✏️</button>
+          <button class="btn btn-ghost btn-sm" onclick="removeOrgMember('${team.id}', '${m.id}', '${m.name.replace(/'/g, "\\'")}')" title="Remove Member">🗑️</button>
+        </td>
       </tr>
     `).join('');
 
@@ -176,7 +174,7 @@ async function showOrgTeamDetail(teamId) {
 
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-sm)">
             <h4 style="font-family:var(--font-display);font-size:var(--text-base);text-transform:uppercase;color:var(--color-text-muted);margin:0">Members</h4>
-            ${team.is_csv_managed ? '<span class="badge badge-info">CSV Managed</span>' : `<button class="btn btn-primary btn-sm" onclick="showOrgAddMemberForm('${team.id}')">+ Add Member</button>`}
+            <button class="btn btn-primary btn-sm" onclick="showOrgAddMemberForm('${team.id}')">+ Add Member</button>
           </div>
 
           <div class="table-wrapper">
@@ -185,10 +183,10 @@ async function showOrgTeamDetail(teamId) {
                 <tr>
                   <th>Name</th>
                   <th>Employee ID</th>
-                  ${team.is_csv_managed ? '' : '<th style="text-align:right;width:80px"></th>'}
+                  <th style="text-align:right;width:80px"></th>
                 </tr>
               </thead>
-              <tbody>${members || `<tr><td colspan="${team.is_csv_managed ? 2 : 3}" style="text-align:center;color:var(--color-text-muted)">No members</td></tr>`}</tbody>
+              <tbody>${members || `<tr><td colspan="3" style="text-align:center;color:var(--color-text-muted)">No members</td></tr>`}</tbody>
             </table>
           </div>
           <div style="display:flex;gap:var(--space-sm);margin-top:var(--space-lg);justify-content:flex-end">
@@ -303,48 +301,108 @@ async function editTeamDetail(teamId) {
     const currentName = team.team_name || team.name;
     const currentLeader = team.team_leader || team.team_leader_name || '';
 
-    const view = document.getElementById('team-detail-view');
-    if (!view) return;
+    window._editTeamId = teamId;
+    window._editTeamMembers = JSON.parse(JSON.stringify(team.members || []));
 
-    view.innerHTML = `
-      <div style="display:flex;align-items:center;gap:var(--space-md);margin-bottom:var(--space-lg)">
-        ${Utils.teamBadge(currentName, 56)}
-        <div>
-          <h3 style="font-family:var(--font-display);font-size:var(--text-xl)">Edit Team</h3>
-        </div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:var(--space-md)">
-        <label>
-          <span style="display:block;margin-bottom:var(--space-xs);font-size:var(--text-sm);color:var(--color-text-muted)">Team Code</span>
-          <select id="edit-team-code" class="input" style="width:100%">
-            <option value="A" ${currentCode === 'A' ? 'selected' : ''}>A</option>
-            <option value="B" ${currentCode === 'B' ? 'selected' : ''}>B</option>
-            <option value="C" ${currentCode === 'C' ? 'selected' : ''}>C</option>
-            <option value="D" ${currentCode === 'D' ? 'selected' : ''}>D</option>
-            <option value="E" ${currentCode === 'E' ? 'selected' : ''}>E</option>
-          </select>
-        </label>
-        <label>
-          <span style="display:block;margin-bottom:var(--space-xs);font-size:var(--text-sm);color:var(--color-text-muted)">Team Name</span>
-          <input id="edit-team-name" class="input" type="text" value="${currentName}" style="width:100%">
-        </label>
-        <label>
-          <span style="display:block;margin-bottom:var(--space-xs);font-size:var(--text-sm);color:var(--color-text-muted)">Team Leader</span>
-          <input id="edit-team-leader" class="input" type="text" value="${currentLeader}" style="width:100%">
-        </label>
-        <label style="display:flex;align-items:center;gap:var(--space-sm)">
-          <input id="edit-team-active" type="checkbox" ${team.is_active ? 'checked' : ''}>
-          <span style="font-size:var(--text-sm)">Active</span>
-        </label>
-      </div>
-      <div style="display:flex;gap:var(--space-sm);margin-top:var(--space-lg);justify-content:flex-end">
-        <button class="btn btn-secondary" onclick="showOrgTeamDetail('${teamId}')">Cancel</button>
-        <button class="btn btn-primary" onclick="saveTeamEdit('${teamId}')">Save Changes</button>
-      </div>
-    `;
+    renderEditTeamModal(teamId, currentCode, currentName, currentLeader, team.is_active);
   } catch(err) {
     Toast.error(err.message || 'Failed to load team for editing');
   }
+}
+
+function renderEditTeamModal(teamId, currentCode, currentName, currentLeader, isActive) {
+  const view = document.getElementById('team-detail-view');
+  if (!view) return;
+
+  const membersHtml = `
+      <div class="table-wrapper" style="margin-top:var(--space-sm); max-height:200px; overflow-y:auto">
+        <table>
+          <thead>
+            <tr><th>Name</th><th>Employee ID</th><th style="width:40px"></th></tr>
+          </thead>
+          <tbody id="edit-team-members-tbody">
+            ${window._editTeamMembers.map((m, i) => `
+              <tr>
+                <td><input type="text" class="input" style="width:100%" value="${m.name}" onchange="window._editTeamMembers[${i}].name=this.value"></td>
+                <td><input type="text" class="input" style="width:100%" value="${m.employee_id || ''}" onchange="window._editTeamMembers[${i}].employee_id=this.value"></td>
+                <td><button class="btn btn-ghost btn-sm" onclick="removeEditTeamMember(${i})" title="Remove">🗑️</button></td>
+              </tr>
+            `).join('')}
+            <tr>
+              <td><input type="text" class="input" id="new-member-name" style="width:100%" placeholder="New member name"></td>
+              <td><input type="text" class="input" id="new-member-empid" style="width:100%" placeholder="Employee ID"></td>
+              <td><button class="btn btn-primary btn-sm" onclick="addEditTeamMember()">Add</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    `;
+
+  view.innerHTML = `
+    <div style="display:flex;align-items:center;gap:var(--space-md);margin-bottom:var(--space-lg)">
+      ${Utils.teamBadge(currentName, 56)}
+      <div>
+        <h3 style="font-family:var(--font-display);font-size:var(--text-xl)">Edit Team</h3>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:var(--space-md)">
+      <label>
+        <span style="display:block;margin-bottom:var(--space-xs);font-size:var(--text-sm);color:var(--color-text-muted)">Team Code</span>
+        <select id="edit-team-code" class="input" style="width:100%">
+          <option value="A" ${currentCode === 'A' ? 'selected' : ''}>A</option>
+          <option value="B" ${currentCode === 'B' ? 'selected' : ''}>B</option>
+          <option value="C" ${currentCode === 'C' ? 'selected' : ''}>C</option>
+          <option value="D" ${currentCode === 'D' ? 'selected' : ''}>D</option>
+          <option value="E" ${currentCode === 'E' ? 'selected' : ''}>E</option>
+        </select>
+      </label>
+      <label>
+        <span style="display:block;margin-bottom:var(--space-xs);font-size:var(--text-sm);color:var(--color-text-muted)">Team Name</span>
+        <input id="edit-team-name" class="input" type="text" value="${currentName}" style="width:100%">
+      </label>
+      <label>
+        <span style="display:block;margin-bottom:var(--space-xs);font-size:var(--text-sm);color:var(--color-text-muted)">Team Leader</span>
+        <input id="edit-team-leader" class="input" type="text" value="${currentLeader}" style="width:100%">
+      </label>
+      <label style="display:flex;align-items:center;gap:var(--space-sm)">
+        <input id="edit-team-active" type="checkbox" ${isActive ? 'checked' : ''}>
+        <span style="font-size:var(--text-sm)">Active</span>
+      </label>
+      
+      <div style="margin-top:var(--space-md)">
+        <h4 style="font-family:var(--font-display);font-size:var(--text-base);margin:0">Team Members</h4>
+        ${membersHtml}
+      </div>
+    </div>
+    <div style="display:flex;gap:var(--space-sm);margin-top:var(--space-lg);justify-content:flex-end">
+      <button class="btn btn-secondary" onclick="showOrgTeamDetail('${teamId}')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTeamEdit('${teamId}')">Save Changes</button>
+    </div>
+  `;
+}
+
+function addEditTeamMember() {
+  const nameEl = document.getElementById('new-member-name');
+  const empIdEl = document.getElementById('new-member-empid');
+  const name = nameEl.value.trim();
+  const empId = empIdEl.value.trim() || null;
+  if (!name) { Toast.error('Name is required'); return; }
+  window._editTeamMembers.push({ id: null, name, employee_id: empId });
+  
+  const currentCode = document.getElementById('edit-team-code').value;
+  const currentName = document.getElementById('edit-team-name').value;
+  const currentLeader = document.getElementById('edit-team-leader').value;
+  const isActive = document.getElementById('edit-team-active').checked;
+  renderEditTeamModal(window._editTeamId, currentCode, currentName, currentLeader, isActive);
+}
+
+function removeEditTeamMember(index) {
+  window._editTeamMembers.splice(index, 1);
+  const currentCode = document.getElementById('edit-team-code').value;
+  const currentName = document.getElementById('edit-team-name').value;
+  const currentLeader = document.getElementById('edit-team-leader').value;
+  const isActive = document.getElementById('edit-team-active').checked;
+  renderEditTeamModal(window._editTeamId, currentCode, currentName, currentLeader, isActive);
 }
 
 async function saveTeamEdit(teamId) {
@@ -356,14 +414,22 @@ async function saveTeamEdit(teamId) {
   if (!teamCode) { Toast.error('Please select a team code'); return; }
   if (!teamName) { Toast.error('Please enter a team name'); return; }
 
+  const payload = {
+    team_code: teamCode,
+    name: teamName,
+    team_leader_name: teamLeader || '',
+    is_active: isActive,
+  };
+
+  payload.members = window._editTeamMembers.map(m => ({
+    id: m.id,
+    name: m.name,
+    employee_id: m.employee_id
+  }));
+
   try {
     Toast.info('Saving changes...');
-    await TeamService.updateTeam(teamId, {
-      team_code: teamCode,
-      name: teamName,
-      team_leader_name: teamLeader || '',
-      is_active: isActive,
-    });
+    await TeamService.updateTeam(teamId, payload);
     Toast.success('Team updated successfully');
     await showOrgTeamDetail(teamId);
     await loadOrgTeams();

@@ -1,11 +1,30 @@
 import React, { useState } from 'react';
 import { MatchService } from '../../api/matchService';
+import { PredictionService } from '../../api/predictionService';
+import { TeamService } from '../../api/teamService';
+import { useAuth } from '../../contexts/AuthContext';
 
 const MatchDetailModal = ({ match, isOpen, onClose, onMatchUpdated, onEnterResult }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [scheduledAt, setScheduledAt] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  
+  const { isOrganizer, isTeamLeader } = useAuth();
+  const [predictions, setPredictions] = useState([]);
+  const [teams, setTeams] = useState([]);
+  const [jsonView, setJsonView] = useState(null);
+
+  React.useEffect(() => {
+    if (isOpen && match) {
+      PredictionService.listPredictions().then(res => {
+        setPredictions((Array.isArray(res) ? res : (res.predictions || [res])).filter(p => p.match_id === match.id));
+      }).catch(() => {});
+      TeamService.listTeams().then(res => {
+        setTeams(res);
+      }).catch(() => {});
+    }
+  }, [isOpen, match]);
 
   if (!isOpen || !match) return null;
 
@@ -62,6 +81,19 @@ const MatchDetailModal = ({ match, isOpen, onClose, onMatchUpdated, onEnterResul
     }
   };
 
+  const teamBadge = (name, size) => {
+    const initial = (name || '?').charAt(0).toUpperCase();
+    return (
+      <div style={{ width: size, height: size, borderRadius: 'var(--radius-round)', background: 'var(--color-surface-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: Math.round(size * 0.45), fontWeight: 700, color: 'var(--color-text-primary)', flexShrink: 0 }}>
+        {initial}
+      </div>
+    );
+  };
+
+  const predByTeamId = {};
+  predictions.forEach(p => { predByTeamId[p.team_id] = p; });
+  const predCount = predictions.length;
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-container" onClick={e => e.stopPropagation()} style={{ minWidth: '500px' }}>
@@ -98,29 +130,105 @@ const MatchDetailModal = ({ match, isOpen, onClose, onMatchUpdated, onEnterResul
           </div>
 
           <h4 style={{fontFamily: 'var(--font-display)', fontSize: 'var(--text-base)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 'var(--space-md)'}}>Team Predictions</h4>
-          <div className="alert alert-info" style={{marginBottom: 'var(--space-lg)'}}>
-            Predictions feature is disabled for Phase 4 migration. Coming soon!
+          
+          <div className="table-wrapper" style={{marginBottom: 'var(--space-lg)'}}>
+            <table style={{width: '100%'}}>
+              <thead>
+                <tr>
+                  <th>Team</th>
+                  <th>Status</th>
+                  <th>Submitted</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {teams.length === 0 && predictions.length === 0 ? (
+                  <tr><td colSpan={4} style={{textAlign:'center',color:'var(--color-text-muted)',padding:'var(--space-md)'}}>Loading...</td></tr>
+                ) : teams.length === 0 ? (
+                  predictions.map((pred, i) => (
+                    <tr key={pred.id} style={{animation: `fadeIn ${300 + i * 60}ms var(--ease-out) both`}}>
+                      <td style={{display: 'flex', alignItems: 'center', gap: 'var(--space-sm)'}}>
+                        {teamBadge(pred.team_name || pred.team_code || '?', 28)}
+                        <span style={{fontWeight: 600}}>{pred.team_name || pred.team_code || pred.team_id}</span>
+                      </td>
+                      <td><span className="badge badge-success">✓ Submitted</span></td>
+                      <td style={{fontFamily: 'var(--font-data)', fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)'}}>
+                        {pred.submitted_at ? new Date(pred.submitted_at).toLocaleDateString() : '—'}
+                      </td>
+                      <td><button className="btn btn-ghost btn-sm" onClick={() => setJsonView(pred)}>View</button></td>
+                    </tr>
+                  ))
+                ) : (
+                  teams.map((teamObj, i) => {
+                    const pred = predByTeamId[teamObj.id];
+                    const display = teamObj.team_id ? `${teamObj.team_id} – ${teamObj.name}` : teamObj.name;
+                    const submitted = !!pred;
+                    return (
+                      <tr key={teamObj.id} style={{animation: `fadeIn ${300 + i * 60}ms var(--ease-out) both`}}>
+                        <td style={{display: 'flex', alignItems: 'center', gap: 'var(--space-sm)'}}>
+                          {teamBadge(teamObj.name, 28)}
+                          <span style={{fontWeight: 600}}>{display}</span>
+                        </td>
+                        <td>{submitted ? <span className="badge badge-success">✓ Submitted</span> : <span className="badge badge-error">✗ Not submitted</span>}</td>
+                        <td style={{fontFamily: 'var(--font-data)', fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)'}}>
+                          {submitted && pred.submitted_at ? new Date(pred.submitted_at).toLocaleDateString() : '—'}
+                        </td>
+                        <td>
+                          {submitted && <button className="btn btn-ghost btn-sm" onClick={() => setJsonView(pred)}>View</button>}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div style={{marginBottom: 'var(--space-lg)'}}>
+            <div className="progress-bar"><div className="progress-fill" style={{width: `${(predCount / 5) * 100}%`}}></div></div>
+            <div style={{fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)', marginTop: '4px'}}>{predCount} of 5 teams submitted</div>
           </div>
 
           <div style={{display: 'flex', gap: 'var(--space-sm)'}}>
+            <button className="btn btn-ghost" style={{flex: 1}} onClick={() => { onClose(); window.location.hash = '#/predictions'; }}>📋 Predictions Log</button>
+            
             {!isEditing ? (
-              <button className="btn btn-secondary" style={{flex: 1}} onClick={handleStartEdit}>✏️ Edit Time</button>
+              isOrganizer && <button className="btn btn-secondary" style={{flex: 1}} onClick={handleStartEdit}>✏️ Edit Time</button>
             ) : (
               <button className={`btn btn-secondary ${isSubmitting ? 'loading' : ''}`} style={{flex: 1}} disabled={isSubmitting} onClick={handleSaveEdit}>
                 {isSubmitting ? 'Saving...' : '💾 Save Time'}
               </button>
             )}
             
-            {(status === 'scheduled' || status === 'frozen') && (
+            {(status === 'scheduled' || status === 'frozen') && isOrganizer && (
               <button className="btn btn-primary" style={{flex: 1}} onClick={() => { onClose(); onEnterResult(); }}>📋 Enter Result</button>
             )}
 
-            {(status === 'completed' || status === 'scored' || status === 'result_entered') && (
+            {(status === 'completed' || status === 'scored' || status === 'result_entered') && isOrganizer && (
               <button className="btn btn-primary" style={{flex: 1}} onClick={() => { onClose(); window.location.hash = '#/scoring?match=' + match.id; }}>⚡ Calculate Scores</button>
             )}
           </div>
         </div>
       </div>
+
+      {jsonView && (
+        <div className="modal-overlay" style={{zIndex: 1100}} onClick={() => setJsonView(null)}>
+          <div className="modal-container" onClick={e => e.stopPropagation()} style={{minWidth: '600px'}}>
+            <div className="modal-header">
+              <h3 className="modal-title">Prediction Detail — {jsonView.team_name || jsonView.team_id}</h3>
+              <button className="modal-close" onClick={() => setJsonView(null)}>&times;</button>
+            </div>
+            <div className="modal-body">
+              <pre style={{background: 'var(--color-surface-secondary)', padding: 'var(--space-md)', borderRadius: 'var(--radius-md)', overflowX: 'auto', fontFamily: 'monospace', fontSize: 'var(--text-xs)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)'}}>
+                {JSON.stringify(jsonView, null, 2)}
+              </pre>
+              <div className="modal-footer" style={{marginTop: 'var(--space-lg)'}}>
+                <button className="btn btn-primary" onClick={() => setJsonView(null)}>Close</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

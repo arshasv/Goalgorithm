@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user
 from app.database.session import get_db
 from app.models.enums import UserRole
+from app.models.match import MatchModel
 from app.models.prediction import PredictionModel
 from app.models.team import TeamModel
 from app.models.user import UserModel
@@ -21,7 +22,14 @@ def list_predictions(
     teams = db.query(TeamModel).all()
     team_by_uuid = {str(t.id): t for t in teams}
     team_by_letter = {t.team_id: t for t in teams}
-    if current_user.role == UserRole.ORGANIZER:
+
+    # Build match lookup: match_id (string like "M32") → readable label
+    matches = db.query(MatchModel).all()
+    match_by_id = {str(m.id): m for m in matches}
+    # Also index by match_number string for legacy IDs
+    match_by_num = {f"M{m.match_number}": m for m in matches if m.match_number}
+
+    if str(current_user.role).upper() == UserRole.ORGANIZER.value:
         predictions = db.query(PredictionModel).all()
     else:
         team = db.query(TeamModel).filter(TeamModel.user_id == current_user.id).first()
@@ -33,15 +41,25 @@ def list_predictions(
             )
         else:
             predictions = []
+
     result = []
     for p in predictions:
         tm = team_by_uuid.get(str(p.team_id)) or team_by_letter.get(str(p.team_id))
+        # Resolve match to human-readable name
+        match_obj = match_by_id.get(str(p.match_id)) or match_by_num.get(str(p.match_id))
+        if match_obj:
+            match_label = f"M{match_obj.match_number}: {match_obj.home_team_name} vs {match_obj.away_team_name}"
+        else:
+            match_label = str(p.match_id)
+
         result.append({
             "id": str(p.id),
             "team_id": str(p.team_id),
             "team_code": tm.team_id if tm else '',
             "team_name": tm.name if tm else '',
+            "team_leader_name": tm.team_leader_name if tm else '',
             "match_id": p.match_id,
+            "match_label": match_label,
             "submission_id": p.submission_id,
             "idempotency_key": p.idempotency_key,
             "status": p.status.value if p.status else None,
@@ -76,15 +94,27 @@ def list_predictions(
     return result
 
 
+
 @router.post("/predictions")
 def submit_prediction(
     payload: PredictionSubmission,
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(get_current_user),
 ):
-    team = db.query(TeamModel).filter(TeamModel.user_id == current_user.id).first()
-    if not team:
-        raise HTTPException(status_code=400, detail="Team not found for current user")
+    if str(current_user.role).upper() == UserRole.ORGANIZER.value:
+        import uuid
+        try:
+            team_uuid = uuid.UUID(payload.team_id)
+            team = db.query(TeamModel).filter(TeamModel.id == team_uuid).first()
+        except ValueError:
+            team = db.query(TeamModel).filter(TeamModel.team_id == payload.team_id).first()
+        if not team:
+            raise HTTPException(status_code=400, detail=f"Team not found for given team_id: {payload.team_id}")
+    else:
+        team = db.query(TeamModel).filter(TeamModel.user_id == current_user.id).first()
+        if not team:
+            raise HTTPException(status_code=400, detail="Team not found for current user")
+            
     payload.team_id = str(team.id)
     service = PredictionService(db)
     return service.save_prediction(payload.model_dump())

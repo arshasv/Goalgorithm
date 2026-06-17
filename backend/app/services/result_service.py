@@ -34,3 +34,27 @@ class ResultService:
             "status": "accepted",
             "match_id": actual_result.match_id,
         }
+
+    def get_by_match(self, match_id: str):
+        result = self.db.query(ActualResultModel).filter(
+            ActualResultModel.match_id == match_id
+        ).first()
+        if not result:
+            return None
+        return {
+            "match_id": result.match_id,
+            "actual_winner": result.actual_winner.value if result.actual_winner else None,
+            "final_score": {
+                "home_team_goals": result.actual_home_goals,
+                "away_team_goals": result.actual_away_goals,
+            },
+            "goal_scorers": result.goal_scorers or {"home": [], "away": []},
+            "player_results": [
+                {
+                    "player_id": p.player_id,
+                    "player_name": p.player_name,
+                    "actual_goals": p.actual_goals,
+                }
+                for p in result.player_actuals
+            ],
+        }

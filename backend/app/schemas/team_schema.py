@@ -10,7 +10,15 @@ class TeamMemberCreate(BaseModel):
         min_length=1,
         max_length=255
     )
+    employee_id: str | None = None
 
+class TeamMemberUpdate(BaseModel):
+    id: str | None = None
+    name: str = Field(
+        ...,
+        min_length=1,
+        max_length=255
+    )
     employee_id: str | None = None
 
 
@@ -63,8 +71,8 @@ class TeamUpdate(BaseModel):
     )
 
     team_leader_name: str | None = None
-
     is_active: bool | None = None
+    members: list[TeamMemberUpdate] | None = None
 
 
 

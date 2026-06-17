@@ -8,6 +8,7 @@ const EnterResultModal = ({ match, isOpen, onClose, onResultEntered }) => {
   const [awayScorers, setAwayScorers] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [showJsonRef, setShowJsonRef] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -95,8 +96,45 @@ const EnterResultModal = ({ match, isOpen, onClose, onResultEntered }) => {
     }
   };
 
+  const handleJsonUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const content = event.target.result;
+        const data = JSON.parse(content);
+        
+        if (data.match_id && data.match_id !== match.id) {
+          setError(`JSON match_id (${data.match_id}) does not match current match (${match.id}).`);
+          return;
+        }
+
+        const payload = {
+          match_id: match.id,
+          actual_winner: data.actual_winner,
+          final_score: data.final_score,
+          goal_scorers: data.goal_scorers || { home: [], away: [] },
+          player_results: data.player_results || []
+        };
+
+        setIsSubmitting(true);
+        await ResultService.submitActualResult(payload);
+        onResultEntered();
+        onClose();
+      } catch (err) {
+        setError(err.response?.data?.detail || err.message || 'Invalid JSON format');
+        e.target.value = null; // reset input
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
+    reader.readAsText(file);
+  };
+
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <>
+      <div className="modal-overlay" onClick={onClose}>
       <div className="modal-container" onClick={e => e.stopPropagation()} style={{ minWidth: '500px' }}>
         <div className="modal-header">
           <h2 className="modal-title" style={{fontFamily: 'var(--font-display)', fontSize: 'var(--text-lg)'}}>Enter Match Result</h2>
@@ -132,6 +170,18 @@ const EnterResultModal = ({ match, isOpen, onClose, onResultEntered }) => {
               </div>
             </div>
 
+            <div style={{ marginTop: 'var(--space-md)', padding: 'var(--space-md)', background: 'var(--color-surface-secondary)', borderRadius: 'var(--radius-medium)' }}>
+              <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, marginBottom: 'var(--space-xs)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>📁 JSON Upload</div>
+              <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 'var(--space-sm)' }}>
+                Upload the full actual result JSON payload.
+              </div>
+              <div className="form-group">
+                <label className="form-label" style={{ fontSize: 'var(--text-xs)' }}>Upload Result File (.json)</label>
+                <input type="file" className="form-input" accept=".json" onChange={handleJsonUpload} disabled={isSubmitting} style={{ fontSize: 'var(--text-xs)', padding: '6px' }} />
+              </div>
+              <button type="button" className="btn btn-secondary btn-sm" style={{ marginTop: 'var(--space-xs)' }} onClick={() => setShowJsonRef(true)}>📄 View JSON Format</button>
+            </div>
+
             <div className="modal-footer" style={{ display: 'flex', gap: 'var(--space-sm)', marginTop: 'var(--space-lg)', justifyContent: 'flex-end' }}>
               <button type="button" className="btn btn-ghost" onClick={onClose} disabled={isSubmitting}>Cancel</button>
               <button type="submit" className={`btn btn-primary ${isSubmitting ? 'loading' : ''}`} disabled={isSubmitting}>
@@ -143,6 +193,42 @@ const EnterResultModal = ({ match, isOpen, onClose, onResultEntered }) => {
         </div>
       </div>
     </div>
+
+    {showJsonRef && (
+      <div className="modal-overlay" style={{ zIndex: 1100 }} onClick={() => setShowJsonRef(false)}>
+        <div className="modal-container" onClick={e => e.stopPropagation()} style={{ minWidth: '600px' }}>
+          <div className="modal-header">
+            <h3 className="modal-title">JSON Format Reference</h3>
+            <button className="modal-close" onClick={() => setShowJsonRef(false)}>&times;</button>
+          </div>
+          <div className="modal-body">
+            <p style={{ marginBottom: 'var(--space-md)', fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
+              The JSON file must match this schema exactly. <code>goal_scorers</code> arrays must contain exactly as many names as <code>final_score</code> goals.
+            </p>
+            <pre style={{ background: 'var(--color-surface-secondary)', padding: 'var(--space-md)', borderRadius: 'var(--radius-md)', overflowX: 'auto', fontFamily: 'monospace', fontSize: 'var(--text-xs)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}>
+{JSON.stringify({
+  match_id: match?.id || "MATCH_ID",
+  actual_winner: "home | away | draw",
+  final_score: { home_team_goals: 2, away_team_goals: 1 },
+  goal_scorers: {
+    home: ["Player Name 1", "Player Name 2"],
+    away: ["Player Name 3"]
+  },
+  player_results: [
+    { player_id: "P1", player_name: "Player Name 1", actual_goals: 1 },
+    { player_id: "P2", player_name: "Player Name 2", actual_goals: 1 },
+    { player_id: "P3", player_name: "Player Name 3", actual_goals: 1 }
+  ]
+}, null, 2)}
+            </pre>
+            <div className="modal-footer" style={{ marginTop: 'var(--space-lg)' }}>
+              <button className="btn btn-primary" onClick={() => setShowJsonRef(false)}>Got it</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 };
 

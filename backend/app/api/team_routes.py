@@ -30,32 +30,12 @@ router = APIRouter(
 )
 
 
-@router.get("/my-team")
+@router.get("/my-team", response_model=TeamResponse)
 def get_my_team(
     team: TeamModel = Depends(get_current_team),
     db: Session = Depends(get_db),
 ):
-
-    members = (
-        db.query(TeamMemberModel)
-        .filter(
-            TeamMemberModel.team_id == team.id
-        )
-        .all()
-    )
-
-
-    return {
-        "id": str(team.id),
-        "team_id": team.team_id,
-        "name": team.name,
-        "code": team.team_id,
-        "team_leader_name": team.team_leader_name,
-        "registered_at": team.registered_at.isoformat(),
-        "is_active": team.is_active,
-        "is_csv_managed": team.is_csv_managed,
-        "members": members,
-    }
+    return team
 
 
 
@@ -66,21 +46,15 @@ def update_my_team(
     team: TeamModel = Depends(get_current_team),
     db: Session = Depends(get_db),
 ):
-    if current_user.role != UserRole.ORGANIZER:
-        raise HTTPException(status_code=403, detail="Only organizers can update team details.")
-
     if body.name is not None:
 
         team.name = body.name
 
 
     if body.team_leader_name is not None:
-
         team.team_leader_name = body.team_leader_name
 
-
-    if body.is_active is not None:
-
+    if body.is_active is not None and current_user.role == UserRole.ORGANIZER:
         team.is_active = body.is_active
 
 
@@ -102,14 +76,6 @@ def add_member(
     team: TeamModel = Depends(get_current_team),
     db: Session = Depends(get_db),
 ):
-    if current_user.role != UserRole.ORGANIZER:
-        raise HTTPException(status_code=403, detail="Only organizers can add team members.")
-
-    if team.is_csv_managed:
-        raise HTTPException(
-            status_code=400,
-            detail="Manual member addition is locked for this team as its members are managed via CSV."
-        )
 
     member = TeamMemberModel(
         team_id=team.id,
@@ -485,10 +451,36 @@ def update_team(
     if body.is_active is not None:
         team.is_active = body.is_active
 
+    if body.members is not None:
+        
+        # Current members
+        current_members = {str(m.id): m for m in team.members}
+        
+        # Process incoming members
+        incoming_ids = set()
+        for m_data in body.members:
+            if m_data.id and m_data.id in current_members:
+                # Update existing
+                mem = current_members[m_data.id]
+                mem.name = m_data.name
+                mem.employee_id = m_data.employee_id
+                incoming_ids.add(m_data.id)
+            else:
+                # Add new
+                new_mem = TeamMemberModel(
+                    team_id=team.id,
+                    name=m_data.name,
+                    employee_id=m_data.employee_id
+                )
+                db.add(new_mem)
+                
+        # Remove deleted
+        for m_id, mem in current_members.items():
+            if m_id not in incoming_ids:
+                db.delete(mem)
 
     db.commit()
-
-
+    db.refresh(team)
     return {
         "message": "Team updated",
         "team_id": str(team.id),
@@ -502,13 +494,6 @@ def remove_member(
     team: TeamModel = Depends(get_current_team),
     db: Session = Depends(get_db),
 ):
-    if current_user.role != UserRole.ORGANIZER:
-        raise HTTPException(status_code=403, detail="Only organizers can remove team members.")
-    if team.is_csv_managed:
-        raise HTTPException(
-            status_code=400,
-            detail="Manual member removal is locked for this team as its members are managed via CSV."
-        )
 
     import uuid
     try:
@@ -531,6 +516,38 @@ def remove_member(
     db.commit()
 
     return {"message": "Member removed"}
+
+@router.put("/my-team/members/{member_id}")
+def update_member(
+    member_id: str,
+    body: TeamMemberCreate,
+    current_user: UserModel = Depends(get_current_user),
+    team: TeamModel = Depends(get_current_team),
+    db: Session = Depends(get_db),
+):
+
+    import uuid
+    try:
+        member_uuid = uuid.UUID(member_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid UUID format")
+        
+    member = (
+        db.query(TeamMemberModel)
+        .filter(
+            TeamMemberModel.team_id == team.id,
+            TeamMemberModel.id == member_uuid
+        )
+        .first()
+    )
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+        
+    member.name = body.name
+    member.employee_id = body.employee_id
+    db.commit()
+    db.refresh(member)
+    return member
 
 
 @router.get("/{team_id}/members")
@@ -566,11 +583,6 @@ def add_team_member_admin(
     team = db.query(TeamModel).filter(TeamModel.id == team_uuid).first()
     if not team:
         raise HTTPException(status_code=404, detail="Team not found")
-    if team.is_csv_managed:
-        raise HTTPException(
-            status_code=400,
-            detail="Manual member addition is locked for this team as its members are managed via CSV."
-        )
     member = TeamMemberModel(
         team_id=team.id,
         name=body.name,
@@ -598,11 +610,6 @@ def remove_team_member_admin(
     team = db.query(TeamModel).filter(TeamModel.id == team_uuid).first()
     if not team:
         raise HTTPException(status_code=404, detail="Team not found")
-    if team.is_csv_managed:
-        raise HTTPException(
-            status_code=400,
-            detail="Manual member removal is locked for this team as its members are managed via CSV."
-        )
     member = db.query(TeamMemberModel).filter(
         TeamMemberModel.team_id == team.id,
         TeamMemberModel.id == member_uuid
@@ -631,11 +638,6 @@ def update_team_member_admin(
     team = db.query(TeamModel).filter(TeamModel.id == team_uuid).first()
     if not team:
         raise HTTPException(status_code=404, detail="Team not found")
-    if team.is_csv_managed:
-        raise HTTPException(
-            status_code=400,
-            detail="Manual member edit is locked for this team as its members are managed via CSV."
-        )
     member = db.query(TeamMemberModel).filter(
         TeamMemberModel.team_id == team.id,
         TeamMemberModel.id == member_uuid

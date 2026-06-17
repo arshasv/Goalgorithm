@@ -34,25 +34,46 @@ def get_leaderboard(db: Session = Depends(get_db)):
     teams = db.query(TeamModel).all()
     team_by_uuid = {str(t.id): t for t in teams}
     team_by_letter = {t.team_id: t for t in teams}
-    entries = (
-        db.query(LeaderboardModel)
-        .order_by(LeaderboardModel.rank)
-        .all()
-    )
+    entries = db.query(LeaderboardModel).all()
+    entries_by_team = {str(e.team_id): e for e in entries}
+
     result = []
-    for e in entries:
-        tm = team_by_uuid.get(str(e.team_id)) or team_by_letter.get(str(e.team_id))
-        result.append({
-            "id": str(e.id),
-            "team_id": str(e.team_id),
-            "team_code": tm.team_id if tm else '',
-            "team_name": tm.name if tm else '',
-            "rank": e.rank,
-            "phase1_score": e.phase1_score,
-            "technical_score": e.technical_score,
-            "presentation_score": e.presentation_score,
-            "final_score": e.final_score,
-            "is_final": e.is_final,
-            "generated_at": e.generated_at.isoformat(),
-        })
+    # Assign ranks to all teams. If not calculated, rank is end of the list.
+    for team in teams:
+        e = entries_by_team.get(str(team.id))
+        if e:
+            result.append({
+                "id": str(e.id),
+                "team_id": str(e.team_id),
+                "team_code": team.team_id,
+                "team_name": team.name,
+                "rank": e.rank,
+                "phase1_score": e.phase1_score,
+                "technical_score": e.technical_score,
+                "presentation_score": e.presentation_score,
+                "final_score": e.final_score,
+                "is_final": e.is_final,
+                "generated_at": e.generated_at.isoformat(),
+            })
+        else:
+            result.append({
+                "id": f"dummy-{team.id}",
+                "team_id": str(team.id),
+                "team_code": team.team_id,
+                "team_name": team.name,
+                "rank": 999,
+                "phase1_score": 0.0,
+                "technical_score": 0.0,
+                "presentation_score": 0.0,
+                "final_score": 0.0,
+                "is_final": False,
+                "generated_at": None,
+            })
+    
+    result.sort(key=lambda x: (-x["final_score"], x["team_name"]))
+    # Recalculate rank based on sort just to be clean for uncalculated teams
+    for i, res in enumerate(result):
+        if res["rank"] == 999 or res["rank"] == 0:
+            res["rank"] = i + 1
+
     return result

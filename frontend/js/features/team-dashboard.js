@@ -146,6 +146,7 @@ function renderTDProfile(container) {
     <div class="card" style="max-width:600px">
       <div class="card-header">
         <div class="card-title">${Utils.teamBadge(_tdTeam.name, 40)} ${Utils.formatTeamDisplay(_tdTeam)}</div>
+        <button class="btn btn-secondary btn-sm" onclick="showEditMyTeamModal()">✏️ Edit Team</button>
       </div>
       <div style="padding:var(--space-lg);display:flex;flex-direction:column;gap:var(--space-md)">
         <div>
@@ -169,8 +170,44 @@ function renderTDProfile(container) {
   `;
 }
 
-async function saveTeamProfile() {
-  Toast.error('Editing team profile is restricted to organizers.');
+function showEditMyTeamModal() {
+  if (!_tdTeam) return;
+  Modal.show(`
+    <div style="min-width:400px">
+      <h3 style="font-family:var(--font-display);font-size:var(--text-lg);margin-bottom:var(--space-md)">Edit Team</h3>
+      <div style="display:flex;flex-direction:column;gap:var(--space-md)">
+        <label>
+          <span style="display:block;margin-bottom:var(--space-xs);font-size:var(--text-sm);color:var(--color-text-muted)">Team Name</span>
+          <input id="edit-my-team-name" class="input" type="text" value="${_tdTeam.name || ''}" style="width:100%">
+        </label>
+        <label>
+          <span style="display:block;margin-bottom:var(--space-xs);font-size:var(--text-sm);color:var(--color-text-muted)">Team Leader</span>
+          <input id="edit-my-team-leader" class="input" type="text" value="${_tdTeam.team_leader_name || ''}" style="width:100%">
+        </label>
+      </div>
+      <div style="display:flex;gap:var(--space-sm);margin-top:var(--space-lg);justify-content:flex-end">
+        <button class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
+        <button class="btn btn-primary" onclick="submitEditMyTeam()">Save Changes</button>
+      </div>
+    </div>
+  `, 'Edit Team');
+}
+
+async function submitEditMyTeam() {
+  const name = document.getElementById('edit-my-team-name').value.trim();
+  const leader = document.getElementById('edit-my-team-leader').value.trim();
+  
+  if (!name) { Toast.error('Team name is required'); return; }
+  
+  try {
+    Toast.info('Saving changes...');
+    await TeamService.updateMyTeam({ name: name, team_leader_name: leader });
+    Toast.success('Team updated successfully');
+    Modal.close();
+    await loadTeamDashboard();
+  } catch (err) {
+    Toast.error(err.message || 'Failed to update team');
+  }
 }
 
 function renderTDMembers(container) {
@@ -179,21 +216,23 @@ function renderTDMembers(container) {
     return;
   }
   const members = _tdTeam.members || [];
-  const isCsvManaged = _tdTeam.is_csv_managed || false;
-  const canManage = Auth.isOrganizer() && !isCsvManaged;
+  const canManage = true;
 
   let rows = members.map((m, i) => `
     <tr>
       <td>${m.name}</td>
       <td>${m.employee_id || '—'}</td>
-      ${canManage ? `<td><button class="btn btn-danger btn-sm" onclick="removeMember('${m.id}')">Remove</button></td>` : ''}
+      ${canManage ? `<td style="text-align:right">
+        <button class="btn btn-ghost btn-sm" onclick="showEditMemberForm('${m.id}', '${m.name.replace(/'/g, "\\'")}', '${(m.employee_id || '').replace(/'/g, "\\'")}')" title="Edit Member">✏️</button>
+        <button class="btn btn-ghost btn-sm" onclick="removeMember('${m.id}')" title="Remove Member">🗑️</button>
+      </td>` : ''}
     </tr>
   `).join('');
 
   container.innerHTML = `
-    <div class="card">
+    <div class="card" id="td-members-card">
       <div class="card-header">
-        <div class="card-title">Team Members ${isCsvManaged ? '<span class="badge badge-info" style="margin-left:var(--space-sm)">CSV Managed</span>' : ''}</div>
+        <div class="card-title">Team Members</div>
         ${canManage ? '<button class="btn btn-primary btn-sm" onclick="showAddMemberForm()">+ Add Member</button>' : ''}
       </div>
       <div class="table-wrapper" style="margin:var(--space-md)">
@@ -202,20 +241,15 @@ function renderTDMembers(container) {
             <tr>
               <th>Name</th>
               <th>Employee ID</th>
-              ${canManage ? '<th></th>' : ''}
+              ${canManage ? '<th style="text-align:right;width:100px"></th>' : ''}
             </tr>
           </thead>
           <tbody>${rows || `<tr><td colspan="${canManage ? 3 : 2}" style="text-align:center;color:var(--color-text-muted)">No members added yet</td></tr>`}</tbody>
         </table>
       </div>
     </div>
-    <div id="add-member-form" style="display:none;margin-top:var(--space-md)">
-      <style>
-        .input-error { border-color: var(--color-status-error) !important; }
-        .input-valid { border-color: var(--color-status-success) !important; }
-        .field-error { font-size: var(--text-xs); color: var(--color-status-error); margin-top: 4px; display: none; }
-      </style>
-    </div>
+    <div id="add-member-form" style="display:none;margin-top:var(--space-md)"></div>
+    <div id="edit-member-form" style="display:none;margin-top:var(--space-md)"></div>
   `;
 }
 
@@ -282,7 +316,43 @@ async function submitAddMember() {
    } catch(err) {
      Toast.error(err.message || 'Failed to add member');
    }
- }
+}
+
+function showEditMemberForm(id, name, employeeId) {
+   document.getElementById('add-member-form').style.display = 'none';
+   const el = document.getElementById('edit-member-form');
+   if (!el) return;
+   el.style.display = 'block';
+   el.innerHTML = `
+     <div class="card" style="max-width:500px">
+       <div class="card-header"><div class="card-title">Edit Team Member</div></div>
+       <div style="padding:var(--space-lg)">
+         <div class="form-group"><label class="form-label">Name *</label><input class="form-input" id="em-name" value="${name}"></div>
+         <div class="form-group"><label class="form-label">Employee ID</label><input class="form-input" id="em-employee-id" value="${employeeId}"></div>
+         <button class="btn btn-primary" id="em-submit-btn" onclick="submitEditMember('${id}')">Save Changes</button>
+         <button class="btn btn-ghost" onclick="document.getElementById('edit-member-form').style.display='none'">Cancel</button>
+       </div>
+     </div>
+   `;
+   // Scroll into view
+   el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+async function submitEditMember(id) {
+   const name = document.getElementById('em-name')?.value.trim();
+   if (!name) { Toast.error('Name is required'); return; }
+   try {
+     const member = await TeamService.updateMember(id, {
+       name,
+       employee_id: document.getElementById('em-employee-id')?.value.trim() || null,
+     });
+     Toast.success('Member details updated');
+     document.getElementById('edit-member-form').style.display = 'none';
+     await loadTeamDashboard();
+   } catch(err) {
+     Toast.error(err.message || 'Failed to update member');
+   }
+}
 
 async function removeMember(id) {
   Modal.confirm('Remove this team member?', async () => {
