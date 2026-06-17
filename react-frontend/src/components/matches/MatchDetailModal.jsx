@@ -114,6 +114,10 @@ const MatchDetailModal = ({ match, isOpen, onClose, onMatchUpdated, onEnterResul
             {(status === 'scheduled' || status === 'frozen') && (
               <button className="btn btn-primary" style={{flex: 1}} onClick={() => { onClose(); onEnterResult(); }}>📋 Enter Result</button>
             )}
+
+            {(status === 'completed' || status === 'scored' || status === 'result_entered') && (
+              <button className="btn btn-primary" style={{flex: 1}} onClick={() => { onClose(); window.location.hash = '#/scoring?match=' + match.id; }}>⚡ Calculate Scores</button>
+            )}
           </div>
         </div>
       </div>

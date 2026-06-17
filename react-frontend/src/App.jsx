@@ -8,6 +8,7 @@ import OrganizerDashboard from './pages/dashboard/OrganizerDashboard';
 import TeamLeaderDashboard from './pages/dashboard/TeamLeaderDashboard';
 import TeamsView from './pages/teams/TeamsView';
 import MatchesView from './pages/matches/MatchesView';
+import ScoringView from './pages/scoring/ScoringView';
 
 const PrivateRoute = ({ element, roleRequired }) => {
   const { isAuthenticated, user, loading } = useAuth();
@@ -65,7 +66,12 @@ const App = () => {
             
             {/* Placeholders for upcoming feature migrations */}
             <Route path="/predictions" element={<div>Predictions Feature Placeholder</div>} />
-            <Route path="/scoring" element={<div>Scoring Feature Placeholder</div>} />
+            
+            <Route 
+              path="/scoring" 
+              element={<PrivateRoute element={<ScoringView />} roleRequired="ORGANIZER" />} 
+            />
+            
             <Route path="/leaderboard" element={<div>Leaderboard Feature Placeholder</div>} />
           </Route>
         </Routes>
