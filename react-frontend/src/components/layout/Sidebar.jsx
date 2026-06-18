@@ -95,9 +95,6 @@ const Sidebar = () => {
               <a className={isActive('leaderboard')} data-page="leaderboard" onClick={() => nav('leaderboard')}>
                 <span className="nav-icon">🏆</span><span className="nav-label">Leaderboard</span>
               </a>
-              <a className={isActive('match-results')} data-page="match-results" onClick={() => nav('match-results')}>
-                <span className="nav-icon">📊</span><span className="nav-label">Final Scores</span>
-              </a>
             </div>
           </>
         )}

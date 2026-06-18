@@ -10,7 +10,7 @@ Full-stack tournament scoring platform for evaluating AI match prediction teams.
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│                   Frontend (Vanilla JS)               │
+│                   Frontend (React SPA)                │
 │  dashboard  teams  matches  predictions  scoring      │
 │  leaderboard  analytics  technical  presentation      │
 │                  Light/Dark Theme                     │
@@ -49,7 +49,7 @@ Full-stack tournament scoring platform for evaluating AI match prediction teams.
 
 | Layer | Technology |
 |---|---|
-| **Frontend** | Vanilla JavaScript (SPA), CSS3 with custom properties, Light/Dark theme |
+| **Frontend** | React 18 (SPA), Vite, React Router DOM, CSS3 custom properties, Light/Dark theme |
 | **Backend** | Python 3.12+, FastAPI, Uvicorn |
 | **Validation** | Pydantic v2 |
 | **ORM** | SQLAlchemy 2.0 |
@@ -122,13 +122,32 @@ Full-stack tournament scoring platform for evaluating AI match prediction teams.
 - **Cross-team comparison** — dropdown-select any team to compare
 
 ### Frontend Features
-- **Single Page Application** — client-side routing via hash-based Router
-- **Organizer Dashboard** — stat cards (teams, predictions, top score), leaderboard preview, recent teams list, quick action buttons
-- **Team Leader Dashboard** — profile management, member list, CSV-managed badge
-- **Light/Dark theme** — GOALGORITHM Executive (light) and GOALGORITHM Night Stadium (dark) with persistent toggle
-- **Responsive grid layout** — card-based UI with staggered animations, skeleton loading states
-- **Toast notifications** — success/error/info feedback for all actions
-- **Modal system** — confirmations, forms, detail views
+- **React Single Page Application** — Vite-powered SPA with `react-router-dom` for client-side routing
+- **Organizer Dashboard** — Stat cards (teams, predictions, top score), leaderboard preview, recent teams list, quick action buttons
+- **Team Leader Dashboard** — Profile management, member list, CSV-managed badge, limited metrics
+- **Light/Dark Mode** — Modern GOALGORITHM themes with a persistent UI toggle natively in React
+- **Responsive Grid Layout** — Card-based UI with staggered animations, robust empty states when data is absent, skeleton loading states
+- **Robust Error Handling** — Catch blocks intercept API errors and display user-friendly contextual alerts
+
+---
+
+## Visibility & Access Control
+
+The platform enforces strict role-based data isolation across both the FastAPI backend and React frontend.
+
+**ORGANIZER:**
+- Full system management access
+- View all teams, match schedules, and rosters
+- Unrestricted access to all prediction logs, score breakdowns, evaluations, and the comprehensive analytics dashboard
+- Can download any team's uploaded model files
+- Control model upload windows and scoring configurations
+
+**TEAM_LEADER:**
+- Manage only their own team's profile and roster
+- Submit their own prediction models and match prediction JSONs
+- **Restricted Scoring View:** Cannot see daily scores, evaluation breakdowns, match prediction metrics of competitors, or analytics
+- Can only view their own team's overall final standing and total score
+- View the general Match schedule to plan predictions
 
 ---
 
@@ -144,62 +163,33 @@ fifa-scoring-system/
 │   ├── app/
 │   │   ├── main.py             ← FastAPI entry point
 │   │   ├── config.py           ← Settings from environment
-│   │   ├── api/                ← HTTP route handlers
-│   │   │   ├── auth_routes.py        ← Register, login, profile
-│   │   │   ├── team_routes.py        ← Teams CRUD, CSV/Excel upload
-│   │   │   ├── prediction_routes.py  ← Prediction submission
-│   │   │   ├── result_routes.py      ← Actual result ingestion
-│   │   │   ├── scoring_routes.py     ← Score calculation triggers
-│   │   │   ├── leaderboard_routes.py ← Leaderboard calculation
-│   │   │   ├── health_routes.py      ← Health check
-│   │   │   └── deps.py              ← Auth dependency injection
+│   │   ├── api/                ← HTTP REST endpoints
 │   │   ├── schemas/            ← Pydantic v2 validation models
 │   │   ├── models/             ← SQLAlchemy ORM models
-│   │   │   ├── user.py, team.py, team_member.py
-│   │   │   ├── match.py, prediction.py, actual_result.py
-│   │   │   ├── score.py, evaluation.py, leaderboard.py
-│   │   │   └── enums.py
 │   │   ├── services/           ← Business logic orchestration
 │   │   ├── scoring_engine/     ← Pure scoring calculations
-│   │   │   ├── base_score/     ← Winner, scoreline, probability, player
-│   │   │   ├── multiplier/     ← Ranking & grade assignment
-│   │   │   ├── normalization/  ← Phase 1 normalizer
-│   │   │   ├── technical_evaluation/
-│   │   │   └── presentation_evaluation/
-│   │   ├── auth/               ← JWT token creation/validation
-│   │   ├── database/           ← Connection, session, Base
-│   │   ├── exceptions/         ← Custom exception classes + handlers
-│   │   └── utils/              ← Email validator, team name utils
+│   │   └── database/           ← Connection, session, Base
 │   ├── alembic/                ← Database migrations
 │   ├── seed.py                 ← Default organizer + teams + matches
 │   ├── requirements.txt
-│   └── tests/                  ← pytest suite (15 test files)
+│   └── tests/                  ← pytest suite
 │
-├── frontend/
-│   ├── index.html              ← SPA entry point
-│   ├── login.html, register.html
-│   ├── css/                    ← style.css, components.css, themes.css
-│   ├── js/
-│   │   ├── app.js              ← Router, module init
-│   │   ├── api.js              ← HTTP client + service layer
-│   │   ├── auth.js             ← Auth utilities
-│   │   ├── theme.js            ← Light/Dark toggle
-│   │   ├── data/mockData.js    ← Demo/mock data
-│   │   └── features/           ← 10 feature modules
-│   │       ├── dashboard.js, team-dashboard.js
-│   │       ├── teams.js, matches.js, predictions.js
-│   │       ├── scoring.js, leaderboard.js, analytics.js
-│   │       ├── technical.js, presentation.js
-│   └── docs/                   ← Frontend documentation
-│
+├── react-frontend/
+│   ├── index.html              ← React SPA entry point
+│   ├── vite.config.js          ← Vite build configuration
+│   ├── package.json            ← NPM dependencies
+│   ├── src/
+│   │   ├── App.jsx             ← React App & Router provider
+│   │   ├── api/                ← Axios instances & API service methods
+│   │   ├── components/         ← Reusable UI components (Layout, Modals, Cards)
+│   │   ├── contexts/           ← React Context providers (AuthContext)
+│   │   ├── pages/              ← Page-level components matching routes
+│   │   └── index.css           ← Global styles and CSS variables
 └── docs/                       ← Backend/project documentation
     ├── TECHNICAL_DOCUMENTATION.md
     ├── TEST_PLAN.md
-    ├── features/               ← 10 feature specification docs
-    ├── api/                    ← API endpoint docs
-    ├── database/               ← Database design docs
-    ├── architecture/           ← Architecture docs
-    └── reviews/                ← FINAL_REVIEW.md
+    ├── architecture/           ← Core system architecture docs
+    └── api/                    ← API endpoint specifications
 ```
 
 ---
@@ -213,119 +203,92 @@ fifa-scoring-system/
 | `/api/v1/auth/me` | GET | Current user profile |
 | `/api/v1/teams` | GET | List all teams |
 | `/api/v1/teams/upload-members-csv` | POST | Upload CSV/Excel roster |
-| `/api/v1/teams/my-team` | GET/PUT | View/update own team |
-| `/api/v1/teams/my-team/members` | POST | Add team member |
-| `/api/v1/teams/my-team/members/{id}` | DELETE | Remove team member |
-| `/api/v1/teams/{team_id}/members` | GET | List team members |
 | `/api/v1/matches` | GET/POST | List/create matches |
 | `/api/v1/matches/upload-csv` | POST | Upload matches CSV schedule |
-| `/api/v1/matches/{match_id}` | PUT/DELETE | Update/delete match |
-| `/api/v1/predictions` | POST | Submit prediction |
-| `/api/v1/actual-results` | POST | Enter match result |
-| `/api/v1/calculate-match-score` | POST | Trigger match scoring |
+| `/api/v1/predictions` | POST/GET | Submit/list predictions (JSON format) |
+| `/api/v1/actual-results` | POST | Enter actual match result |
+| `/api/v1/calculate-match-score` | POST | Trigger match scoring calculation |
 | `/api/v1/technical-score` | POST | Submit technical evaluation |
 | `/api/v1/presentation-score` | POST | Submit presentation scores |
-| `/api/v1/leaderboard/calculate` | POST | Generate leaderboard |
-| `/api/v1/upload-window` | GET/PUT | Manage model upload window |
-| `/api/v1/teams/my-team/model` | POST/GET | Upload/view team model |
-| `/api/v1/admin/models` | GET | List all submitted models |
-| `/api/v1/admin/scoring-config` | GET/PUT | Manage scoring configuration |
-| `/api/v1/health` | GET | Health check |
+| `/api/v1/leaderboard/calculate` | POST | Generate the final ranking leaderboard |
+| `/api/v1/team-leader/model` | POST/GET | Upload/view team model files |
+| `/api/v1/admin/models` | GET | Admin: list and download all submitted models |
+| `/api/v1/admin/scoring-config` | GET/PUT | Manage advanced scoring configuration |
 
-Interactive Swagger docs at `http://localhost:8000/docs`.
+Interactive Swagger docs automatically available at `http://localhost:8000/docs`.
 
 ---
 
 ## Frontend Overview
 
-The frontend is a **vanilla JavaScript SPA** with client-side routing. It communicates with the backend REST API via a centralized HTTP client (`api.js`). All 10 feature pages are registered with a hash-based Router in `app.js`.
+The frontend is a **React Single Page Application** built via Vite, superseding the legacy HTML mockups. It communicates tightly with the PostgreSQL-driven backend via REST APIs and `axios`. No mock data is utilized in the production bundle; everything is rendered dynamically with robust empty-state fallbacks.
 
-**Routes:**
-- `#/dashboard` — Organizer Dashboard (stat cards, leaderboard, quick actions)
-- `#/team-dashboard` — Team Leader Dashboard (profile, members, scores)
-- `#/teams` / `#/org-teams` — Team management with CSV/Excel upload
-- `#/matches` — Match list, prediction submission, result entry
-- `#/predictions` — Predictions log with filters
-- `#/scoring` — Scoring engine with per-team breakdown cards
-- `#/leaderboard` — Full ranked leaderboard with phase scores
-- `#/analytics` — Charts: progression, phase contribution, dimension profile
-- `#/technical` — Technical evaluation form (committee scoring)
-- `#/presentation` — Presentation evaluation form with ranked results
-- `#/scoring-config` — Advanced scoring rule parameters tuning
-- `#/model-submission` — Team leader prediction model upload interface
-- `#/model-management` — Organizer-side hub for model downloads and window control
-
-The frontend includes a **demo mode** (`DEMO_MODE = true`) that falls back to mock data when the backend is unavailable.
+**Primary Routes:**
+- `/dashboard` — Organizer hub (statistics, quick actions)
+- `/team-dashboard` — Team Leader home (profile summary, status)
+- `/matches` — Interactive match scheduling, prediction inputs (Form & JSON), and result logging
+- `/predictions` — Predictions log viewing
+- `/scoring` — The primary scoring engine trigger and results matrix
+- `/leaderboard` — Aggregate standings out of 100 points
+- `/analytics` — Graphical breakdowns of platform-wide trends
+- `/technical` — Phase 2 committee evaluation form
+- `/presentation` — Phase 3 peer presentation form
+- `/submit-predictions` — Secure team file dropzone for `.pkl`, `.onnx`, etc.
+- `/prediction-upload` — Organizer portal to retrieve downloaded models
 
 ---
 
 ## Database Overview
 
-The system uses **SQLAlchemy 2.0 ORM** with **Alembic** for migrations. Development/testing runs on SQLite; production uses PostgreSQL 16.
+The system runs on **SQLAlchemy 2.0 ORM** with **PostgreSQL 16**.
+Data flows seamlessly through a persistent Docker volume, preserving users, teams, predictions, evaluations, and uploaded model artifacts across container lifecycles.
 
-### Key Tables
-
-| Table | Purpose |
-|---|---|
-| `users` | User accounts (organizers, team leaders) |
-| `teams` | Team entries mapping fixed Team IDs to custom Team Names |
-| `team_members` | Roster members (name, employee_id) |
-| `matches` | Match schedule, freeze deadlines |
-| `predictions` | Submitted predictions per team per match |
-| `player_predictions` | Per-player prediction entries |
-| `actual_results` | Actual match outcomes |
-| `scores` | Computed base scores per dimension |
-| `technical_evaluations` | Phase 2 committee scores |
-| `presentation_evaluations` | Phase 3 peer scores |
-| `leaderboard` | Final ranked leaderboard entries |
+### Scoring Data Flow Pipeline
+1. **Team Submissions** — Teams submit match predictions and AI models via the frontend forms/JSON uploads.
+2. **Result Entry** — Organizers input actual real-world results post-match.
+3. **Scoring Engine** — The Organizer triggers `/api/v1/calculate-match-score`, evaluating predictions against actual outcomes using the defined base-score formula logic.
+4. **Evaluations** — Organizers submit Phase 2 & 3 evaluation results.
+5. **Leaderboard Compilation** — Phase 1, Phase 2, and Phase 3 are aggregated and normalized into the overarching `LeaderboardModel`.
+6. **Analytics Rendering** — Frontend queries the final computed states from PostgreSQL to paint accurate analytics, graphs, and the rank-ordered standings.
 
 ---
 
 ## How to Run
 
-### Docker Compose (Recommended)
+### Production / Full Stack (Docker Compose)
 
 ```bash
 docker compose up --build
 ```
+This spawns:
+- **FastAPI backend** on port `8000`
+- **PostgreSQL 16 DB** on port `5433` (backed by volume persistence)
+- **React Frontend SPA** automatically configured inside the environment
 
-This starts:
-- **API server** at `http://localhost:8000`
-- **PostgreSQL 16** on port `5433`
-- Swagger docs at `http://localhost:8000/docs`
+### Local Development
 
-### Backend (Local)
-
+**Backend:**
 ```bash
 cd backend
 pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-The API is available at `http://127.0.0.1:8000/api/v1/` with Swagger at `http://127.0.0.1:8000/docs`.
-
-### Frontend (Local)
-
-Serve the `frontend/` directory with any static server:
-
+**React Frontend:**
 ```bash
-cd frontend
-python3 -m http.server 3000
+cd react-frontend
+npm install
+npm run dev
 ```
 
-Then open `http://localhost:3000` in a browser. The frontend connects to the backend at the URL configured in `js/api.js`.
-
-### Database Seed
-
+### Database Management
+To seed the empty database with foundational `ORGANIZER` accounts and sample match data:
 ```bash
 cd backend
 python seed.py
 ```
 
-Creates the default organizer account (if not already present), base teams, and sample matches.
-
 ### Run Tests
-
 ```bash
 cd backend
 python -m pytest
@@ -333,44 +296,21 @@ python -m pytest
 
 ---
 
-## Default Credentials
-
-Seeded in `backend/seed.py`:
-
-| Role | Username | Email | Password |
-|---|---|---|---|
-| **Organizer** | `admin` | `admin@fifa-scoring.com` | `admin123` |
-
-Team leader accounts are created via the registration endpoint (`POST /api/v1/auth/register`).
-
----
-
 ## The Three-Phase Evaluation Model
 
 ```
-Phase 1: AI Prediction Accuracy          → 60 marks  (Formula-driven, automated)
+Phase 1: AI Prediction Accuracy          → 60 marks  (Automated calculation)
 Phase 2: Technical Implementation        → 20 marks  (Committee scored)
-Phase 3: Cross-Team Peer Presentation    → 20 marks  (Peer graded + multiplier)
+Phase 3: Cross-Team Peer Presentation    → 20 marks  (Peer graded + multipliers)
 ─────────────────────────────────────────────────────────────────────────────
-Total                                    → 100 marks
+Total Maximum Available Final Score      → 100 marks
 ```
-
----
-
-## Key Design Principles
-
-- **Automated Scoring** — Phase 1 is fully formula-driven, no manual intervention
-- **Immutable Predictions** — No updates after match freeze deadline
-- **Reproducibility** — Every score computation is traceable and re-runnable
-- **Separation of Concerns** — Evaluation logic decoupled from participant model code
-- **Strict Input Contracts** — Schema violations result in rejection or score of 0
 
 ---
 
 ## Related Documentation
 
-- [Technical Documentation](docs/TECHNICAL_DOCUMENTATION.md) — Full system docs index
-- [Test Plan](docs/TEST_PLAN.md) — Testing strategy and test cases
-- [Backend Architecture](backend/BACKEND_ARCHITECTURE.md)
-- [Frontend Architecture](frontend/docs/FRONTEND_ARCHITECTURE.md)
+- [Technical Documentation Overview](docs/TECHNICAL_DOCUMENTATION.md)
+- [System Architecture](docs/architecture/system-architecture.md)
+- [React Migration Plan & Notes](docs/architecture/react_migration_plan.md)
 - [Deployment Guide](docs/architecture/DEPLOYMENT.md)

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LeaderboardService } from '../../api/leaderboardService';
 import { TeamService } from '../../api/teamService';
+import { ScoresService } from '../../api/scoresService';
 import { useAuth } from '../../contexts/AuthContext';
 
 const formatTeamDisplay = (e) => {
@@ -18,9 +19,10 @@ const scoreColor = (val, max) => {
 };
 
 const rankBadge = (rank) => {
-  if (rank === 1) return <span className="rank-badge rank-badge-1">🏆</span>;
-  if (rank === 2) return <span className="rank-badge rank-badge-2">🥈</span>;
-  if (rank === 3) return <span className="rank-badge rank-badge-3">🥉</span>;
+  const r = Number(rank);
+  if (r === 1) return <span className="rank-badge rank-badge-1">🏆</span>;
+  if (r === 2) return <span className="rank-badge rank-badge-2">🥈</span>;
+  if (r === 3) return <span className="rank-badge rank-badge-3">🥉</span>;
   return <span className="rank-badge rank-badge-n">#{rank}</span>;
 };
 
@@ -51,14 +53,7 @@ const LeaderboardView = () => {
     setCalculating(true);
     setError('');
     try {
-      const teams = await TeamService.listTeams();
-      const entries = teams.map(t => ({
-        team_id: t.id,
-        phase1_score: 0,
-        technical_score: 0,
-        presentation_score: 0
-      }));
-      await LeaderboardService.calculateLeaderboard(entries);
+      await LeaderboardService.calculateLeaderboard();
       await loadLeaderboard();
     } catch (err) {
       setError(err.response?.data?.detail || err.message || 'Failed to calculate leaderboard');
@@ -91,19 +86,23 @@ const LeaderboardView = () => {
       {error && <div className="alert alert-error" style={{marginBottom:'var(--space-md)'}}>{error}</div>}
 
       {loading ? (
-        <div className="grid-3" style={{marginBottom:'var(--space-xl)'}}>
-          <div className="card stat-card">
-            <div className="stat-label">Total Teams</div>
-            <div className="stat-value" style={{fontFamily:'var(--font-score)',fontSize:'var(--text-4xl)'}}><div className="skeleton skeleton-text" style={{width:'60%'}}></div></div>
-          </div>
-          <div className="card stat-card">
-            <div className="stat-label">Top Score</div>
-            <div className="stat-value" style={{fontFamily:'var(--font-score)',fontSize:'var(--text-4xl)'}}><div className="skeleton skeleton-text" style={{width:'40%'}}></div></div>
-          </div>
-          <div className="card stat-card">
-            <div className="stat-label">Top Team</div>
-            <div className="stat-value" style={{fontFamily:'var(--font-display)',fontSize:'var(--text-xl)'}}><div className="skeleton skeleton-text" style={{width:'50%'}}></div></div>
-          </div>
+        <div>
+          {isOrganizer && (
+            <div className="grid-3" style={{marginBottom:'var(--space-xl)'}}>
+              <div className="card stat-card">
+                <div className="stat-label">Total Teams</div>
+                <div className="stat-value" style={{fontFamily:'var(--font-score)',fontSize:'var(--text-4xl)'}}><div className="skeleton skeleton-text" style={{width:'60%'}}></div></div>
+              </div>
+              <div className="card stat-card">
+                <div className="stat-label">Top Score</div>
+                <div className="stat-value" style={{fontFamily:'var(--font-score)',fontSize:'var(--text-4xl)'}}><div className="skeleton skeleton-text" style={{width:'40%'}}></div></div>
+              </div>
+              <div className="card stat-card">
+                <div className="stat-label">Top Team</div>
+                <div className="stat-value" style={{fontFamily:'var(--font-display)',fontSize:'var(--text-xl)'}}><div className="skeleton skeleton-text" style={{width:'50%'}}></div></div>
+              </div>
+            </div>
+          )}
         </div>
       ) : leaderboard.length === 0 ? (
         <div className="empty-state">
@@ -113,20 +112,22 @@ const LeaderboardView = () => {
         </div>
       ) : (
         <>
-          <div className="grid-3" style={{marginBottom:'var(--space-xl)'}}>
-            <div className="card stat-card">
-              <div className="stat-label">Total Teams</div>
-              <div className="stat-value" style={{fontFamily:'var(--font-score)',fontSize:'var(--text-4xl)'}}>{leaderboard.length}</div>
+          {isOrganizer && (
+            <div className="grid-3" style={{marginBottom:'var(--space-xl)'}}>
+              <div className="card stat-card">
+                <div className="stat-label">Total Teams</div>
+                <div className="stat-value" style={{fontFamily:'var(--font-score)',fontSize:'var(--text-4xl)'}}>{leaderboard.length}</div>
+              </div>
+              <div className="card stat-card">
+                <div className="stat-label">Top Score</div>
+                <div className="stat-value" style={{fontFamily:'var(--font-score)',fontSize:'var(--text-4xl)'}}>{fmt1(topScore)}</div>
+              </div>
+              <div className="card stat-card">
+                <div className="stat-label">Top Team</div>
+                <div className="stat-value" style={{fontFamily:'var(--font-display)',fontSize:'var(--text-xl)'}}>{leaderboard[0] ? formatTeamDisplay(leaderboard[0]) : '—'}</div>
+              </div>
             </div>
-            <div className="card stat-card">
-              <div className="stat-label">Top Score</div>
-              <div className="stat-value" style={{fontFamily:'var(--font-score)',fontSize:'var(--text-4xl)'}}>{fmt1(topScore)}</div>
-            </div>
-            <div className="card stat-card">
-              <div className="stat-label">Top Team</div>
-              <div className="stat-value" style={{fontFamily:'var(--font-display)',fontSize:'var(--text-xl)'}}>{leaderboard[0] ? formatTeamDisplay(leaderboard[0]) : '—'}</div>
-            </div>
-          </div>
+          )}
 
           <div className="card">
             <div className="table-wrapper">
@@ -144,7 +145,8 @@ const LeaderboardView = () => {
                 </thead>
                 <tbody>
                   {leaderboard.map(e => {
-                    const rankClass = e.rank <= 3 ? `rank-${e.rank}` : '';
+                    const r = Number(e.rank);
+                    const rankClass = r <= 3 ? `rank-${r}` : '';
                     return (
                       <tr key={e.team_id} className={rankClass} style={{cursor:'pointer'}}>
                         <td>{e.rank}</td>

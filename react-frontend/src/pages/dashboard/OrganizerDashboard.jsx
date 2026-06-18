@@ -111,7 +111,7 @@ const OrganizerDashboard = () => {
                   {leaderboard.slice(0, 5).map((e, i) => (
                     <tr key={i}>
                       <td>
-                        {e.rank === 1 ? <div className="rank-badge rank-badge-1">🏆</div> : e.rank === 2 ? <div className="rank-badge rank-badge-2">🥈</div> : e.rank === 3 ? <div className="rank-badge rank-badge-3">🥉</div> : <div className="rank-badge rank-badge-n">#{e.rank}</div>}
+                        {Number(e.rank) === 1 ? <div className="rank-badge rank-badge-1">🏆</div> : Number(e.rank) === 2 ? <div className="rank-badge rank-badge-2">🥈</div> : Number(e.rank) === 3 ? <div className="rank-badge rank-badge-3">🥉</div> : <div className="rank-badge rank-badge-n">#{e.rank}</div>}
                       </td>
                       <td>{formatTeamDisplay(e)}</td>
                       <td><strong>{(e.final_score || 0).toFixed(1)}</strong></td>

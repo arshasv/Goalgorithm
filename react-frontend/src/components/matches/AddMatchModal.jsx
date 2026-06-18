@@ -56,14 +56,10 @@ const AddMatchModal = ({ isOpen, onClose, onMatchCreated }) => {
         <div className="modal-body">
           {error && <div className="alert alert-error" style={{ marginBottom: 'var(--space-md)' }}>{error}</div>}
           <form onSubmit={handleSubmit}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 'var(--space-md)' }}>
               <div className="form-group">
                 <label className="form-label">Match Number <span className="required">*</span></label>
                 <input className="form-input" type="number" min="1" placeholder="1" value={matchNumber} onChange={e => setMatchNumber(e.target.value)} required style={{width: '100%'}} />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Round / Stage</label>
-                <input className="form-input" placeholder="Group Stage, Final..." value={round} onChange={e => setRound(e.target.value)} style={{width: '100%'}} />
               </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)', marginTop: 'var(--space-md)' }}>

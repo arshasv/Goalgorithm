@@ -19,31 +19,17 @@ Every error response follows this structure:
 |---|---|---|
 | 400 | Bad request / business rule violation | `INVALID_COMPETITION_STATE`, `FOREIGN_KEY_VIOLATION`, `NULL_CONSTRAINT_VIOLATION`, `LEADERBOARD_ERROR` |
 | 404 | Resource not found | `RESOURCE_NOT_FOUND` |
-| 409 | Conflict / duplicate entry | `PREDICTION_ALREADY_EXISTS`, `ACTUAL_RESULT_ALREADY_EXISTS`, `DUPLICATE_ENTRY` |
+| 409 | Conflict / duplicate entry | `DUPLICATE_ENTRY` |
 | 422 | Validation failure | `VALIDATION_ERROR` |
 | 500 | Unexpected server error | `INTERNAL_SERVER_ERROR` |
 
 ## Error Scenarios
 
-### Duplicate Prediction (409)
+### Duplicate Actual Result (400)
 
 ```json
 {
-  "success": false,
-  "error_code": "PREDICTION_ALREADY_EXISTS",
-  "message": "Prediction already exists for this team and match",
-  "details": {}
-}
-```
-
-### Duplicate Actual Result (409)
-
-```json
-{
-  "success": false,
-  "error_code": "ACTUAL_RESULT_ALREADY_EXISTS",
-  "message": "Actual result already exists for this match",
-  "details": {}
+  "detail": "Result already uploaded for this match"
 }
 ```
 

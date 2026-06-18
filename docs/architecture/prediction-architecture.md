@@ -17,14 +17,15 @@ Schema Validation (Pydantic v2)
     │
     ▼
 PredictionService.save_prediction()
+    │  → checks for idempotency_key (returns 200 duplicate if matched)
     │  → checks for existing prediction (team_id + match_id unique)
-    │  → raises PredictionAlreadyExistsException if duplicate
+    │  → overwrites existing prediction if new data is submitted
     │  → persists via PredictionRepository
     │
     ▼
 Response
     ├── New prediction accepted: {"status": "accepted", ...} (200)
-    ├── Duplicate team+match: 409 PREDICTION_ALREADY_EXISTS
+    ├── Duplicate idempotent key: {"status": "duplicate", ...} (200)
     ├── Schema invalid: 422 VALIDATION_ERROR
     └── Unexpected error: 500 INTERNAL_SERVER_ERROR
 ```
@@ -38,9 +39,9 @@ Response
 
 | Scenario | Error Code | HTTP |
 |---|---|---|
-| Duplicate prediction (same team + match) | `PREDICTION_ALREADY_EXISTS` | 409 |
+| Idempotent Duplicate | `{"status": "duplicate"}` | 200 |
 | Schema violation | `VALIDATION_ERROR` | 422 |
-| Missing team or match resource | `FOREIGN_KEY_VIOLATION` | 400 |
+| Missing team or match resource | `BAD_REQUEST` | 400 |
 | Unexpected server error | `INTERNAL_SERVER_ERROR` | 500 |
 
 ## Related Documentation

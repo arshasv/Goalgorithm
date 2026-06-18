@@ -17,6 +17,11 @@ def submit_actual_result(
     _organizer: object = Depends(get_current_organizer),
 ):
     service = ResultService(db)
+    
+    # Ensure we don't upload multiple results for the same match to avoid 500 IntegrityError
+    if service.get_by_match(payload.match_id):
+        raise HTTPException(status_code=400, detail="Result already uploaded for this match")
+        
     return service.save_actual_result(payload.model_dump())
 
 

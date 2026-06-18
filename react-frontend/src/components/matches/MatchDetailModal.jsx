@@ -3,8 +3,10 @@ import { MatchService } from '../../api/matchService';
 import { PredictionService } from '../../api/predictionService';
 import { TeamService } from '../../api/teamService';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const MatchDetailModal = ({ match, isOpen, onClose, onMatchUpdated, onEnterResult }) => {
+  const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [scheduledAt, setScheduledAt] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -190,7 +192,7 @@ const MatchDetailModal = ({ match, isOpen, onClose, onMatchUpdated, onEnterResul
           </div>
 
           <div style={{display: 'flex', gap: 'var(--space-sm)'}}>
-            <button className="btn btn-ghost" style={{flex: 1}} onClick={() => { onClose(); window.location.hash = '#/predictions'; }}>📋 Predictions Log</button>
+            <button className="btn btn-ghost" style={{flex: 1}} onClick={() => { onClose(); navigate(isOrganizer ? `/predictions?match=${match.id}` : `/my-predictions?match=${match.id}`); }}>📋 Predictions Log</button>
             
             {!isEditing ? (
               isOrganizer && <button className="btn btn-secondary" style={{flex: 1}} onClick={handleStartEdit}>✏️ Edit Time</button>
@@ -205,7 +207,7 @@ const MatchDetailModal = ({ match, isOpen, onClose, onMatchUpdated, onEnterResul
             )}
 
             {(status === 'completed' || status === 'scored' || status === 'result_entered') && isOrganizer && (
-              <button className="btn btn-primary" style={{flex: 1}} onClick={() => { onClose(); window.location.hash = '#/scoring?match=' + match.id; }}>⚡ Calculate Scores</button>
+              <button className="btn btn-primary" style={{flex: 1}} onClick={() => { onClose(); navigate(`/scoring?match=${match.id}`); }}>⚡ Calculate Scores</button>
             )}
           </div>
         </div>

@@ -27,6 +27,10 @@ class ActualResultModel(Base):
     entered_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
+    
+    # External API Fields
+    result_source: Mapped[str] = mapped_column(String(50), default="MANUAL", nullable=False)
+    last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     player_actuals = relationship(
         "PlayerActualModel",

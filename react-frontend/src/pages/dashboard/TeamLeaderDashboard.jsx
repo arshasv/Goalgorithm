@@ -15,9 +15,10 @@ const formatTeamDisplay = (e) => {
 const fmt1 = (val) => (val != null ? Number(val).toFixed(1) : '0.0');
 
 const rankBadge = (rank) => {
-  if (rank === 1) return <span className="rank-badge rank-badge-1">🏆</span>;
-  if (rank === 2) return <span className="rank-badge rank-badge-2">🥈</span>;
-  if (rank === 3) return <span className="rank-badge rank-badge-3">🥉</span>;
+  const r = Number(rank);
+  if (r === 1) return <span className="rank-badge rank-badge-1">🏆</span>;
+  if (r === 2) return <span className="rank-badge rank-badge-2">🥈</span>;
+  if (r === 3) return <span className="rank-badge rank-badge-3">🥉</span>;
   return <span className="rank-badge rank-badge-n">#{rank}</span>;
 };
 
@@ -94,8 +95,8 @@ const TeamLeaderDashboard = () => {
 
   const handleRefresh = () => { loadDashboard(); };
 
-  const myRank = leaderboardData.findIndex(e => e.team_id === team?.id) + 1;
   const myEntry = leaderboardData.find(e => e.team_id === team?.id);
+  const myRank = myEntry?.rank;
 
   const renderProfile = () => {
     if (!team) return <p className="empty-desc">No team data available.</p>;
@@ -406,7 +407,7 @@ const TeamLeaderDashboard = () => {
       <div className="grid-3" style={{marginBottom:'var(--space-xl)'}}>
         <div className="card stat-card">
           <div className="stat-label">Team Rank</div>
-          <div className="stat-value" style={{fontFamily:'var(--font-score)',fontSize:'var(--text-4xl)'}}>{myRank > 0 ? `#${myRank}` : 'Not yet calculated'}</div>
+          <div className="stat-value" style={{fontFamily:'var(--font-score)',fontSize:'var(--text-4xl)'}}>{myRank ? `#${myRank}` : 'Not yet calculated'}</div>
         </div>
         <div className="card stat-card">
           <div className="stat-label">Total Score</div>

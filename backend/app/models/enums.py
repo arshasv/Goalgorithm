@@ -37,3 +37,9 @@ class Grade(str, enum.Enum):
 class UserRole(str, enum.Enum):
     TEAM_LEADER = "TEAM_LEADER"
     ORGANIZER = "ORGANIZER"
+
+
+class ExternalSyncStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    SYNCED = "SYNCED"
+    FAILED = "FAILED"

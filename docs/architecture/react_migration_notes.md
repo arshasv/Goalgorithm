@@ -39,8 +39,12 @@ The migration of the GOALGORITHM platform from a Vanilla JS + HTML mock-up to a 
 - **Data Veracity**: ALL mock objects have been stripped from the data layer. Every table, stat card, and component pulls real live data from the PostgreSQL layer via FastAPI. 
 - **Dockerization**: The application's `Dockerfile` builds cleanly without warnings and is orchestrated perfectly with the database and backend services using `docker-compose`.
 
-## Known Constraints
-- Models are currently downloaded via traditional links; if S3/Cloud storage is implemented, `model-submission` endpoints must handle presigned URLs.
-- Predictions feature is streamlined via the Matches UI rather than an isolated view, optimizing the interaction flow.
+## Latest Enhancements & Bug Fixes
+- **Theme Support Restored**: The Light/Dark theme toggle mechanism from the original mock-ups has been natively ported to React. Theme state is persisted to `localStorage` and integrates seamlessly with `document.documentElement` attributes.
+- **Robust Prediction Validation**: `SubmitPredictionModal.jsx` handles dynamic goal scorer arrays strictly matching the predicted scorelines, preventing 422 Unprocessable Entity errors.
+- **Idempotency & Duplicate Safety**: Backend logic was updated to prevent 500 Server Errors. If a frontend request lacks an `idempotency_key`, it falls back to `submission_id` or generates a UUID.
+- **Result Re-upload Protections**: The Actual Result flow now properly emits a 400 Bad Request error if a result for a match already exists, preventing Database Integrity Exceptions from bubbling up.
+- **Role Permissions Refined**: Case-insensitive evaluations have fully stabilized Organizer "submit-on-behalf" functions vs. Team Leader isolated submissions.
+- **UI Clean-ups**: Removed unnecessary round/stage badges ("Group Stage") from UI as per project requirements, simplifying the interaction flow.
 
 **Status**: Ready for Production Deployment.

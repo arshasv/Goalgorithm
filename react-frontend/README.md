@@ -1,8 +1,18 @@
-# React + Vite
+# GOALGORITHM React Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This directory contains the migrated React 18 Single Page Application (SPA) for the GOALGORITHM system. It replaces the legacy Vanilla JS HTML implementation, delivering a robust component-based architecture for managing tournaments, scoring, predictions, and leaderboards.
 
-Currently, two official plugins are available:
+## Tech Stack
+- **Framework**: React 18 (with React Router DOM)
+- **Bundler**: Vite
+- **Styling**: Vanilla CSS3 custom properties with native Light/Dark themes
+- **API Client**: Axios
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Development setup
+
+```bash
+npm install
+npm run dev
+```
+
+The frontend runs on `http://localhost:5173` and proxies API requests seamlessly to the FastAPI backend running on port 8000.

@@ -104,7 +104,7 @@ docs/
 ### Layer Responsibilities
 
 ```
-Frontend (teams.js)
+Frontend (TeamsView.jsx / TeamService)
     │
     │  FormData with file → POST /teams/upload-members-csv
     │
@@ -167,20 +167,20 @@ There is no separate service or repository layer for this feature — the route 
 
 ### Frontend-Backend Interaction Details
 
-| Aspect | Frontend (`teams.js`) | Backend (`team_routes.py`) |
+| Aspect | Frontend (`TeamsView.jsx`) | Backend (`team_routes.py`) |
 |---|---|---|
 | **Trigger** | Hidden `<input type="file">` opened by button click | — |
 | **Validation** | Client-side extension check (`.csv`/`.xls`/`.xlsx` only) | Server-side extension + content validation |
 | **Envelope** | `FormData` with `file` field | FastAPI `UploadFile` |
-| **Service call** | `TeamService.uploadMembersCsv(formData)` via `api.js` | `router.post("/upload-members-csv")` |
-| **Loading state** | Toast `Uploading file...` | — |
-| **Success** | Toast with backend message, `loadOrgTeams()` refresh | `200` JSON with message |
-| **Error** | Toast with error detail | `400`/`403`/`422` JSON with detail |
-| **State refresh** | Re-fetches team list + members | — |
+| **Service call** | `TeamService.uploadMembersCsv(formData)` via `axios` instance | `router.post("/upload-members-csv")` |
+| **Loading state** | React state `isUploading = true` | — |
+| **Success** | Success state set, `loadTeams()` triggered | `200` JSON with message |
+| **Error** | Error state set with detail message | `400`/`403`/`422` JSON with detail |
+| **State refresh** | Re-fetches team list + members via React hook | — |
 
-The `api.js` service layer sends the `FormData` object with the `isFormData: true` flag, which prevents the API client from setting a `Content-Type` header (letting the browser set the correct `multipart/form-data` boundary).
+The `teamService.js` layer sends the `FormData` object using an Axios instance with standard headers, allowing the browser to set the correct `multipart/form-data` boundary.
 
-After a successful upload, `loadOrgTeams()` re-fetches `GET /api/v1/teams` which includes the updated `is_csv_managed` flag and member counts. The team detail modal reflects the newly imported members.
+After a successful upload, `loadTeams()` re-fetches `GET /api/v1/teams` which includes the updated `is_csv_managed` flag and member counts. The React state updates trigger re-renders to reflect the newly imported members.
 
 ---
 

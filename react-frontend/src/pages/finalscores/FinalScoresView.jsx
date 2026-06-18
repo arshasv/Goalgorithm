@@ -19,120 +19,16 @@ const scoreColor = (val, max) => {
 };
 
 const rankBadge = (rank) => {
-  if (rank === 1) return <span className="rank-badge rank-badge-1">🏆</span>;
-  if (rank === 2) return <span className="rank-badge rank-badge-2">🥈</span>;
-  if (rank === 3) return <span className="rank-badge rank-badge-3">🥉</span>;
+  const r = Number(rank);
+  if (r === 1) return <span className="rank-badge rank-badge-1">🏆</span>;
+  if (r === 2) return <span className="rank-badge rank-badge-2">🥈</span>;
+  if (r === 3) return <span className="rank-badge rank-badge-3">🥉</span>;
   return <span className="rank-badge rank-badge-n">#{rank}</span>;
 };
 
 const gradeBadge = (grade) => {
   const colors = { A: 'badge-success', B: 'badge-info', C: 'badge-warning', D: 'badge-error' };
   return <span className={`badge ${colors[grade] || 'badge-warning'}`}>Grade {grade}</span>;
-};
-
-const MockTeams = [
-  { id: 'T1', team_id: 'A', code: 'A', name: 'Team A', is_active: true },
-  { id: 'T2', team_id: 'B', code: 'B', name: 'Team B', is_active: true },
-  { id: 'T3', team_id: 'C', code: 'C', name: 'Team C', is_active: true },
-  { id: 'T4', team_id: 'D', code: 'D', name: 'Team D', is_active: true },
-  { id: 'T5', team_id: 'E', code: 'E', name: 'Team E', is_active: true },
-];
-
-const MockMatches = [
-  { id: 'M32', home: 'Arsenal', away: 'Chelsea', status: 'completed', homeGoals: 2, awayGoals: 1 },
-  { id: 'M31', home: 'Liverpool', away: 'Man City', status: 'completed', homeGoals: 1, awayGoals: 1 },
-];
-
-const generateMockDailyScores = () => {
-  const days = [
-    { date: '2026-06-10', label: 'Jun 10' },
-    { date: '2026-06-08', label: 'Jun 8' },
-  ];
-  return days.map(day => {
-    const entries = MockTeams.map((t, i) => ({
-      team_code: t.team_id || t.code,
-      team_name: t.name,
-      total_score: Math.round((85 - i * 7 + Math.random() * 10) * 10) / 10,
-    }));
-    entries.sort((a, b) => b.total_score - a.total_score);
-    entries.forEach((e, i) => e.rank = i + 1);
-    return { date: day.date, teams: entries };
-  });
-};
-
-const generateMockMatchBreakdown = () => {
-  const baseVals = [
-    { w: 5, sl: 10, pr: 5, pl: 5, bs: 25 },
-    { w: 5, sl: 5, pr: 0, pl: 5, bs: 15 },
-    { w: 0, sl: 5, pr: 5, pl: 0, bs: 10 },
-    { w: 5, sl: 0, pr: 0, pl: 5, bs: 10 },
-    { w: 0, sl: 0, pr: 0, pl: 0, bs: 0 },
-  ];
-  return MockMatches.filter(m => m.status === 'scored' || m.status === 'completed').map((m, mi) => ({
-    match_id: m.id,
-    match_number: parseInt(m.id.replace('M', '')),
-    home_team_name: m.home,
-    away_team_name: m.away,
-    scheduled_at: '2026-06-' + String(10 - mi * 2).padStart(2, '0') + 'T18:00:00',
-    status: m.status,
-    actual_result: m.homeGoals != null ? {
-      actual_winner: m.homeGoals > m.awayGoals ? 'home' : m.homeGoals < m.awayGoals ? 'away' : 'draw',
-      actual_home_goals: m.homeGoals,
-      actual_away_goals: m.awayGoals,
-    } : null,
-    teams: MockTeams.map((t, ti) => {
-      const v = baseVals[ti % baseVals.length];
-      return {
-        team_id: t.id,
-        team_code: t.team_id || t.code || '',
-        team_name: t.name,
-        prediction: {
-          predicted_winner: v.w === 5 ? 'home' : v.w === 0 ? 'away' : 'draw',
-          predicted_home_goals: m.homeGoals != null ? m.homeGoals : 1,
-          predicted_away_goals: m.awayGoals != null ? m.awayGoals : 1,
-        },
-        score_breakdown: {
-          winner_points: v.w,
-          scoreline_points: v.sl,
-          probability_points: v.pr,
-          player_points: v.pl,
-          base_score: v.bs,
-          earned_points: v.bs,
-        },
-      };
-    }),
-  }));
-};
-
-const generateMockTechEvals = () => {
-  return MockTeams.filter(t => t.is_active !== false).map((t, i) => ({
-    team_id: t.id,
-    team_code: t.team_id || t.code || '',
-    team_name: t.name,
-    code_quality: Math.min(5, 3 + i),
-    backend_quality: Math.min(5, 4 + (i % 2)),
-    teamwork: Math.min(5, 3 + (i % 3)),
-    ai_explanation: Math.min(5, 4 - (i % 2)),
-    total_score: 18 - i * 1.5,
-    submitted_at: '2026-06-11T10:00:00Z',
-  }));
-};
-
-const generateMockPresEvals = () => {
-  return MockTeams.filter(t => t.is_active !== false).map((t, i) => ({
-    team_id: t.id,
-    team_code: t.team_id || t.code || '',
-    team_name: t.name,
-    ai_explanation_score: 18 - i * 2,
-    qa_score: 13 - i,
-    delivery_score: 13 - i,
-    raw_total: 44 - i * 3,
-    presentation_score: Math.round((17.5 - i * 1.5) * 10) / 10,
-    rank: i + 1,
-    grade: ['A', 'B', 'B', 'C', 'C'][i] || 'C',
-    multiplier: [3, 2, 2, 1, 1][i] || 1,
-    submitted_at: '2026-06-12T14:00:00Z',
-  }));
 };
 
 const renderTechCard = (tech) => {
@@ -198,7 +94,7 @@ const renderPresCard = (pres) => {
 
 const FinalScoresView = () => {
   const { isOrganizer } = useAuth();
-  const [activeTab, setActiveTab] = useState('daily');
+  const [activeTab, setActiveTab] = useState(isOrganizer ? 'daily' : 'leaderboard');
   const [dailyScores, setDailyScores] = useState([]);
   const [matchBreakdown, setMatchBreakdown] = useState([]);
   const [leaderboard, setLeaderboard] = useState([]);
@@ -211,37 +107,21 @@ const FinalScoresView = () => {
     setLoading(true);
     setError('');
     try {
-      const [daily, matches, lb] = await Promise.all([
-        ScoresService.getMatchBreakdown ? ScoresService.getMatchBreakdown().catch(() => []) : [],
-        ScoresService.getMatchBreakdown ? ScoresService.getMatchBreakdown().catch(() => []) : [],
+      const [daily, matches, lb, tech, pres] = await Promise.all([
+        ScoresService.getDailyScores().catch(() => []),
+        ScoresService.getMatchBreakdown().catch(() => []),
         LeaderboardService.getLeaderboard().catch(() => []),
+        ScoresService.getTechnicalEvaluations().catch(() => []),
+        ScoresService.getPresentationEvaluations().catch(() => []),
       ]);
 
-      const ds = daily.length ? daily : generateMockDailyScores();
-      const mb = matches.length ? matches : generateMockMatchBreakdown();
-      const lbData = lb.length ? lb : [];
-
-      setDailyScores(ds);
-      setMatchBreakdown(mb);
-
-      const tech = generateMockTechEvals();
-      const pres = generateMockPresEvals();
+      setDailyScores(daily);
+      setMatchBreakdown(matches);
+      setLeaderboard(lb);
       setTechEvals(tech);
       setPresEvals(pres);
-
-      if (!lbData.length) {
-        setLeaderboard([
-          { rank: 1, team_id: 'T1', team_code: 'A', team_name: 'Team A', phase1_score: 60, technical_score: 19, presentation_score: 19, final_score: 98 },
-          { rank: 2, team_id: 'T2', team_code: 'B', team_name: 'Team B', phase1_score: 34, technical_score: 18, presentation_score: 16, final_score: 68 },
-          { rank: 3, team_id: 'T3', team_code: 'C', team_name: 'Team C', phase1_score: 30, technical_score: 15, presentation_score: 15, final_score: 60 },
-          { rank: 4, team_id: 'T4', team_code: 'D', team_name: 'Team D', phase1_score: 14, technical_score: 10, presentation_score: 12, final_score: 36 },
-          { rank: 5, team_id: 'T5', team_code: 'E', team_name: 'Team E', phase1_score: 0, technical_score: 5, presentation_score: 8, final_score: 13 },
-        ]);
-      } else {
-        setLeaderboard(lbData);
-      }
     } catch (err) {
-      setError('Failed to load: ' + (err.message || ''));
+      setError('Failed to load: ' + (err.response?.data?.detail || err.message || ''));
     } finally {
       setLoading(false);
     }
@@ -249,11 +129,13 @@ const FinalScoresView = () => {
 
   useEffect(() => { loadAll(); }, []);
 
-  const tabs = [
+  const tabs = isOrganizer ? [
     { key: 'daily', label: 'Daily Scores' },
     { key: 'matches', label: 'Match Breakdown' },
     { key: 'leaderboard', label: 'Leaderboard' },
-    { key: 'evaluations', label: isOrganizer ? 'All Evaluations' : 'My Evaluations' },
+    { key: 'evaluations', label: 'All Evaluations' },
+  ] : [
+    { key: 'leaderboard', label: 'My Standing & Score' },
   ];
 
   const topScore = leaderboard.length > 0 ? leaderboard[0].final_score : 0;
@@ -273,15 +155,16 @@ const FinalScoresView = () => {
         <div className="card-header"><span className="card-title">{new Date(day.date).toLocaleDateString()}</span></div>
         <div className="table-wrapper">
           <table>
-            <thead><tr><th>Rank</th><th>Team</th><th>Daily Score</th><th></th></tr></thead>
+            <thead><tr><th>Rank</th><th>Team</th><th>Cumulative Base Score</th><th></th></tr></thead>
             <tbody>
               {day.teams.map((t, i) => {
-                const rankClass = t.rank <= 3 ? `rank-${t.rank}` : '';
+                const r = Number(t.rank);
+                const rankClass = r <= 3 ? `rank-${r}` : '';
                 return (
                   <tr key={t.team_code + i} className={rankClass}>
                     <td>{t.rank}</td>
                     <td><strong>{formatTeamDisplay({ team_code: t.team_code, name: t.team_name })}</strong></td>
-                    <td><span className={`score-num ${scoreColor(t.total_score, 75)}`}>{fmt1(t.total_score)}</span></td>
+                    <td><strong className="score-num">{fmt1(t.total_score)} pts</strong></td>
                     <td>{rankBadge(t.rank)}</td>
                   </tr>
                 );
@@ -357,27 +240,30 @@ const FinalScoresView = () => {
     }
     return (
       <>
-        <div className="grid-3" style={{ marginBottom: 'var(--space-xl)' }}>
-          <div className="card stat-card">
-            <div className="stat-label">Total Teams</div>
-            <div className="stat-value" style={{ fontFamily: 'var(--font-score)', fontSize: 'var(--text-4xl)' }}>{leaderboard.length}</div>
+        {isOrganizer && (
+          <div className="grid-3" style={{ marginBottom: 'var(--space-xl)' }}>
+            <div className="card stat-card">
+              <div className="stat-label">Total Teams</div>
+              <div className="stat-value" style={{ fontFamily: 'var(--font-score)', fontSize: 'var(--text-4xl)' }}>{leaderboard.length}</div>
+            </div>
+            <div className="card stat-card">
+              <div className="stat-label">Top Score</div>
+              <div className="stat-value" style={{ fontFamily: 'var(--font-score)', fontSize: 'var(--text-4xl)' }}>{fmt1(topScore)}</div>
+            </div>
+            <div className="card stat-card">
+              <div className="stat-label">Top Team</div>
+              <div className="stat-value" style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-lg)' }}>{leaderboard[0] ? formatTeamDisplay(leaderboard[0]) : '—'}</div>
+            </div>
           </div>
-          <div className="card stat-card">
-            <div className="stat-label">Top Score</div>
-            <div className="stat-value" style={{ fontFamily: 'var(--font-score)', fontSize: 'var(--text-4xl)' }}>{fmt1(topScore)}</div>
-          </div>
-          <div className="card stat-card">
-            <div className="stat-label">Top Team</div>
-            <div className="stat-value" style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-lg)' }}>{leaderboard[0] ? formatTeamDisplay(leaderboard[0]) : '—'}</div>
-          </div>
-        </div>
+        )}
         <div className="card">
           <div className="table-wrapper">
             <table>
               <thead><tr><th>Rank</th><th>Team</th><th>Phase 1</th><th>Technical</th><th>Presentation</th><th>Final Score</th><th></th></tr></thead>
               <tbody>
                 {leaderboard.map(e => {
-                  const rankClass = e.rank <= 3 ? `rank-${e.rank}` : '';
+                  const r = Number(e.rank);
+                  const rankClass = r <= 3 ? `rank-${r}` : '';
                   return (
                     <tr key={e.team_id} className={rankClass}>
                       <td>{e.rank}</td>
@@ -431,9 +317,17 @@ const FinalScoresView = () => {
 
   const renderTabContent = () => {
     if (loading) {
-      return <div className="grid-3">{Array(3).fill(null).map((_, i) => (
-        <div key={i} className="card"><div className="skeleton skeleton-title"></div><div className="skeleton skeleton-text" style={{ marginTop: 'var(--space-md)' }}></div></div>
-      ))}</div>;
+      return (
+        <div>
+          {isOrganizer && (
+            <div className="grid-3">
+              {Array(3).fill(null).map((_, i) => (
+                <div key={i} className="card"><div className="skeleton skeleton-title"></div><div className="skeleton skeleton-text" style={{ marginTop: 'var(--space-md)' }}></div></div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
     }
     switch (activeTab) {
       case 'daily': return renderDailyScoresTab();

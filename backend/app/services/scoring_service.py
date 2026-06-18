@@ -129,9 +129,48 @@ class ScoringService:
         return result
 
     def compute_and_save_leaderboard(
-        self, scores_input: list[dict]
+        self, scores_input: list[dict] = None
     ) -> list[dict]:
-        ranked = calculate_leaderboard(scores_input)
+        from app.models.team import TeamModel
+        from app.models.evaluation import TechnicalEvaluationModel, PresentationEvaluationModel
+        
+        teams = self.db.query(TeamModel).all()
+        all_scores = self.db.query(ScoreModel).all()
+        tech_evals = self.db.query(TechnicalEvaluationModel).all()
+        pres_evals = self.db.query(PresentationEvaluationModel).all()
+        
+        config_dict, _ = _load_active_config(self.db)
+        phase1_max = config_dict.get("phase1_max_marks", 60) if config_dict else 60
+        
+        team_base_scores = {str(t.id): 0.0 for t in teams}
+        for s in all_scores:
+            if s.base_score is not None:
+                tid = str(s.team_id)
+                if tid in team_base_scores:
+                    team_base_scores[tid] += s.base_score
+                
+        max_base_score = max(team_base_scores.values()) if team_base_scores else 0.0
+        
+        tech_map = {str(e.team_id): e.total_score for e in tech_evals}
+        pres_map = {str(e.team_id): e.presentation_score for e in pres_evals}
+        
+        computed_input = []
+        for t in teams:
+            tid = str(t.id)
+            base = team_base_scores[tid]
+            if max_base_score > 0:
+                p1 = (base / max_base_score) * phase1_max
+            else:
+                p1 = 0.0
+                
+            computed_input.append({
+                "team_id": tid,
+                "phase1_score": round(p1, 2),
+                "technical_score": tech_map.get(tid, 0.0),
+                "presentation_score": pres_map.get(tid, 0.0)
+            })
+
+        ranked = calculate_leaderboard(computed_input)
 
         from app.models.leaderboard import LeaderboardModel
 

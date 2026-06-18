@@ -23,13 +23,13 @@ Actual result JSON per match:
 - `match_id` must be non-empty
 
 ## Duplicate Handling
-- A unique constraint on `match_id` prevents entering two results for the same match
-- Duplicate submissions receive a **409 Conflict** with error code `ACTUAL_RESULT_ALREADY_EXISTS`
-- Check is performed in the service layer before any write operation
+- A database-level unique constraint on `match_id` (`actual_results_match_id_key`) prevents entering two results for the same match.
+- Submitting an existing result receives a clean **400 Bad Request** with error message `"Result already uploaded for this match"` to prevent 500 integrity crashes.
+- This check is performed in the route layer (`result_routes.py`) prior to calling the database service.
 
 ## Output
 - Success (new result): `{"status": "accepted", "match_id": "..."}` (200)
-- Duplicate: 409 `ACTUAL_RESULT_ALREADY_EXISTS`
+- Duplicate: 400 `Result already uploaded for this match`
 - Validation failure: 422 `VALIDATION_ERROR`
 
 ## Related APIs

@@ -1,12 +1,6 @@
-import React, { useState } from 'react';
-
-const mockScores = [
-  {rank:1, code:'A', name:'Team A', winner:5, scoreline:10, probability:5, player:5, base:25, grade:'A', multiplier:3, earned:75},
-  {rank:2, code:'B', name:'Team B', winner:5, scoreline:5, probability:5, player:2, base:17, grade:'B', multiplier:2, earned:34},
-  {rank:3, code:'C', name:'Team C', winner:5, scoreline:5, probability:0, player:5, base:15, grade:'B', multiplier:2, earned:30},
-  {rank:4, code:'D', name:'Team D', winner:0, scoreline:5, probability:0, player:2, base:7, grade:'B', multiplier:2, earned:14},
-  {rank:5, code:'E', name:'Team E', winner:0, scoreline:0, probability:0, player:0, base:0, grade:'C', multiplier:1, earned:0},
-];
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { ScoringService } from '../../api/scoringService';
 
 const scoreColor = (val, max) => {
   if (val === 0) return {color:'var(--color-status-error)'};
@@ -14,12 +8,6 @@ const scoreColor = (val, max) => {
   return {};
 };
 
-const rankBadge = (rank) => {
-  if (rank === 1) return <span className="rank-badge rank-badge-1">🏆</span>;
-  if (rank === 2) return <span className="rank-badge rank-badge-2">🥈</span>;
-  if (rank === 3) return <span className="rank-badge rank-badge-3">🥉</span>;
-  return <span className="rank-badge rank-badge-n">#{rank}</span>;
-};
 
 const formatTeamDisplay = (e) => {
   const code = e.team_id || e.code || '';
@@ -27,10 +15,6 @@ const formatTeamDisplay = (e) => {
   return code ? `${code} – ${name}` : name;
 };
 
-const gradeBadge = (grade) => {
-  const colors = {A:'badge-success', B:'badge-info', C:'badge-warning', D:'badge-error'};
-  return <span className={`badge ${colors[grade] || 'badge-warning'}`}>Grade {grade}</span>;
-};
 
 const dimensionIcon = (val, max) => {
   if (val >= max) return '✅';
@@ -39,13 +23,89 @@ const dimensionIcon = (val, max) => {
 };
 
 const ScoringView = () => {
-  const [selectedMatch, setSelectedMatch] = useState('Match #32 — Arsenal vs Chelsea');
+  const [searchParams] = useSearchParams();
+  const [matches, setMatches] = useState([]);
+  const [selectedMatchId, setSelectedMatchId] = useState(searchParams.get('match') || '');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [calculating, setCalculating] = useState(false);
 
-  const handleCalculate = () => {
-    if (window.confirm('Calculate scores for Match #32? This will compute scores for all 5 teams.')) {
-      window.alert('Scores calculated for Match #32!');
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const data = await ScoringService.getMatchBreakdown();
+      setMatches(data);
+      if (data.length > 0 && !selectedMatchId) {
+        setSelectedMatchId(data[data.length - 1].match_id); // Default to last match
+      }
+    } catch (err) {
+      setError('Failed to load scoring data');
+    } finally {
+      setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const handleCalculate = async () => {
+    if (!selectedMatchId) return;
+    const match = matches.find(m => m.match_id === selectedMatchId);
+    if (window.confirm(`Calculate scores for Match ${match?.match_number}? This will compute scores for all teams.`)) {
+      setCalculating(true);
+      try {
+        await ScoringService.calculateMatchScoreBulk(selectedMatchId);
+        window.alert(`Scores calculated for Match ${match?.match_number}!`);
+        await loadData();
+      } catch (err) {
+        window.alert(err.response?.data?.detail || 'Failed to calculate scores');
+      } finally {
+        setCalculating(false);
+      }
+    }
+  };
+
+  if (loading) return <div className="loading-spinner"></div>;
+  if (error) return <div className="alert alert-error">{error}</div>;
+  if (matches.length === 0) {
+    return (
+      <div className="empty-state">
+        <div className="empty-state-icon">⚡</div>
+        <p>No matches available for scoring yet.</p>
+      </div>
+    );
+  }
+
+  const selectedMatch = matches.find(m => m.match_id === selectedMatchId);
+  const matchTeams = selectedMatch?.teams || [];
+
+  // Sort teams by earned_points
+  const sortedTeams = [...matchTeams].sort((a, b) => {
+    return (b.score_breakdown?.earned_points || 0) - (a.score_breakdown?.earned_points || 0);
+  });
+  
+  // Calculate dynamic rank handling ties
+  let currentRank = 1;
+  sortedTeams.forEach((t, index) => {
+    const breakdown = t.score_breakdown || {};
+    
+    // If not scored, do not assign a rank
+    if (breakdown.base_score == null) {
+      t.displayRank = null;
+      return;
+    }
+
+    if (index > 0) {
+      const prev = sortedTeams[index - 1].score_breakdown || {};
+      if (breakdown.earned_points !== prev.earned_points) {
+        currentRank = index + 1;
+      }
+    }
+    t.displayRank = currentRank;
+
+
+  });
 
   return (
     <div>
@@ -55,62 +115,78 @@ const ScoringView = () => {
           <p className="page-subtitle">Match score breakdown — Winner · Scoreline · Probability · Player</p>
         </div>
         <div className="page-header-actions">
-          <select className="form-select" style={{width:'200px'}} value={selectedMatch} onChange={e => setSelectedMatch(e.target.value)}>
-            <option>Match #32 — Arsenal vs Chelsea</option>
+          <select className="form-select" style={{width:'250px'}} value={selectedMatchId} onChange={e => setSelectedMatchId(e.target.value)}>
+            {matches.map(m => (
+              <option key={m.match_id} value={m.match_id}>Match #{m.match_number} — {m.home_team_name} vs {m.away_team_name}</option>
+            ))}
           </select>
-          <button className="btn btn-primary" onClick={handleCalculate}>⚡ Calculate Scores</button>
+          <button className="btn btn-primary" onClick={handleCalculate} disabled={calculating}>
+            {calculating ? '⚡ Calculating...' : '⚡ Calculate Scores'}
+          </button>
         </div>
       </div>
 
-      <div className="alert alert-success">✅ Scores calculated for Match #32 · Base Score = Σ(Winner+Scoreline+Probability+Player) · Max 25</div>
+      {!matchTeams.some(t => t.score_breakdown?.base_score !== null) ? (
+        <div className="empty-state">
+          <div className="empty-state-icon">📊</div>
+          <p>No scores calculated for this match yet. Enter the actual result and click Calculate Scores.</p>
+        </div>
+      ) : (
+        <>
+          <div className="alert alert-success">✅ Scores calculated for Match #{selectedMatch?.match_number} · Base Score = Σ(Winner+Scoreline+Probability+Player) · Max 25</div>
 
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:'var(--space-lg)'}}>
-        {mockScores.map((s, i) => (
-          <div key={s.rank} className={`score-breakdown-card ${s.rank === 1 ? 'rank-1-card' : ''}`} style={{animation:`slideUp ${400 + i * 100}ms var(--ease-out) both`}}>
-            <div className="card-header">
-              <div style={{display:'flex',alignItems:'center',gap:'var(--space-sm)'}}>
-                {rankBadge(s.rank)}
-                <strong style={{fontFamily:'var(--font-display)',textTransform:'uppercase',letterSpacing:'0.03em'}}>{formatTeamDisplay({team_id:s.code,name:s.name})}</strong>
-              </div>
-              {gradeBadge(s.grade)}
-            </div>
-            <div className="dimension-row">
-              <span className="dimension-label">Winner Prediction</span>
-              <div className="dimension-bar-wrap"><div className="dimension-bar-fill" style={{width:`${(s.winner / 5) * 100}%`}}></div></div>
-              <span className="dimension-score" style={scoreColor(s.winner, 5)}>{s.winner}/5</span>
-              <span className="dimension-icon">{dimensionIcon(s.winner, 5)}</span>
-            </div>
-            <div className="dimension-row">
-              <span className="dimension-label">Scoreline Exactness</span>
-              <div className="dimension-bar-wrap"><div className="dimension-bar-fill" style={{width:`${(s.scoreline / 10) * 100}%`}}></div></div>
-              <span className="dimension-score" style={scoreColor(s.scoreline, 10)}>{s.scoreline}/10</span>
-              <span className="dimension-icon">{dimensionIcon(s.scoreline, 10)}</span>
-            </div>
-            <div className="dimension-row">
-              <span className="dimension-label">Probability Accuracy</span>
-              <div className="dimension-bar-wrap"><div className="dimension-bar-fill" style={{width:`${(s.probability / 5) * 100}%`}}></div></div>
-              <span className="dimension-score" style={scoreColor(s.probability, 5)}>{s.probability}/5</span>
-              <span className="dimension-icon">{dimensionIcon(s.probability, 5)}</span>
-            </div>
-            <div className="dimension-row">
-              <span className="dimension-label">Player Performance</span>
-              <div className="dimension-bar-wrap"><div className="dimension-bar-fill" style={{width:`${(s.player / 5) * 100}%`}}></div></div>
-              <span className="dimension-score" style={scoreColor(s.player, 5)}>{s.player}/5</span>
-              <span className="dimension-icon">{dimensionIcon(s.player, 5)}</span>
-            </div>
-            <div className="score-total-row">
-              <div>
-                <div className="base-score-label">Base Score</div>
-                <div className="base-score-value">{s.base}<span style={{color:'var(--color-text-secondary)',fontSize:'var(--text-lg)'}}>/25</span></div>
-              </div>
-              <div style={{textAlign:'right'}}>
-                <div style={{fontSize:'var(--text-xs)',color:'var(--color-text-secondary)',textTransform:'uppercase',letterSpacing:'0.04em'}}>Earned Points</div>
-                <div className="earned-score score-digit">{s.earned} pts</div>
-              </div>
-            </div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:'var(--space-lg)'}}>
+            {sortedTeams.map((s, i) => {
+              const breakdown = s.score_breakdown || {};
+              if (breakdown.base_score === null) return null;
+              
+              return (
+                <div key={s.team_id} className={`score-breakdown-card ${s.displayRank === 1 ? 'rank-1-card' : ''}`} style={{animation:`slideUp ${400 + i * 100}ms var(--ease-out) both`}}>
+                  <div className="card-header">
+                    <div style={{display:'flex',alignItems:'center',gap:'var(--space-sm)'}}>
+                      <strong style={{fontFamily:'var(--font-display)',textTransform:'uppercase',letterSpacing:'0.03em'}}>{formatTeamDisplay({team_id:s.team_code,name:s.team_name})}</strong>
+                    </div>
+                  </div>
+                  <div className="dimension-row">
+                    <span className="dimension-label">Winner Prediction</span>
+                    <div className="dimension-bar-wrap"><div className="dimension-bar-fill" style={{width:`${(breakdown.winner_points / 5) * 100}%`}}></div></div>
+                    <span className="dimension-score" style={scoreColor(breakdown.winner_points, 5)}>{breakdown.winner_points}/5</span>
+                    <span className="dimension-icon">{dimensionIcon(breakdown.winner_points, 5)}</span>
+                  </div>
+                  <div className="dimension-row">
+                    <span className="dimension-label">Scoreline Exactness</span>
+                    <div className="dimension-bar-wrap"><div className="dimension-bar-fill" style={{width:`${(breakdown.scoreline_points / 10) * 100}%`}}></div></div>
+                    <span className="dimension-score" style={scoreColor(breakdown.scoreline_points, 10)}>{breakdown.scoreline_points}/10</span>
+                    <span className="dimension-icon">{dimensionIcon(breakdown.scoreline_points, 10)}</span>
+                  </div>
+                  <div className="dimension-row">
+                    <span className="dimension-label">Probability Accuracy</span>
+                    <div className="dimension-bar-wrap"><div className="dimension-bar-fill" style={{width:`${(breakdown.probability_points / 5) * 100}%`}}></div></div>
+                    <span className="dimension-score" style={scoreColor(breakdown.probability_points, 5)}>{breakdown.probability_points}/5</span>
+                    <span className="dimension-icon">{dimensionIcon(breakdown.probability_points, 5)}</span>
+                  </div>
+                  <div className="dimension-row">
+                    <span className="dimension-label">Player Performance</span>
+                    <div className="dimension-bar-wrap"><div className="dimension-bar-fill" style={{width:`${(breakdown.player_points / 5) * 100}%`}}></div></div>
+                    <span className="dimension-score" style={scoreColor(breakdown.player_points, 5)}>{breakdown.player_points}/5</span>
+                    <span className="dimension-icon">{dimensionIcon(breakdown.player_points, 5)}</span>
+                  </div>
+                  <div className="score-total-row">
+                    <div>
+                      <div className="base-score-label">Base Score</div>
+                      <div className="base-score-value">{breakdown.base_score}<span style={{color:'var(--color-text-secondary)',fontSize:'var(--text-lg)'}}>/25</span></div>
+                    </div>
+                    <div style={{textAlign:'right'}}>
+                      <div style={{fontSize:'var(--text-xs)',color:'var(--color-text-secondary)',textTransform:'uppercase',letterSpacing:'0.04em'}}>Earned Points</div>
+                      <div className="earned-score score-digit">{breakdown.earned_points} pts</div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        ))}
-      </div>
+        </>
+      )}
 
       <div className="card section" style={{marginTop:'var(--space-xl)'}}>
         <div className="card-header"><span className="card-title">📐 Phase 1 Normalization</span></div>

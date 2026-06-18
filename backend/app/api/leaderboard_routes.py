@@ -2,35 +2,31 @@ from pydantic import BaseModel, Field
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_organizer
+from app.api.deps import get_current_organizer, get_current_user
 from app.database.session import get_db
 from app.models.leaderboard import LeaderboardModel
 from app.models.team import TeamModel
+from app.models.user import UserModel
+from app.models.enums import UserRole
 from app.services.scoring_service import ScoringService
 
 router = APIRouter(tags=["leaderboard"])
 
 
-class LeaderboardEntry(BaseModel):
-    team_id: str = Field(..., min_length=1)
-    phase1_score: float = Field(..., ge=0, le=60)
-    technical_score: float = Field(..., ge=0, le=20)
-    presentation_score: float = Field(..., ge=0, le=20)
-
-
 @router.post("/leaderboard/calculate")
 def generate_leaderboard(
-    scores: list[LeaderboardEntry],
     db: Session = Depends(get_db),
     _organizer: object = Depends(get_current_organizer),
 ):
     service = ScoringService(db)
-    data = [s.model_dump() for s in scores]
-    return service.compute_and_save_leaderboard(data)
+    return service.compute_and_save_leaderboard(None)
 
 
 @router.get("/leaderboard")
-def get_leaderboard(db: Session = Depends(get_db)):
+def get_leaderboard(
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user)
+):
     teams = db.query(TeamModel).all()
     team_by_uuid = {str(t.id): t for t in teams}
     team_by_letter = {t.team_id: t for t in teams}
@@ -75,5 +71,11 @@ def get_leaderboard(db: Session = Depends(get_db)):
     for i, res in enumerate(result):
         if res["rank"] == 999 or res["rank"] == 0:
             res["rank"] = i + 1
+
+    if current_user.role == UserRole.TEAM_LEADER:
+        team = db.query(TeamModel).filter(TeamModel.user_id == current_user.id).first()
+        if not team:
+            return []
+        result = [r for r in result if r["team_id"] == str(team.id)]
 
     return result

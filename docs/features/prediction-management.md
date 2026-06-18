@@ -30,15 +30,15 @@ Prediction JSON per team per match:
 
 > **Format Reference**: For an exact JSON schema, required field rules, and a full JSON example, see the [Prediction Format Reference](../api/prediction_format_reference.md) and the root `sample_prediction.json` file.
 
-## Duplicate Handling
-- A unique constraint on `(team_id, match_id)` prevents two predictions for the same team in the same match
-- Duplicate submissions receive a **409 Conflict** with error code `PREDICTION_ALREADY_EXISTS`
-- This check is performed in the service layer before any write operation
+## Duplicate Handling & Updates
+- **Idempotency Key**: Duplicate submissions with the same `idempotency_key` (or `submission_id`) will safely return a 200 OK duplicate status without reprocessing.
+- **Overwrites (Edits)**: If a team submits a new prediction for the same match (same `team_id`, same `match_id`), the existing prediction and associated player predictions are gracefully deleted and replaced with the new submission. This allows Team Leaders to edit their predictions seamlessly up until the match is frozen.
 
 ## Output
-- Success (new prediction): `{"status": "accepted", "team_id": "...", "match_id": "..."}` (200)
-- Duplicate: 409 `PREDICTION_ALREADY_EXISTS`
+- Success (new/updated prediction): `{"status": "accepted", "team_id": "...", "match_id": "..."}` (200)
+- Duplicate (idempotent): `{"status": "duplicate", "message": "Prediction already submitted", "team_id": "...", "match_id": "..."}` (200)
 - Validation failure: 422 `VALIDATION_ERROR`
+- Bad Request (Missing Team): 400 `Team not found`
 
 ## Related APIs
 - `POST /api/v1/predictions` — submit prediction

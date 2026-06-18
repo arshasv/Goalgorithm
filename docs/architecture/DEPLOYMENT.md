@@ -3,7 +3,8 @@
 ## Prerequisites
 
 - Python 3.12+
-- Docker (for containerised deployment)
+- Node.js 18+ (for local frontend development)
+- Docker & Docker Compose (for containerised deployment)
 
 ---
 
@@ -23,14 +24,9 @@ All environment variables are loaded from `backend/.env` by `app/config.py` usin
 
 | File | Purpose |
 |---|---|
-| `backend/.env` | Actual values (git-ignored) |
+| `backend/.env` | Actual backend config values (git-ignored) |
 | `backend/.env.example` | Template with placeholder secrets (committed) |
-| `app/config.py` | Loads `.env`, exposes `settings` singleton |
-
-Relevant settings:
-- `DATABASE_URL` — full connection string for SQLAlchemy
-- `SECRET_KEY` — placeholder for future auth
-- `API_PREFIX` — controls route prefix (default `/api/v1`)
+| `react-frontend/.env` | Optional Vite environment variables |
 
 ### Local vs Container
 
@@ -44,57 +40,36 @@ Relevant settings:
 
 ## 2. Local Setup
 
+### Backend (FastAPI)
 ```bash
 cd backend
 pip install -r requirements.txt
 
 cp .env.example .env
-# Edit .env: set DATABASE_URL to local PostgreSQL, or use SQLite for quick testing:
-# DATABASE_URL=sqlite:///./dev.db
+# Edit .env: set DATABASE_URL to local PostgreSQL
 
 python -m pytest
 uvicorn app.main:app --reload
 ```
 
----
-
-## 3. Docker Build
-
+### Frontend (React + Vite)
 ```bash
-docker build -t fifa-scoring .
+cd react-frontend
+npm install
+npm run dev
 ```
-
----
-
-## 4. Docker Run
-
-```bash
-docker run -d --name fifa-api -p 8000:8000 fifa-scoring
-```
-
-Verify the container starts:
-
-```bash
-curl http://localhost:8000/health
-# {"status":"running"}
-```
-
-Stop the container:
-
-```bash
-docker stop fifa-api
-```
+The React dev server runs on `http://localhost:5173` and proxies `/api` calls to `http://localhost:8000`.
 
 ---
 
-## 5. Docker Compose
+## 3. Docker Compose (Full Stack)
 
-Both the API and PostgreSQL read from the same `backend/.env` file. The Postgres container picks up `POSTGRES_DB`, `POSTGRES_USER`, and `POSTGRES_PASSWORD` from the environment.
+Both the API and PostgreSQL read from the same `backend/.env` file. The React frontend is built and served via an Nginx container.
 
 Start all services:
 
 ```bash
-docker compose up -d
+docker compose up -d --build
 ```
 
 Check service status:
@@ -122,10 +97,16 @@ docker compose down
 | Endpoint | Method | Description |
 |---|---|---|
 | `/health` | GET | Health check |
-| `/version` | GET | App name + version |
+| `/api/v1/auth/register` | POST | Register team leader |
+| `/api/v1/auth/login` | POST | Login and receive JWT |
+| `/api/v1/teams` | GET | List teams |
+| `/api/v1/matches` | GET | List matches |
 | `/api/v1/predictions` | POST | Submit team prediction |
 | `/api/v1/actual-results` | POST | Submit actual match result |
 | `/api/v1/calculate-match-score` | POST | Calculate match base score |
 | `/api/v1/technical-score` | POST | Calculate technical score |
 | `/api/v1/presentation-score` | POST | Calculate presentation score |
 | `/api/v1/leaderboard/calculate` | POST | Generate final leaderboard |
+| `/api/v1/team-leader/model` | POST | Upload team ML model |
+
+Interactive Swagger UI is available at `http://localhost:8000/docs`.

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { PredictionService } from '../../api/predictionService';
 import { MatchService } from '../../api/matchService';
@@ -19,11 +20,12 @@ const capitalize = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : '—';
 
 const PredictionsView = () => {
   const { isOrganizer, isTeamLeader } = useAuth();
+  const [searchParams] = useSearchParams();
   const [predictions, setPredictions] = useState([]);
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [filterMatch, setFilterMatch] = useState('');
+  const [filterMatch, setFilterMatch] = useState(searchParams.get('match') || '');
   const [filterStatus, setFilterStatus] = useState('');
   const [selectedPred, setSelectedPred] = useState(null);
   const [editModePred, setEditModePred] = useState(null);

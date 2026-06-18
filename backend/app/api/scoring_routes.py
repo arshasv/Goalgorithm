@@ -40,7 +40,9 @@ def calculate_technical(
     _organizer: object = Depends(get_current_organizer),
 ):
     service = ScoringService(db)
-    return service.calculate_and_save_technical_score(evaluation.model_dump())
+    res = service.calculate_and_save_technical_score(evaluation.model_dump())
+    service.compute_and_save_leaderboard(None)
+    return res
 
 
 @router.post("/presentation-score")
@@ -50,9 +52,11 @@ def calculate_presentation(
     _organizer: object = Depends(get_current_organizer),
 ):
     service = ScoringService(db)
-    return service.calculate_and_save_presentation_scores(
+    res = service.calculate_and_save_presentation_scores(
         [ev.model_dump() for ev in evaluations]
     )
+    service.compute_and_save_leaderboard(None)
+    return res
 
 @router.post("/matches/{match_id}/calculate-scores")
 def calculate_all_scores_for_match(
@@ -113,8 +117,13 @@ def calculate_all_scores_for_match(
                     "draw_probability": p.draw_probability or 0.0,
                     "away_win_probability": p.away_win_probability or 0.0
                 },
+                "clean_sheet_probability": {
+                    "home_team": p.home_clean_sheet_probability or 0.0,
+                    "away_team": p.away_clean_sheet_probability or 0.0
+                },
                 "first_goal_team": p.first_goal_team or "none",
-                "both_teams_to_score_probability": p.btts_probability or 0.0,
+                "both_teams_to_score_probability": p.both_teams_to_score_probability or 0.0,
+                "total_goals_prediction": p.total_goals_prediction or 0,
                 "goal_scorers": p.goal_scorers or {"home": [], "away": []}
             },
             "player_predictions": [
@@ -138,4 +147,5 @@ def calculate_all_scores_for_match(
         service.calculate_and_save_match_score(pred_payload, actual_payload)
         count += 1
         
+    service.compute_and_save_leaderboard(None)
     return {"status": "success", "calculated_count": count}

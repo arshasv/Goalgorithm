@@ -3,7 +3,7 @@ from datetime import date
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, get_current_organizer
 from app.database.session import get_db
 from app.models.actual_result import ActualResultModel
 from app.models.evaluation import (
@@ -31,7 +31,7 @@ def _get_team_id_map(db: Session) -> dict[str, str]:
 @router.get("/scores/daily")
 def get_daily_scores(
     db: Session = Depends(get_db),
-    current_user: UserModel = Depends(get_current_user),
+    user: UserModel = Depends(get_current_user),
 ):
     scores = (
         db.query(ScoreModel)
@@ -42,11 +42,20 @@ def get_daily_scores(
     team_names = _get_team_name_map(db)
     team_codes = _get_team_id_map(db)
 
+    is_organizer = user.role == UserRole.ORGANIZER
+    user_team_id = _get_team_id_for_user(db, user) if not is_organizer else None
+
     daily: dict[date, dict[str, dict]] = {}
     for s in scores:
         match = matches.get(s.match_id)
         if not match:
             continue
+        # Restrict daily scores completely if Team Leader? Or allow viewing overall trend?
+        # Typically analytics is overall, but if we need to restrict, we do.
+        # But AnalyticsDashboard is organizer only anyway. Let's just return all for organizer and filter for TL.
+        if not is_organizer and s.team_id != user_team_id:
+            continue
+
         d = match.scheduled_at.date()
         if d not in daily:
             daily[d] = {}
@@ -73,11 +82,14 @@ def get_daily_scores(
 @router.get("/scores/match-breakdown")
 def get_match_breakdown(
     db: Session = Depends(get_db),
-    current_user: UserModel = Depends(get_current_user),
+    user: UserModel = Depends(get_current_user),
 ):
     matches = db.query(MatchModel).order_by(MatchModel.match_number).all()
     team_names = _get_team_name_map(db)
     team_codes = _get_team_id_map(db)
+
+    is_organizer = user.role == UserRole.ORGANIZER
+    user_team_id = _get_team_id_for_user(db, user) if not is_organizer else None
 
     actuals = {
         str(a.match_id): a for a in db.query(ActualResultModel).all()
@@ -99,6 +111,9 @@ def get_match_breakdown(
 
         teams = []
         for s in match_scores:
+            if not is_organizer and s.team_id != user_team_id:
+                continue
+
             team_name = team_names.get(s.team_id, s.team_id)
             pred = predictions_by_key.get((s.team_id, mid))
             prediction_detail = None
@@ -124,6 +139,9 @@ def get_match_breakdown(
                     "player_points": s.player_points,
                     "base_score": s.base_score,
                     "earned_points": s.earned_points,
+                    "match_rank": s.match_rank,
+                    "grade": s.grade.value if s.grade else None,
+                    "multiplier": s.multiplier,
                 },
             })
 
@@ -165,22 +183,12 @@ def _get_team_id_for_user(
 @router.get("/evaluations/technical")
 def get_technical_evaluations(
     db: Session = Depends(get_db),
-    current_user: UserModel = Depends(get_current_user),
+    _organizer: UserModel = Depends(get_current_organizer),
 ):
     team_names = _get_team_name_map(db)
     team_codes = _get_team_id_map(db)
 
-    if current_user.role == UserRole.ORGANIZER:
-        evaluations = db.query(TechnicalEvaluationModel).all()
-    else:
-        team_id = _get_team_id_for_user(db, current_user)
-        if not team_id:
-            return []
-        evaluations = (
-            db.query(TechnicalEvaluationModel)
-            .filter(TechnicalEvaluationModel.team_id == team_id)
-            .all()
-        )
+    evaluations = db.query(TechnicalEvaluationModel).all()
 
     return [
         {
@@ -203,22 +211,12 @@ def get_technical_evaluations(
 @router.get("/evaluations/presentation")
 def get_presentation_evaluations(
     db: Session = Depends(get_db),
-    current_user: UserModel = Depends(get_current_user),
+    _organizer: UserModel = Depends(get_current_organizer),
 ):
     team_names = _get_team_name_map(db)
     team_codes = _get_team_id_map(db)
 
-    if current_user.role == UserRole.ORGANIZER:
-        evaluations = db.query(PresentationEvaluationModel).all()
-    else:
-        team_id = _get_team_id_for_user(db, current_user)
-        if not team_id:
-            return []
-        evaluations = (
-            db.query(PresentationEvaluationModel)
-            .filter(PresentationEvaluationModel.team_id == team_id)
-            .all()
-        )
+    evaluations = db.query(PresentationEvaluationModel).all()
 
     return [
         {

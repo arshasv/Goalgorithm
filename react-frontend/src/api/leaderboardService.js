@@ -5,8 +5,8 @@ export const LeaderboardService = {
     const res = await api.get('/leaderboard');
     return res.data;
   },
-  calculateLeaderboard: async (entries) => {
-    const res = await api.post('/leaderboard/calculate', entries);
+  calculateLeaderboard: async () => {
+    const res = await api.post('/leaderboard/calculate');
     return res.data;
   }
 };

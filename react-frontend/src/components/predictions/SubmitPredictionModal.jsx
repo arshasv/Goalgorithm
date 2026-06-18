@@ -15,6 +15,7 @@ const SubmitPredictionModal = ({ match, isOpen, onClose, onPredictionSubmitted, 
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [entryMode, setEntryMode] = useState('manual');
 
   // Organizer team selection
   const [teams, setTeams] = useState([]);
@@ -182,6 +183,41 @@ const SubmitPredictionModal = ({ match, isOpen, onClose, onPredictionSubmitted, 
     const ns = [...awayScorers]; ns[i] = val; setAwayScorers(ns);
   };
 
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (isOrganizer && !orgTeam) {
+      setError('Please select a team before uploading JSON.');
+      e.target.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const json = JSON.parse(event.target.result);
+        if (!json.match_prediction || !json.player_predictions) {
+          throw new Error('Invalid JSON format: missing match_prediction or player_predictions');
+        }
+
+        json.match_id = match.id;
+        json.team_id = isOrganizer ? orgTeam : 'self';
+        json.submission_id = `sub-json-${Date.now()}`;
+
+        setLoading(true);
+        await PredictionService.submitPrediction(json);
+        onPredictionSubmitted();
+        onClose();
+      } catch (err) {
+        setError(err.response?.data?.detail || err.message || 'Failed to process JSON file');
+        setLoading(false);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-container" onClick={e => e.stopPropagation()} style={{ minWidth: '520px' }}>
@@ -198,19 +234,26 @@ const SubmitPredictionModal = ({ match, isOpen, onClose, onPredictionSubmitted, 
             </div>
           </div>
 
-          <form onSubmit={handleSubmit}>
-            {/* Organizer: team selector */}
-            {isOrganizer && (
-              <div className="form-group" style={{ marginBottom: 'var(--space-md)' }}>
-                <label className="form-label">Submit on behalf of Team <span className="required">*</span></label>
-                <select className="form-select" value={orgTeam} onChange={e => setOrgTeam(e.target.value)} required disabled={!!existingPrediction}>
-                  <option value="">-- Select team --</option>
-                  {teams.map(t => (
-                    <option key={t.id} value={t.id}>{t.team_id ? `${t.team_id} – ${t.name}` : t.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
+          <div className="tabs" style={{ marginBottom: 'var(--space-md)', display: 'flex', borderBottom: '1px solid var(--color-border)' }}>
+            <button type="button" className={`tab-btn ${entryMode === 'manual' ? 'active' : ''}`} onClick={() => setEntryMode('manual')} style={{ padding: '8px 16px', background: 'none', border: 'none', borderBottom: entryMode === 'manual' ? '2px solid var(--color-primary)' : '2px solid transparent', color: entryMode === 'manual' ? 'var(--color-text-primary)' : 'var(--color-text-secondary)', cursor: 'pointer', fontWeight: 600 }}>Manual Entry</button>
+            <button type="button" className={`tab-btn ${entryMode === 'json' ? 'active' : ''}`} onClick={() => setEntryMode('json')} style={{ padding: '8px 16px', background: 'none', border: 'none', borderBottom: entryMode === 'json' ? '2px solid var(--color-primary)' : '2px solid transparent', color: entryMode === 'json' ? 'var(--color-text-primary)' : 'var(--color-text-secondary)', cursor: 'pointer', fontWeight: 600 }}>JSON Upload</button>
+          </div>
+
+          {/* Organizer team selection - shared between modes */}
+          {isOrganizer && (
+            <div className="form-group" style={{ marginBottom: 'var(--space-md)' }}>
+              <label className="form-label">Submit on behalf of Team <span className="required">*</span></label>
+              <select className="form-select" value={orgTeam} onChange={e => setOrgTeam(e.target.value)} required disabled={!!existingPrediction}>
+                <option value="">-- Select team --</option>
+                {teams.map(t => (
+                  <option key={t.id} value={t.id}>{t.team_id ? `${t.team_id} – ${t.name}` : t.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {entryMode === 'manual' ? (
+            <form onSubmit={handleSubmit}>
 
             {/* Match outcome */}
             <div style={{ background: 'var(--color-surface-secondary)', padding: 'var(--space-md)', borderRadius: 'var(--radius-medium)', marginBottom: 'var(--space-md)' }}>
@@ -295,6 +338,28 @@ const SubmitPredictionModal = ({ match, isOpen, onClose, onPredictionSubmitted, 
               </button>
             </div>
           </form>
+          ) : (
+            <div style={{ background: 'var(--color-surface)', padding: 'var(--space-lg)', borderRadius: 'var(--radius-medium)', textAlign: 'center', border: '1px dashed var(--color-border)' }}>
+              <div style={{ fontSize: 'var(--text-3xl)', marginBottom: 'var(--space-sm)' }}>📄</div>
+              <h3 style={{ marginBottom: 'var(--space-sm)' }}>Upload Prediction JSON</h3>
+              <p style={{ color: 'var(--color-text-secondary)', marginBottom: 'var(--space-lg)', fontSize: 'var(--text-sm)' }}>
+                Please ensure the file matches the required JSON schema format.
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <input 
+                  type="file" 
+                  accept=".json" 
+                  onChange={handleFileUpload} 
+                  disabled={loading} 
+                  className="form-input" 
+                  style={{ maxWidth: '300px' }} 
+                />
+              </div>
+              <div className="modal-footer" style={{ marginTop: 'var(--space-xl)', display: 'flex', gap: 'var(--space-sm)', justifyContent: 'flex-end' }}>
+                <button type="button" className="btn btn-ghost" onClick={onClose} disabled={loading}>Cancel</button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

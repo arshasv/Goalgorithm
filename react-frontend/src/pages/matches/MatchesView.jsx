@@ -45,6 +45,11 @@ const MatchesView = () => {
   const [enterResultMatch, setEnterResultMatch] = useState(null);
   const [predictionMatch, setPredictionMatch] = useState(null);
 
+  const [importDate, setImportDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [importing, setImporting] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
+
   const csvInputRef = useRef(null);
 
   const loadMatches = useCallback(async () => {
@@ -62,7 +67,10 @@ const MatchesView = () => {
 
       setMatches(matchesWithPreds);
     } catch (err) {
-      setError(err.response?.data?.detail || err.message || 'Failed to load matches');
+      let errorMsg = err.response?.data?.detail || err.message;
+      if (errorMsg === 'Network Error' || err.code === 'ERR_NETWORK') errorMsg = 'API unavailable. Please check your connection or server status.';
+      if (err.response?.status >= 500) errorMsg = 'Backend server encountered an error.';
+      setError(errorMsg || 'Failed to load matches. API may be unavailable.');
     } finally {
       setLoading(false);
     }
@@ -79,7 +87,8 @@ const MatchesView = () => {
       await MatchService.uploadMatchesCsv(fd);
       loadMatches();
     } catch (err) {
-      setError(err.response?.data?.detail || err.message || 'Upload failed');
+      let errorMsg = err.response?.data?.detail;
+      setError(errorMsg || 'Upload failed. Please ensure the CSV format is correct.');
     }
     e.target.value = '';
   };
@@ -88,7 +97,54 @@ const MatchesView = () => {
     if (!window.confirm(`Delete "${label}"? This cannot be undone.`)) return;
     MatchService.deleteMatch(matchId)
       .then(() => loadMatches())
-      .catch(err => setError(err.response?.data?.detail || err.message || 'Delete failed'));
+      .catch(err => setError(err.response?.data?.detail || 'Delete failed.'));
+  };
+
+  const handleApiImport = async () => {
+    if (!importDate) return;
+    setImporting(true);
+    setError('');
+    setSuccessMsg('');
+    try {
+      const res = await MatchService.importApiMatches(importDate);
+      let msg = `Successfully fetched API matches. Created: ${res.created_count}, Updated: ${res.updated_count}.`;
+      if (res.matches && res.matches.length === 0) {
+        msg = `No matches found for ${importDate}.`;
+      }
+      setSuccessMsg(msg);
+      loadMatches();
+    } catch (err) {
+      let errorMsg = err.response?.data?.detail || err.message;
+      if (errorMsg === 'Network Error' || err.code === 'ERR_NETWORK') errorMsg = 'External API unavailable. Please try again later.';
+      if (err.response?.status >= 500 && !err.response?.data?.detail) errorMsg = 'Backend server encountered an error.';
+      setError(errorMsg || 'API Import failed.');
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleApiSync = async () => {
+    setSyncing(true);
+    setError('');
+    setSuccessMsg('');
+    try {
+      const res = await MatchService.syncApiResults();
+      let msg = `Successfully synced API results. Completed: ${res.completed_matches}, Skipped: ${res.skipped_matches}, New Results: ${res.results_created}.`;
+      if (res.completed_matches === 0 && res.skipped_matches === 0 && res.results_created === 0) {
+        msg = "All matches are already synced or no matches exist to sync.";
+      } else if (res.completed_matches === 0 && res.results_created === 0) {
+        msg = "Results not available yet for the scheduled matches.";
+      }
+      setSuccessMsg(msg);
+      loadMatches();
+    } catch (err) {
+      let errorMsg = err.response?.data?.detail || err.message;
+      if (errorMsg === 'Network Error' || err.code === 'ERR_NETWORK') errorMsg = 'External API unavailable. Please try again later.';
+      if (err.response?.status >= 500 && !err.response?.data?.detail) errorMsg = 'Backend server encountered an error.';
+      setError(errorMsg || 'API Sync failed.');
+    } finally {
+      setSyncing(false);
+    }
   };
 
   return (
@@ -102,9 +158,30 @@ const MatchesView = () => {
               : 'View matches and submit your predictions'}
           </p>
         </div>
-        <div className="page-header-actions" style={{display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap'}}>
+        <div className="page-header-actions" style={{display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap', alignItems: 'center'}}>
           {isOrganizer && (
             <>
+              <input 
+                type="date" 
+                className="input" 
+                value={importDate} 
+                onChange={(e) => setImportDate(e.target.value)} 
+                style={{ height: '36px', width: 'auto' }}
+              />
+              <button 
+                className="btn btn-secondary" 
+                onClick={handleApiImport}
+                disabled={importing || syncing}
+              >
+                {importing ? 'Importing...' : '📡 Import API'}
+              </button>
+              <button 
+                className="btn btn-secondary" 
+                onClick={handleApiSync}
+                disabled={syncing || importing}
+              >
+                {syncing ? 'Syncing...' : '🔄 Sync Results'}
+              </button>
               <button className="btn btn-secondary" onClick={() => csvInputRef.current?.click()}>📁 Upload CSV</button>
               <input type="file" ref={csvInputRef} accept=".csv" style={{display: 'none'}} onChange={handleCsvUpload} />
               <button className="btn btn-primary" onClick={() => setAddMatchOpen(true)}>+ Add Match</button>
@@ -115,6 +192,7 @@ const MatchesView = () => {
       </div>
 
       {error && <div className="alert alert-error" style={{marginBottom: 'var(--space-lg)'}}>{error}</div>}
+      {successMsg && <div className="alert alert-success" style={{marginBottom: 'var(--space-lg)', backgroundColor: 'var(--success-color)', color: 'white', padding: '1rem', borderRadius: '8px'}}>{successMsg}</div>}
 
       {isOrganizer && (
         <div className="alert alert-info" style={{marginBottom: 'var(--space-lg)'}}>
@@ -164,9 +242,13 @@ const MatchesView = () => {
               >
                 <div className="match-card-header">
                   <span className="match-card-id">M{m.match_number || (i + 1)}</span>
-                  {m.round && <span className="badge badge-info" style={{fontSize: 'var(--text-xs)'}}>{m.round}</span>}
                   {statusBadge(status)}
                 </div>
+                {m.competition_name && (
+                  <div style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 'var(--space-xs)' }}>
+                    🏆 {m.competition_name}
+                  </div>
+                )}
                 <div className="match-vs-area">
                   <div className="match-team">{home}</div>
                   {isScored ? (

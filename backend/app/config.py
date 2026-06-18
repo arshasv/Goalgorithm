@@ -41,5 +41,16 @@ class Settings:
             os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", "60")
         )
 
+        self.football_api_key: str = os.environ.get("FOOTBALL_API_KEY", "")
+        self.football_api_base_url: str = os.environ.get(
+            "FOOTBALL_API_BASE_URL", "https://v3.football.api-sports.io"
+        )
+        
+        allowed_leagues_str = os.environ.get("FOOTBALL_ALLOWED_LEAGUES", "1,15")
+        self.football_allowed_leagues: set[str] = {
+            lg.strip() for lg in allowed_leagues_str.split(",") if lg.strip()
+        }
+        self.football_timezone: str = os.environ.get("FOOTBALL_TIMEZONE", "Asia/Kolkata")
+
 
 settings = Settings()

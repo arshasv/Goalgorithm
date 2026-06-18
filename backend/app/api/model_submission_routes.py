@@ -165,7 +165,7 @@ def download_model(
 
     file_path = Path(submission.file_path)
     if not file_path.exists():
-        raise HTTPException(status_code=404, detail="File not found on disk")
+        raise HTTPException(status_code=404, detail="Uploaded model file not found")
 
     from starlette.responses import FileResponse
     return FileResponse(path=str(file_path), filename=submission.file_name, media_type="application/octet-stream")

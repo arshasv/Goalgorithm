@@ -4,6 +4,9 @@
 
 ```
 ┌─────────────────────────────────────────┐
+│         Frontend (React SPA)              │
+│   (pages/, components/, api/)            │
+├─────────────────────────────────────────┤
 │         API / Presentation Layer          │
 │   (main.py, api/routes, health_routes)   │
 ├─────────────────────────────────────────┤
@@ -21,7 +24,7 @@
 │   (SQLAlchemy ORM repositories)          │
 ├─────────────────────────────────────────┤
 │         Infrastructure Layer              │
-│   (DB connection, config, Docker)        │
+│   (PostgreSQL, Config, Docker)           │
 └─────────────────────────────────────────┘
 ```
 
@@ -84,11 +87,12 @@ app/config.py  (Settings singleton)
 ## Technology Stack
 | Layer | Technology |
 |---|---|
+| Frontend | React 18, Vite, React Router DOM, Axios |
 | Framework | Python 3.12+, FastAPI |
 | Validation | Pydantic v2 |
 | API Server | Uvicorn |
 | Testing | pytest, httpx (TestClient) |
-| Database | PostgreSQL 15+ / SQLite (dev/test) |
+| Database | PostgreSQL 16+ / SQLite (dev/test) |
 | ORM | SQLAlchemy 2.0 |
 | Migrations | Alembic |
 | Config | python-dotenv |

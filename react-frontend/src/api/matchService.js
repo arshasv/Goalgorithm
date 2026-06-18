@@ -22,5 +22,13 @@ export const MatchService = {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
     return res.data;
+  },
+  importApiMatches: async (target_date) => {
+    const res = await api.post('/external-matches/import', { target_date });
+    return res.data;
+  },
+  syncApiResults: async () => {
+    const res = await api.post('/external-matches/sync-results');
+    return res.data;
   }
 };

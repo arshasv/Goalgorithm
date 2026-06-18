@@ -47,7 +47,7 @@
 |---|---|
 | Submit valid prediction before freeze deadline | 201 Created |
 | Submit prediction after freeze deadline | 423 Locked, `PREDICTION_WINDOW_CLOSED` |
-| Duplicate prediction for same (team, match) | 409 Conflict, `PREDICTION_ALREADY_EXISTS` |
+| Duplicate prediction for same (team, match) | 200 OK (Idempotent), `PREDICTION_ALREADY_EXISTS` or overwrites |
 | Submit prediction for non-existent match | 404 Not Found |
 | Submit prediction with invalid team token | 401 Unauthorized |
 | Submit prediction for match in COMPLETED state | 423 Locked |
@@ -65,7 +65,7 @@
 |---|---|
 | Enter valid actual result for a COMPLETED match | 201 Created |
 | Enter result for non-existent match | 404 Not Found |
-| Enter result for match that already has a result | 409 Conflict, `RESULT_ALREADY_EXISTS` |
+| Enter result for match that already has a result | 400 Bad Request |
 | Enter result for match in SCHEDULED state | 423 Locked |
 | Non-organizer tries to enter result | 403 Forbidden |
 | Winner field contradicts scoreline (home_goals > away_goals but winner = "away") | 422 Unprocessable Entity |

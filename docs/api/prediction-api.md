@@ -64,8 +64,8 @@ POST
 
 | Status | Scenario | error_code |
 |---|---|---|
-| 200 | Prediction accepted and stored | — |
-| 409 | Duplicate prediction (team + match) | `PREDICTION_ALREADY_EXISTS` |
+| 200 | Prediction accepted and stored (or duplicate idempotency) | — |
+| 400 | Bad Request (e.g., Team not found) | `BAD_REQUEST` |
 | 422 | Schema validation failure | `VALIDATION_ERROR` |
 | 500 | Unexpected server error | `INTERNAL_SERVER_ERROR` |
 

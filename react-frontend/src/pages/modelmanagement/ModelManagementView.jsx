@@ -1,22 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-
-const MockTeams = [
-  { id: 'T1', team_id: 'A', code: 'A', name: 'Team A' },
-  { id: 'T2', team_id: 'B', code: 'B', name: 'Team B' },
-  { id: 'T3', team_id: 'C', code: 'C', name: 'Team C' },
-  { id: 'T4', team_id: 'D', code: 'D', name: 'Team D' },
-  { id: 'T5', team_id: 'E', code: 'E', name: 'Team E' },
-];
-
-const MockSubmissions = [
-  { id: 'S1', team_id: 'T1', file_name: 'model_v3.pkl', file_size: 5242880, uploaded_at: '2026-06-15T10:00:00Z', is_active: true },
-  { id: 'S2', team_id: 'T1', file_name: 'model_v2.pkl', file_size: 4194304, uploaded_at: '2026-06-14T10:00:00Z', is_active: false },
-  { id: 'S3', team_id: 'T2', file_name: 'pred_model.pth', file_size: 8388608, uploaded_at: '2026-06-13T15:30:00Z', is_active: true },
-  { id: 'S4', team_id: 'T3', file_name: 'model.onnx', file_size: 3145728, uploaded_at: '2026-06-12T12:00:00Z', is_active: true },
-  { id: 'S5', team_id: 'T3', file_name: 'model_v1.pkl', file_size: 2097152, uploaded_at: '2026-06-11T09:00:00Z', is_active: false },
-  { id: 'S6', team_id: 'T4', file_name: 'team_model.joblib', file_size: 4194304, uploaded_at: '2026-06-10T18:00:00Z', is_active: true },
-];
+import { ModelService } from '../../api/modelService';
+import { TeamService } from '../../api/teamService';
 
 const formatTeamDisplay = (t) => {
   const code = t.team_id || t.code || '';
@@ -39,33 +24,55 @@ const ModelManagementView = () => {
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [downloading, setDownloading] = useState({});
 
   const loadData = async () => {
     setLoading(true);
     setError('');
     try {
-      setTeams(MockTeams);
-      setSubmissions(MockSubmissions);
+      const windowData = await ModelService.getUploadWindow();
+      setEnabled(windowData.is_enabled);
+      setStartTime(formatDateTimeLocal(windowData.start_time));
+      setEndTime(formatDateTimeLocal(windowData.end_time));
+
+      const teamData = await TeamService.listTeams();
+      setTeams(teamData);
+
+      const modelData = await ModelService.getAllModels();
+      setSubmissions(modelData.submissions || []);
     } catch (err) {
-      setError('Failed to load data: ' + (err.message || ''));
+      setError('Failed to load data: ' + (err.response?.data?.detail || err.message || ''));
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { 
+    if (isOrganizer) loadData(); 
+  }, [isOrganizer]);
 
-  const handleSaveWindow = () => {
-    const data = {
-      is_enabled: enabled,
-      start_time: startTime ? new Date(startTime).toISOString() : null,
-      end_time: endTime ? new Date(endTime).toISOString() : null,
-    };
-    alert('Upload window settings saved (mock) ' + JSON.stringify(data));
+  const handleSaveWindow = async () => {
+    try {
+      await ModelService.updateUploadWindow({
+        is_enabled: enabled,
+        start_time: startTime ? new Date(startTime).toISOString() : null,
+        end_time: endTime ? new Date(endTime).toISOString() : null,
+      });
+      alert('Upload window settings saved');
+    } catch(err) {
+      alert('Failed to save window settings: ' + (err.response?.data?.detail || err.message || ''));
+    }
   };
 
-  const handleViewModel = (sub) => {
-    alert(`View model: ${sub.file_name} (${(sub.file_size / 1024 / 1024).toFixed(2)} MB)`);
+  const handleDownload = async (sub) => {
+    setDownloading(prev => ({ ...prev, [sub.id]: true }));
+    try {
+      await ModelService.downloadModel(sub.id, sub.file_name);
+    } catch(err) {
+      alert('Failed to download: ' + (err.response?.data?.detail || err.message || ''));
+    } finally {
+      setDownloading(prev => ({ ...prev, [sub.id]: false }));
+    }
   };
 
   if (!isOrganizer) {
@@ -107,7 +114,7 @@ const ModelManagementView = () => {
         <tr key={sub.id} style={bg}>
           <td>
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
-              <div style={{ width: 24 }}>{idx === 0 ? null : null}</div>
+              <div style={{ width: 24 }}></div>
               <div><div style={{ fontWeight: 500 }}>{idx === 0 ? formatTeamDisplay(t) : ''}</div></div>
             </div>
           </td>
@@ -120,7 +127,13 @@ const ModelManagementView = () => {
           </td>
           <td>v{subs.length - idx}</td>
           <td>
-            <button className="btn btn-sm btn-secondary" onClick={() => handleViewModel(sub)}>👁️ View Model</button>
+            <button 
+              className="btn btn-sm btn-secondary" 
+              onClick={() => handleDownload(sub)}
+              disabled={downloading[sub.id]}
+            >
+              {downloading[sub.id] ? '⏳ Downloading...' : '📥 Download'}
+            </button>
           </td>
         </tr>
       );

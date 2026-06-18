@@ -107,7 +107,7 @@ const App = () => {
             />
             <Route 
               path="/match-results" 
-              element={<PrivateRoute element={<FinalScoresView />} />} 
+              element={<PrivateRoute element={<FinalScoresView />} roleRequired="ORGANIZER" />} 
             />
             <Route 
               path="/scoring-config" 
