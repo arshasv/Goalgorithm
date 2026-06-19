@@ -8,5 +8,10 @@ export const ScoringService = {
   getMatchBreakdown: async () => {
     const res = await api.get('/scores/match-breakdown');
     return res.data;
+  },
+  calculatePresentation: async (evaluations) => {
+    const res = await api.post('/presentation-score', evaluations);
+    return res.data;
   }
 };
+

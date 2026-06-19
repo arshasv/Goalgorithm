@@ -7,7 +7,7 @@ const sections = [
   { title: 'Probability', keys: ['probability_threshold', 'probability_points_pass', 'probability_points_fail'] },
   { title: 'Player Performance', keys: ['player_points_exact', 'player_points_close', 'player_points_wrong', 'player_avg_threshold_exact', 'player_avg_threshold_close'] },
   { title: 'Technical Evaluation', keys: ['technical_max_per_category', 'technical_max_total'] },
-  { title: 'Presentation Evaluation', keys: ['presentation_ai_explanation_max', 'presentation_qa_score_max', 'presentation_delivery_score_max', 'presentation_denominator', 'presentation_max_marks'] },
+  { title: 'Presentation Settings', keys: ['presentation_judge_count'] },
   { title: 'Grade Multipliers', keys: ['multiplier_a', 'multiplier_b', 'multiplier_c'] },
   { title: 'Phase Normalization', keys: ['phase1_max_marks'] },
 ];
@@ -52,6 +52,34 @@ const ScoringConfigView = () => {
     if (!config) return;
     const parsed = isFloatKey(key) ? parseFloat(value) : parseInt(value, 10);
     setConfig(prev => ({ ...prev, [key]: isNaN(parsed) ? value : parsed }));
+  };
+
+  const handleAddCriterion = () => {
+    setConfig(prev => ({
+      ...prev,
+      presentation_criteria: [
+        ...(prev.presentation_criteria || []),
+        { name: 'New Criterion', max_score: 10 }
+      ]
+    }));
+  };
+
+  const handleCriterionChange = (index, field, value) => {
+    setConfig(prev => {
+      const updated = [...(prev.presentation_criteria || [])];
+      updated[index] = {
+        ...updated[index],
+        [field]: field === 'max_score' ? parseInt(value, 10) || 0 : value
+      };
+      return { ...prev, presentation_criteria: updated };
+    });
+  };
+
+  const handleRemoveCriterion = (index) => {
+    setConfig(prev => ({
+      ...prev,
+      presentation_criteria: (prev.presentation_criteria || []).filter((_, i) => i !== index)
+    }));
   };
 
   const handleSave = async () => {
@@ -142,6 +170,60 @@ const ScoringConfigView = () => {
                 </div>
               );
             })}
+            
+            {section.title === 'Presentation Settings' && (
+              <div style={{ gridColumn: '1 / -1', borderTop: '1px solid var(--color-border)', marginTop: 'var(--space-md)', paddingTop: 'var(--space-md)' }}>
+                <h4 className="form-label" style={{ marginBottom: 'var(--space-md)', fontSize: 'var(--text-md)', fontWeight: 600 }}>📋 Evaluation Criteria</h4>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+                  {(config.presentation_criteria || []).map((criterion, idx) => (
+                    <div key={idx} style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'center' }}>
+                      <div className="form-group" style={{ flex: 2, marginBottom: 0 }}>
+                        <input
+                          className="form-input"
+                          type="text"
+                          placeholder="Criterion Name (e.g. Q&A)"
+                          value={criterion.name}
+                          onChange={e => handleCriterionChange(idx, 'name', e.target.value)}
+                        />
+                      </div>
+                      <div className="form-group" style={{ flex: 1, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+                        <input
+                          className="form-input"
+                          type="number"
+                          placeholder="Max Marks"
+                          value={criterion.max_score}
+                          onChange={e => handleCriterionChange(idx, 'max_score', e.target.value)}
+                          style={{ maxWidth: '100px' }}
+                        />
+                        <span style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)' }}>marks</span>
+                      </div>
+                      <button
+                        className="btn btn-ghost"
+                        type="button"
+                        onClick={() => handleRemoveCriterion(idx)}
+                        style={{ color: 'var(--color-status-error)', padding: 'var(--space-xs)' }}
+                      >
+                        🗑️ Delete
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  className="btn btn-secondary btn-sm"
+                  type="button"
+                  onClick={handleAddCriterion}
+                  style={{ marginTop: 'var(--space-md)' }}
+                >
+                  ➕ Add Criterion
+                </button>
+                
+                <div style={{ marginTop: 'var(--space-md)', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
+                  Total Maximum Marks: <strong>{ (config.presentation_criteria || []).reduce((acc, c) => acc + (c.max_score || 0), 0) }</strong> marks
+                </div>
+              </div>
+            )}
           </div>
         </div>
       ))}

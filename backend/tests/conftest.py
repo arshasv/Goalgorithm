@@ -124,7 +124,7 @@ def team_a(db_session: Session) -> TeamModel:
 def team_leader(db_session: Session, team_a: TeamModel) -> UserModel:
     user = UserModel(
         username="teamleader",
-        email="leader@gmail.com",
+        email="teama@gmail.com",
         password_hash=hash_password("password123"),
         role=UserRole.TEAM_LEADER,
     )

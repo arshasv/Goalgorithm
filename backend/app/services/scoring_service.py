@@ -93,7 +93,7 @@ class ScoringService:
         config_dict, config_id = _load_active_config(self.db)
         result = calculate_presentation_scores(evaluations, config_dict)
 
-        from app.models.evaluation import PresentationEvaluationModel, Grade
+        from app.models.evaluation import PresentationEvaluationModel
 
         for ev in result:
             team_id = ev["team_id"]
@@ -101,32 +101,31 @@ class ScoringService:
                 PresentationEvaluationModel.team_id == team_id
             ).first()
 
-            grade_val = ev.get("grade")
-            grade_enum = Grade(grade_val) if grade_val and grade_val in ("A", "B", "C") else None
-
             if existing:
                 existing.presentation_score = ev["presentation_score"]
-                existing.raw_total = ev.get("raw_total")
-                existing.rank = ev.get("rank")
-                existing.grade = grade_enum
-                existing.multiplier = ev.get("multiplier")
+                existing.raw_total = ev["raw_total"]
+                existing.rank = ev["rank"]
+                existing.judge_count = ev["judge_count"]
+                existing.judge_scores = ev["judge_scores"]
+                existing.presentation_criteria_config = ev["presentation_criteria_config"]
+                existing.max_marks = ev["max_marks"]
                 self.db.commit()
             else:
                 pres_eval = PresentationEvaluationModel(
                     team_id=team_id,
-                    ai_explanation_score=ev.get("ai_explanation_score"),
-                    qa_score=ev.get("qa_score"),
-                    delivery_score=ev.get("delivery_score"),
-                    raw_total=ev.get("raw_total"),
+                    raw_total=ev["raw_total"],
                     presentation_score=ev["presentation_score"],
-                    rank=ev.get("rank"),
-                    grade=grade_enum,
-                    multiplier=ev.get("multiplier"),
+                    rank=ev["rank"],
+                    judge_count=ev["judge_count"],
+                    judge_scores=ev["judge_scores"],
+                    presentation_criteria_config=ev["presentation_criteria_config"],
+                    max_marks=ev["max_marks"],
                 )
                 self.db.add(pres_eval)
                 self.db.commit()
 
         return result
+
 
     def compute_and_save_leaderboard(
         self, scores_input: list[dict] = None

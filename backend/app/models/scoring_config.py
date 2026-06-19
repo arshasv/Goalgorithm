@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, Float, Integer, String, Uuid
+from sqlalchemy import Boolean, DateTime, Float, Integer, String, Uuid, JSON
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.base import Base
@@ -54,6 +54,9 @@ class ScoringConfigModel(Base):
 
     phase1_max_marks: Mapped[int] = mapped_column(Integer, default=60, nullable=False)
 
+    presentation_criteria: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    presentation_judge_count: Mapped[int] = mapped_column(Integer, default=2, nullable=False)
+
     def to_dict(self) -> dict:
         return {
             "id": str(self.id),
@@ -86,4 +89,13 @@ class ScoringConfigModel(Base):
             "multiplier_b": self.multiplier_b,
             "multiplier_c": self.multiplier_c,
             "phase1_max_marks": self.phase1_max_marks,
+            "presentation_criteria": self.presentation_criteria or [
+                {"name": "Problem Understanding", "max_score": 10},
+                {"name": "Feature Engineering", "max_score": 15},
+                {"name": "Team Work", "max_score": 10},
+                {"name": "Presentation Quality", "max_score": 10},
+                {"name": "Q&A", "max_score": 5}
+            ],
+            "presentation_judge_count": self.presentation_judge_count,
         }
+

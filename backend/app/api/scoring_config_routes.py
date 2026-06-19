@@ -137,6 +137,8 @@ def create_config(
         multiplier_b=body.multiplier_b,
         multiplier_c=body.multiplier_c,
         phase1_max_marks=body.phase1_max_marks,
+        presentation_criteria=body.presentation_criteria,
+        presentation_judge_count=body.presentation_judge_count,
     )
     db.add(config)
     db.commit()
@@ -173,7 +175,7 @@ def update_config(
         "presentation_ai_explanation_max", "presentation_qa_score_max",
         "presentation_delivery_score_max", "presentation_denominator", "presentation_max_marks",
         "multiplier_a", "multiplier_b", "multiplier_c",
-        "phase1_max_marks",
+        "phase1_max_marks", "presentation_criteria", "presentation_judge_count",
     ]:
         if field in update_data and update_data[field] is not None:
             setattr(config, field, update_data[field])
@@ -181,6 +183,7 @@ def update_config(
     db.commit()
     db.refresh(config)
     return config
+
 
 
 @router.post("/{config_id}/activate", response_model=ScoringConfigResponse)

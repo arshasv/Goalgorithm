@@ -17,10 +17,24 @@ export const TeamService = {
     const res = await api.put(`/teams/${teamId}`, data);
     return res.data;
   },
-  uploadTeamsCsv: async (formData) => {
-    const res = await api.post('/teams/upload-members-csv', formData, {
+  uploadMembers: async (formData) => {
+    const res = await api.post('/teams/upload-members', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
+    return res.data;
+  },
+  uploadTeams: async (formData) => {
+    const res = await api.post('/teams/upload-teams', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return res.data;
+  },
+  downloadMembersTemplate: async () => {
+    const res = await api.get('/teams/template/members', { responseType: 'blob' });
+    return res.data;
+  },
+  downloadTeamsTemplate: async () => {
+    const res = await api.get('/teams/template/teams', { responseType: 'blob' });
     return res.data;
   },
   addTeamMemberAdmin: async (teamId, data) => {

@@ -48,5 +48,8 @@ def get_current_team(
 ) -> TeamModel:
     team = db.query(TeamModel).filter(TeamModel.user_id == current_user.id).first()
     if not team:
+        from app.api.auth_routes import _ensure_team_link
+        team = _ensure_team_link(current_user, db)
+    if not team:
         raise HTTPException(status_code=404, detail="Team not found for current user")
     return team

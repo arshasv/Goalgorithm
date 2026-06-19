@@ -59,7 +59,7 @@ def get_daily_scores(
         d = match.scheduled_at.date()
         if d not in daily:
             daily[d] = {}
-        team_name = team_names.get(s.team_id, s.team_id)
+        team_name = team_names.get(s.team_id, "Unknown Team")
         team_code = team_codes.get(s.team_id, "")
         if team_name not in daily[d]:
             daily[d][team_name] = {"total_score": 0, "team_code": team_code}
@@ -114,7 +114,7 @@ def get_match_breakdown(
             if not is_organizer and s.team_id != user_team_id:
                 continue
 
-            team_name = team_names.get(s.team_id, s.team_id)
+            team_name = team_names.get(s.team_id, "Unknown Team")
             pred = predictions_by_key.get((s.team_id, mid))
             prediction_detail = None
             if pred:
@@ -194,7 +194,7 @@ def get_technical_evaluations(
         {
             "team_id": e.team_id,
             "team_code": team_codes.get(e.team_id, ""),
-            "team_name": team_names.get(e.team_id, e.team_id),
+            "team_name": team_names.get(e.team_id, "Unknown Team"),
             "code_quality": e.code_quality,
             "backend_quality": e.backend_quality,
             "teamwork": e.teamwork,
@@ -222,7 +222,7 @@ def get_presentation_evaluations(
         {
             "team_id": e.team_id,
             "team_code": team_codes.get(e.team_id, ""),
-            "team_name": team_names.get(e.team_id, e.team_id),
+            "team_name": team_names.get(e.team_id, "Unknown Team"),
             "ai_explanation_score": e.ai_explanation_score,
             "qa_score": e.qa_score,
             "delivery_score": e.delivery_score,
@@ -231,9 +231,14 @@ def get_presentation_evaluations(
             "rank": e.rank,
             "grade": e.grade.value if e.grade else None,
             "multiplier": e.multiplier,
+            "judge_count": e.judge_count,
+            "judge_scores": e.judge_scores or [],
+            "presentation_criteria_config": e.presentation_criteria_config or [],
+            "max_marks": e.max_marks,
             "submitted_at": e.submitted_at.isoformat()
             if e.submitted_at
             else None,
         }
         for e in evaluations
     ]
+

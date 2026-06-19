@@ -21,6 +21,9 @@ router = APIRouter(prefix="/matches", tags=["matches"])
 
 
 def _serialize(m: MatchModel) -> dict:
+    ext_sync = m.external_sync_status
+    if hasattr(ext_sync, "value"):
+        ext_sync = ext_sync.value
     return {
         "id": str(m.id),
         "match_number": m.match_number,
@@ -31,6 +34,9 @@ def _serialize(m: MatchModel) -> dict:
         "round": m.round,
         "status": m.status.value if hasattr(m.status, "value") else str(m.status),
         "created_at": m.created_at.isoformat(),
+        "external_api_id": m.external_api_id,
+        "competition_name": m.competition_name,
+        "external_sync_status": ext_sync,
     }
 
 

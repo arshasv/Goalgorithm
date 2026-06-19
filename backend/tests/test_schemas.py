@@ -323,58 +323,22 @@ class TestPresentationSchema:
     def test_valid_presentation_passes(self):
         data = {
             "team_id": "team-001",
-            "ai_explanation_score": 18,
-            "qa_score": 12,
-            "delivery_score": 14,
+            "judge_scores": [
+                {
+                    "Problem Understanding": 8.0,
+                    "Feature Engineering": 12.0,
+                }
+            ],
         }
         model = PresentationEvaluation(**data)
         assert model.team_id == "team-001"
+        assert len(model.judge_scores) == 1
 
-    def test_presentation_scores_fixture_all_valid(self):
-        data = json.loads((FIXTURES / "presentation_scores.json").read_text())
-        assert len(data) == 5
-        team_ids = set()
-        for entry in data:
-            model = PresentationEvaluation(**entry)
-            team_ids.add(model.team_id)
-        assert team_ids == {"Team A", "Team B", "Team C", "Team D", "Team E"}
-
-    def test_ai_explanation_above_max_fails(self):
+    def test_empty_team_id_fails(self):
         data = {
-            "team_id": "team-001",
-            "ai_explanation_score": 25,
-            "qa_score": 12,
-            "delivery_score": 14,
+            "team_id": "",
+            "judge_scores": [],
         }
         with pytest.raises(ValidationError):
             PresentationEvaluation(**data)
 
-    def test_qa_score_above_max_fails(self):
-        data = {
-            "team_id": "team-001",
-            "ai_explanation_score": 18,
-            "qa_score": 20,
-            "delivery_score": 14,
-        }
-        with pytest.raises(ValidationError):
-            PresentationEvaluation(**data)
-
-    def test_delivery_score_above_max_fails(self):
-        data = {
-            "team_id": "team-001",
-            "ai_explanation_score": 18,
-            "qa_score": 12,
-            "delivery_score": 20,
-        }
-        with pytest.raises(ValidationError):
-            PresentationEvaluation(**data)
-
-    def test_negative_score_fails(self):
-        data = {
-            "team_id": "team-001",
-            "ai_explanation_score": -1,
-            "qa_score": 12,
-            "delivery_score": 14,
-        }
-        with pytest.raises(ValidationError):
-            PresentationEvaluation(**data)

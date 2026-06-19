@@ -26,6 +26,15 @@ const rankBadge = (rank) => {
   return <span className="rank-badge rank-badge-n">#{rank}</span>;
 };
 
+const COLUMN_CONFIG = [
+  { key: 'rank', label: 'Rank', render: (e) => e.rank, headerClass: '', cellClass: '' },
+  { key: 'team_name', label: 'Team', render: (e) => <strong>{formatTeamDisplay(e)}</strong>, headerClass: '', cellClass: '' },
+  { key: 'phase1_score', label: 'Phase 1', render: (e) => <span className={`score-num ${scoreColor(e.phase1_score, 60)}`}>{fmt1(e.phase1_score)}</span>, headerClass: '', cellClass: '' },
+  { key: 'technical_score', label: 'Technical', render: (e) => <span className={`score-num ${scoreColor(e.technical_score, 20)}`}>{fmt1(e.technical_score)}</span>, headerClass: '', cellClass: '' },
+  { key: 'presentation_score', label: 'Presentation', render: (e) => <span className={`score-num ${scoreColor(e.presentation_score, 20)}`}>{fmt1(e.presentation_score)}</span>, headerClass: '', cellClass: '' },
+  { key: 'final_score', label: 'Final Score', render: (e) => <strong className="score-num" style={{fontSize:'var(--text-lg)'}}>{fmt1(e.final_score)}</strong>, headerClass: '', cellClass: '' },
+];
+
 const LeaderboardView = () => {
   const { isOrganizer } = useAuth();
   const [leaderboard, setLeaderboard] = useState([]);
@@ -63,6 +72,10 @@ const LeaderboardView = () => {
   };
 
   const topScore = leaderboard.length > 0 ? leaderboard[0].final_score : 0;
+
+  const visibleColumns = leaderboard.length > 0
+    ? COLUMN_CONFIG.filter(col => col.key in leaderboard[0])
+    : COLUMN_CONFIG;
 
   return (
     <div>
@@ -134,13 +147,9 @@ const LeaderboardView = () => {
               <table>
                 <thead>
                   <tr>
-                    <th>Rank</th>
-                    <th>Team</th>
-                    <th>Phase 1</th>
-                    <th>Technical</th>
-                    <th>Presentation</th>
-                    <th>Final Score</th>
-                    <th></th>
+                    {visibleColumns.map(col => (
+                      <th key={col.key}>{col.label}</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
@@ -149,13 +158,9 @@ const LeaderboardView = () => {
                     const rankClass = r <= 3 ? `rank-${r}` : '';
                     return (
                       <tr key={e.team_id} className={rankClass} style={{cursor:'pointer'}}>
-                        <td>{e.rank}</td>
-                        <td><strong>{formatTeamDisplay(e)}</strong></td>
-                        <td><span className={`score-num ${scoreColor(e.phase1_score, 60)}`}>{fmt1(e.phase1_score)}</span></td>
-                        <td><span className={`score-num ${scoreColor(e.technical_score, 20)}`}>{fmt1(e.technical_score)}</span></td>
-                        <td><span className={`score-num ${scoreColor(e.presentation_score, 20)}`}>{fmt1(e.presentation_score)}</span></td>
-                        <td><strong className="score-num" style={{fontSize:'var(--text-lg)'}}>{fmt1(e.final_score)}</strong></td>
-                        <td>{rankBadge(e.rank)}</td>
+                        {visibleColumns.map(col => (
+                          <td key={col.key}>{col.render(e)}</td>
+                        ))}
                       </tr>
                     );
                   })}

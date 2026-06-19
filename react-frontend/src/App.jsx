@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Layout from './components/layout/Layout';
 import LoginView from './pages/auth/LoginView';
 import RegisterView from './pages/auth/RegisterView';
+import ForgotPasswordView from './pages/auth/ForgotPasswordView';
 import OrganizerDashboard from './pages/dashboard/OrganizerDashboard';
 import TeamLeaderDashboard from './pages/dashboard/TeamLeaderDashboard';
 import TeamsView from './pages/teams/TeamsView';
@@ -18,6 +19,7 @@ import FinalScoresView from './pages/finalscores/FinalScoresView';
 import ScoringConfigView from './pages/scoringconfig/ScoringConfigView';
 import ModelManagementView from './pages/modelmanagement/ModelManagementView';
 import ModelSubmissionView from './pages/modelsubmission/ModelSubmissionView';
+import LeaderboardSettingsView from './pages/leaderboardsettings/LeaderboardSettingsView';
 
 const PrivateRoute = ({ element, roleRequired }) => {
   const { isAuthenticated, user, loading } = useAuth();
@@ -51,6 +53,7 @@ const App = () => {
         <Routes>
           <Route path="/login" element={<LoginView />} />
           <Route path="/register" element={<RegisterView />} />
+          <Route path="/forgot-password" element={<ForgotPasswordView />} />
           
           <Route element={<Layout />}>
             <Route path="/" element={<DashboardRouter />} />
@@ -116,6 +119,10 @@ const App = () => {
             <Route 
               path="/prediction-upload" 
               element={<PrivateRoute element={<ModelManagementView />} roleRequired="ORGANIZER" />} 
+            />
+            <Route 
+              path="/leaderboard-settings" 
+              element={<PrivateRoute element={<LeaderboardSettingsView />} roleRequired="ORGANIZER" />} 
             />
             <Route 
               path="/submit-predictions" 

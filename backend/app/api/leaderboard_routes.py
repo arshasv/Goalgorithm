@@ -1,10 +1,10 @@
-from pydantic import BaseModel, Field
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_organizer, get_current_user
 from app.database.session import get_db
 from app.models.leaderboard import LeaderboardModel
+from app.models.leaderboard_visibility import LeaderboardVisibilityModel
 from app.models.team import TeamModel
 from app.models.user import UserModel
 from app.models.enums import UserRole
@@ -73,9 +73,47 @@ def get_leaderboard(
             res["rank"] = i + 1
 
     if current_user.role == UserRole.TEAM_LEADER:
-        team = db.query(TeamModel).filter(TeamModel.user_id == current_user.id).first()
-        if not team:
-            return []
-        result = [r for r in result if r["team_id"] == str(team.id)]
+        visibility = db.query(LeaderboardVisibilityModel).first()
+
+        show_all = (
+            visibility.show_all_teams_leaderboard if visibility else True
+        )
+
+        if not show_all:
+            team = db.query(TeamModel).filter(
+                TeamModel.user_id == current_user.id
+            ).first()
+            if not team:
+                return []
+            result = [r for r in result if r["team_id"] == str(team.id)]
+
+        if visibility:
+            always_include = {"id", "team_id", "is_final", "generated_at"}
+            show_phase = visibility.show_phase_scores
+
+            phase_keys = set()
+            if show_phase and visibility.show_phase_1_score:
+                phase_keys.add("phase1_score")
+            if show_phase and visibility.show_technical_score:
+                phase_keys.add("technical_score")
+            if show_phase and visibility.show_presentation_score:
+                phase_keys.add("presentation_score")
+
+            filtered = []
+            for entry in result:
+                f_entry = {}
+                for key, value in entry.items():
+                    if key in always_include:
+                        f_entry[key] = value
+                    elif key == "rank" and visibility.show_rank:
+                        f_entry[key] = value
+                    elif key in ("team_code", "team_name") and visibility.show_team_name:
+                        f_entry[key] = value
+                    elif key == "final_score" and visibility.show_final_score:
+                        f_entry[key] = value
+                    elif key in phase_keys:
+                        f_entry[key] = value
+                filtered.append(f_entry)
+            result = filtered
 
     return result

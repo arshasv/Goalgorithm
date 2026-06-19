@@ -121,8 +121,9 @@ const LoginView = () => {
             </div>
           </form>
 
-          <div className="auth-footer">
-            Don't have an account? <Link to="/register">Register Team</Link>
+          <div className="auth-footer" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <Link to="/forgot-password" style={{ color: 'var(--color-text-link)', fontWeight: 600, fontSize: 'var(--text-sm)' }}>Forgot Password?</Link>
+            <span>Don't have an account? <Link to="/register">Register Team</Link></span>
           </div>
         </div>
       </div>

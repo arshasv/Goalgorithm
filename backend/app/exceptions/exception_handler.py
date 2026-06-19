@@ -1,7 +1,7 @@
 import logging
 
 from fastapi import Request
-from fastapi.exceptions import RequestValidationError
+from fastapi.exceptions import RequestValidationError, ResponseValidationError
 from sqlalchemy.exc import IntegrityError
 from starlette.responses import JSONResponse
 
@@ -64,6 +64,28 @@ def register_exception_handlers(app: "FastAPI") -> None:
                 "error_code": "LEADERBOARD_ERROR",
                 "message": str(exc),
                 "details": {},
+            },
+        )
+
+    @app.exception_handler(ResponseValidationError)
+    async def response_validation_handler(
+        _request: Request, exc: ResponseValidationError
+    ) -> JSONResponse:
+        logger.exception("Response validation error: %s", exc)
+        errors = exc.errors()
+        detail = []
+        for err in errors:
+            detail.append({
+                "field": " -> ".join(str(loc) for loc in err.get("loc", [])),
+                "message": err.get("msg", "Invalid value"),
+            })
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "error_code": "RESPONSE_VALIDATION_ERROR",
+                "message": "Internal server error: response data could not be serialized",
+                "details": detail,
             },
         )
 

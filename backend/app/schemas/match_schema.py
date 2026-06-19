@@ -42,5 +42,8 @@ class MatchResponse(BaseModel):
     status: str
     round: Optional[str] = None
     created_at: datetime
+    external_api_id: Optional[str] = None
+    competition_name: Optional[str] = None
+    external_sync_status: Optional[str] = None
 
     model_config = {"from_attributes": True}

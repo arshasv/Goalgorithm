@@ -25,7 +25,7 @@ class TestAuthAPI:
     def test_register(self, client, db_session):
         resp = client.post("/api/v1/auth/register", json={
             "username": "newleader",
-            "email": "newleader@gmail.com",
+            "email": "teamb@gmail.com",
             "password": "password123",
             "team_name": "B",
             "team_leader_name": "John Doe",
@@ -35,11 +35,13 @@ class TestAuthAPI:
         assert "access_token" in body
         assert body["user"]["username"] == "newleader"
         assert body["user"]["role"] == "TEAM_LEADER"
+        assert body["user"]["team_name"] == "Team B"
+        assert body["user"]["team_id"] is not None
 
     def test_register_duplicate_username(self, client, db_session, team_a, team_leader):
         resp = client.post("/api/v1/auth/register", json={
             "username": "teamleader",
-            "email": "other@opentrends.com",
+            "email": "teamb@opentrends.com",
             "password": "password123",
             "team_name": "B",
             "team_leader_name": "Other",
@@ -49,7 +51,7 @@ class TestAuthAPI:
     def test_register_team_already_taken(self, client, db_session, team_a, team_leader):
         resp = client.post("/api/v1/auth/register", json={
             "username": "newuser",
-            "email": "newuser@gmail.com",
+            "email": "teama@gmail.com",
             "password": "password123",
             "team_name": "A",
             "team_leader_name": "Other",
@@ -59,7 +61,7 @@ class TestAuthAPI:
     def test_register_invalid_email_domain(self, client, db_session):
         resp = client.post("/api/v1/auth/register", json={
             "username": "hacker",
-            "email": "hacker@yahoo.com",
+            "email": "teamb@yahoo.com",
             "password": "password123",
             "team_name": "B",
             "team_leader_name": "Hacker",
@@ -74,7 +76,7 @@ class TestAuthAPI:
             prefix = domain.split('.')[0]
             resp = client.post("/api/v1/auth/register", json={
                 "username": f"user_{prefix}_{i}",
-                "email": f"test@{domain}",
+                "email": f"team{teams[i].lower()}@{domain}",
                 "password": "password123",
                 "team_name": teams[i],
                 "team_leader_name": f"Leader {domain}",
@@ -84,7 +86,7 @@ class TestAuthAPI:
     def test_register_blocked_domains(self, client, db_session):
         resp = client.post("/api/v1/auth/register", json={
             "username": "blocked_user",
-            "email": "user@yahoo.com",
+            "email": "teamb@yahoo.com",
             "password": "password123",
             "team_name": "B",
             "team_leader_name": "Blocked",
@@ -100,7 +102,7 @@ class TestAuthAPI:
 
     def test_login(self, client, team_leader):
         resp = client.post("/api/v1/auth/login", json={
-            "email": "leader@gmail.com",
+            "email": "teama@gmail.com",
             "password": "password123",
         })
         assert resp.status_code == 200
@@ -290,74 +292,146 @@ class TestTeamAPI:
         del_resp = client.delete(f"/api/v1/teams/{team_a.id}/members/{member_id}", headers=organizer_headers)
         assert del_resp.status_code == 200
 
-    def test_csv_upload_teams(self, client, organizer_headers, db_session):
-        # Test CSV upload with new and existing teams
-        csv_data = (
-            "team_code,team_name,team_leader\n"
-            "A,Alpha Team,Alice\n"
-            "B,Beta Team,Bob\n"
-        )
-        files = {"file": ("teams.csv", csv_data, "text/csv")}
-        resp = client.post("/api/v1/teams/upload-csv", files=files, headers=organizer_headers)
+    def test_upload_members_csv(self, client, organizer_headers, db_session):
+        from app.models.team_member import TeamMemberModel
+        csv_data = "EmployeeID,Name,Group\nE001,Alice,A\nE002,Bob,A\n"
+        files = {"file": ("members.csv", csv_data, "text/csv")}
+        resp = client.post("/api/v1/teams/upload-members", files=files, headers=organizer_headers)
         assert resp.status_code == 200
         body = resp.json()
-        assert "Created 2 teams" in body["message"]
-        assert "updated 0 teams" in body["message"]
+        assert body["created"] == 2
 
-        # Upload again — should update
-        csv_data2 = (
-            "team_code,team_name,team_leader\n"
-            "A,Alpha Updated,Alice Smith\n"
-            "C,Charlie Team,Charlie\n"
-        )
-        files2 = {"file": ("teams2.csv", csv_data2, "text/csv")}
-        resp2 = client.post("/api/v1/teams/upload-csv", files=files2, headers=organizer_headers)
-        assert resp2.status_code == 200
-        body2 = resp2.json()
-        assert "Created 1 teams" in body2["message"]
-        assert "updated 1 teams" in body2["message"]
+        members = db_session.query(TeamMemberModel).all()
+        assert len(members) == 2
+        assert all(m.team_id is None for m in members)
+        assert all(m.group_code == "A" for m in members)
 
-        # Verify Team A was updated
-        teams_resp = client.get("/api/v1/teams", headers=organizer_headers)
-        assert teams_resp.status_code == 200
-        teams = teams_resp.json()
-        team_a = next(t for t in teams if t["team_code"] == "A")
-        assert team_a["team_name"] == "Alpha Updated"
-        assert team_a["team_leader"] == "Alice Smith"
+    def test_upload_members_replaces_old_data(self, client, organizer_headers, db_session):
+        from app.models.team_member import TeamMemberModel
+        csv_data = "EmployeeID,Name,Group\nE001,Alice,A\nE002,Bob,A\n"
+        resp = client.post("/api/v1/teams/upload-members", files={"file": ("members.csv", csv_data, "text/csv")}, headers=organizer_headers)
+        assert resp.status_code == 200
+        assert resp.json()["created"] == 2
 
-    def test_xlsx_upload_teams(self, client, organizer_headers):
+        csv_data2 = "EmployeeID,Name,Group\nE003,Charlie,A\n"
+        resp = client.post("/api/v1/teams/upload-members", files={"file": ("members.csv", csv_data2, "text/csv")}, headers=organizer_headers)
+        assert resp.status_code == 200
+        assert resp.json()["created"] == 1
+
+        members = db_session.query(TeamMemberModel).all()
+        assert len(members) == 1
+        assert members[0].name == "Charlie"
+        assert members[0].employee_id == "E003"
+
+    def test_upload_members_with_existing_team(self, client, organizer_headers, db_session, team_a):
+        from app.models.team_member import TeamMemberModel
+        csv_data = "EmployeeID,Name,Group\nE001,Alice,A\n"
+        files = {"file": ("members.csv", csv_data, "text/csv")}
+        resp = client.post("/api/v1/teams/upload-members", files=files, headers=organizer_headers)
+        assert resp.status_code == 200
+
+        member = db_session.query(TeamMemberModel).first()
+        assert member is not None
+        assert member.team_id == team_a.id
+        assert member.group_code is None
+
+    def test_upload_members_wrong_columns(self, client, organizer_headers):
+        csv_data = "foo,bar\n1,2\n"
+        files = {"file": ("bad.csv", csv_data, "text/csv")}
+        resp = client.post("/api/v1/teams/upload-members", files=files, headers=organizer_headers)
+        assert resp.status_code == 400
+
+    def test_upload_teams_csv(self, client, organizer_headers, db_session):
+        from app.models.team import TeamModel
+        csv_data = "Timestamp,Team,Team Leader,Team Name\n18/06/26,A,Paul Neerali,Goal Masters\n"
+        files = {"file": ("teams.csv", csv_data, "text/csv")}
+        resp = client.post("/api/v1/teams/upload-teams", files=files, headers=organizer_headers)
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["teams_created"] == 1
+
+        team = db_session.query(TeamModel).filter(TeamModel.team_id == "A").first()
+        assert team is not None
+        assert team.name == "Goal Masters"
+        assert team.team_leader_name == "Paul Neerali"
+
+    def test_upload_teams_links_members_by_group(self, client, organizer_headers, db_session):
+        from app.models.team_member import TeamMemberModel
+        from app.models.team import TeamModel
+
+        csv_data = "Timestamp,Team,Team Leader,Team Name\n18/06/26,A,Paul Neerali,Goal Masters\n"
+        client.post("/api/v1/teams/upload-teams", files={"file": ("teams.csv", csv_data, "text/csv")}, headers=organizer_headers)
+
+        csv_data2 = "EmployeeID,Name,Group\nE001,Alice,A\nE002,Bob,A\n"
+        resp = client.post("/api/v1/teams/upload-members", files={"file": ("members.csv", csv_data2, "text/csv")}, headers=organizer_headers)
+        assert resp.status_code == 200
+
+        team = db_session.query(TeamModel).filter(TeamModel.team_id == "A").first()
+        members = db_session.query(TeamMemberModel).filter(TeamMemberModel.team_id == team.id).all()
+        assert len(members) == 2
+
+    def test_upload_teams_xlsx(self, client, organizer_headers):
         import openpyxl
         import io
-        
+
         wb = openpyxl.Workbook()
         ws = wb.active
-        ws.append(["team_code", "team_name", "team_leader"])
-        ws.append(["A", "Excel Team", "Excel Leader"])
-        
+        ws.append(["Timestamp", "Team", "Team Leader", "Team Name"])
+        ws.append(["18/06/26", "B", "John Smith", "Prediction Masters"])
+
         file_stream = io.BytesIO()
         wb.save(file_stream)
         file_stream.seek(0)
-        
-        files = {"file": ("teams.xlsx", file_stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}
-        resp = client.post("/api/v1/teams/upload-csv", files=files, headers=organizer_headers)
-        assert resp.status_code == 200
-        body = resp.json()
-        assert "Created 1 teams" in body["message"]
 
-    def test_upload_members_csv(self, client, organizer_headers):
-        csv_data = "group,name,employee_id\nA,Alice,E001\nA,Bob,E002\n"
-        files = {"file": ("members.csv", csv_data, "text/csv")}
-        resp = client.post("/api/v1/teams/upload-members-csv", files=files, headers=organizer_headers)
+        files = {"file": ("teams.xlsx", file_stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}
+        resp = client.post("/api/v1/teams/upload-teams", files=files, headers=organizer_headers)
         assert resp.status_code == 200
         body = resp.json()
-        assert "Successfully imported members" in body["message"]
+        assert body["teams_created"] == 1
+
+    def test_upload_teams_replaces_old_teams(self, client, organizer_headers, db_session):
+        from app.models.team import TeamModel
+        csv_data = "Timestamp,Team,Team Leader,Team Name\n18/06/26,A,Paul Neerali,Goal Masters\n"
+        client.post("/api/v1/teams/upload-teams", files={"file": ("teams.csv", csv_data, "text/csv")}, headers=organizer_headers)
+
+        first_team_id = db_session.query(TeamModel.id).filter(TeamModel.team_id == "A").scalar()
+
+        csv_data2 = "Timestamp,Team,Team Leader,Team Name\n18/06/26,A,Jane Smith,Updated Team\n"
+        resp = client.post("/api/v1/teams/upload-teams", files={"file": ("teams.csv", csv_data2, "text/csv")}, headers=organizer_headers)
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["teams_created"] == 1
+
+        team = db_session.query(TeamModel).filter(TeamModel.team_id == "A").first()
+        assert team is not None
+        assert team.name == "Updated Team"
+        assert team.team_leader_name == "Jane Smith"
+        assert team.id != first_team_id
+
+    def test_upload_members_forbidden_for_team_leader(self, client, team_leader_headers):
+        csv_data = "EmployeeID,Name,Group\nE001,Alice,A\n"
+        files = {"file": ("members.csv", csv_data, "text/csv")}
+        resp = client.post("/api/v1/teams/upload-members", files=files, headers=team_leader_headers)
+        assert resp.status_code == 403
 
     def test_upload_teams_forbidden_for_team_leader(self, client, team_leader_headers):
-        csv_data = "team_code,team_name,team_leader\nA,TL Team,TL Leader\n"
+        csv_data = "Timestamp,Team,Team Leader,Team Name\n18/06/26,A,Leader,Name\n"
         files = {"file": ("teams.csv", csv_data, "text/csv")}
-        resp = client.post("/api/v1/teams/upload-csv", files=files, headers=team_leader_headers)
+        resp = client.post("/api/v1/teams/upload-teams", files=files, headers=team_leader_headers)
         assert resp.status_code == 403
-        resp_mem = client.post("/api/v1/teams/upload-members-csv", files=files, headers=team_leader_headers)
-        assert resp_mem.status_code == 403
+
+    def test_download_members_template(self, client, organizer_headers):
+        resp = client.get("/api/v1/teams/template/members", headers=organizer_headers)
+        assert resp.status_code == 200
+        assert resp.headers["content-type"] == "text/csv; charset=utf-8"
+        content = resp.content.decode()
+        assert content == "EmployeeID,Name,Group\r\n"
+
+    def test_download_teams_template(self, client, organizer_headers):
+        resp = client.get("/api/v1/teams/template/teams", headers=organizer_headers)
+        assert resp.status_code == 200
+        assert resp.headers["content-type"] == "text/csv; charset=utf-8"
+        content = resp.content.decode()
+        assert content == "Timestamp,Team,Team Leader,Team Name\r\n"
 
 

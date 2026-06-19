@@ -12,6 +12,8 @@ from app.api.model_submission_routes import team_model_router, admin_model_route
 from app.api.upload_window_routes import router as upload_window_router
 from app.api.match_routes import router as match_router
 from app.api.external_matches_routes import router as external_matches_router
+from app.api.leaderboard_settings_routes import router as leaderboard_settings_router
+from app.api.admin_auth_routes import router as admin_auth_router
 
 router = APIRouter()
 
@@ -28,3 +30,5 @@ router.include_router(admin_model_router)
 router.include_router(upload_window_router)
 router.include_router(match_router)
 router.include_router(external_matches_router)
+router.include_router(leaderboard_settings_router)
+router.include_router(admin_auth_router)

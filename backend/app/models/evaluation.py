@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Enum as SAEnum, Float, Integer, String, Uuid
+from sqlalchemy import DateTime, Enum as SAEnum, Float, Integer, String, Uuid, JSON
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.schema import Index
 
@@ -44,7 +44,7 @@ class PresentationEvaluationModel(Base):
     ai_explanation_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     qa_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     delivery_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    raw_total: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    raw_total: Mapped[float | None] = mapped_column(Float, nullable=True)
     presentation_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
     grade: Mapped[Grade | None] = mapped_column(
@@ -55,6 +55,12 @@ class PresentationEvaluationModel(Base):
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
 
+    judge_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    judge_scores: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    presentation_criteria_config: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    max_marks: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
     __table_args__ = (
         Index("ix_presentation_evaluations_team_id", "team_id", unique=True),
     )
+

@@ -13,6 +13,8 @@ from app.models.team_member import TeamMemberModel
 from app.models.scoring_config import ScoringConfigModel
 from app.models.model_submission import ModelSubmissionModel
 from app.models.upload_window import UploadWindowModel
+from app.models.leaderboard_visibility import LeaderboardVisibilityModel
+from app.models.password_reset_otp import PasswordResetOtpModel
 
 __all__ = [
     "TeamModel",
@@ -31,4 +33,6 @@ __all__ = [
     "ScoringConfigModel",
     "ModelSubmissionModel",
     "UploadWindowModel",
+    "LeaderboardVisibilityModel",
+    "PasswordResetOtpModel",
 ]

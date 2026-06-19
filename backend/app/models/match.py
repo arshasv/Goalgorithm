@@ -30,11 +30,8 @@ class MatchModel(Base):
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
     
-    # External API Fields
-    external_api_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)
+    # External API Fields — only set for API-imported matches; NULL for manual matches
+    external_api_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, unique=True)
     competition_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    external_sync_status: Mapped[Optional[str]] = mapped_column(
-        SAEnum("PENDING", "SYNCED", "FAILED", name="external_sync_status", create_constraint=False),
-        nullable=True
-    )
+    external_sync_status: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
 

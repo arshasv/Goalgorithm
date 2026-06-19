@@ -52,5 +52,8 @@ class Settings:
         }
         self.football_timezone: str = os.environ.get("FOOTBALL_TIMEZONE", "Asia/Kolkata")
 
+        self.agentmail_api_key: str = os.environ.get("AGENTMAIL_API_KEY", "")
+        self.agentmail_inbox_id: str = os.environ.get("AGENTMAIL_INBOX_ID", "")
+
 
 settings = Settings()

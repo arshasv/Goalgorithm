@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ScoringService } from '../../api/scoringService';
 import { TeamService } from '../../api/teamService';
+import { ScoringConfigService } from '../../api/scoringConfigService';
 
 const rankBadge = (rank) => {
   const r = Number(rank);
@@ -10,17 +11,6 @@ const rankBadge = (rank) => {
   return <span className="rank-badge rank-badge-n">#{rank}</span>;
 };
 
-const gradeBadge = (grade) => {
-  const colors = { A: 'badge-success', B: 'badge-info', C: 'badge-warning' };
-  return <span className={`badge ${colors[grade] || 'badge-warning'}`}>Grade {grade}</span>;
-};
-
-const getRawTotalColor = (v) => {
-  if (v === 50) return { color: 'var(--color-status-success)' };
-  if (v < 25) return { color: 'var(--color-status-error)' };
-  return {};
-};
-
 const formatTeamDisplay = (t) => {
   const code = t.team_code || t.code || t.team_id || '';
   const name = t.name || t.team_name || '';
@@ -28,21 +18,39 @@ const formatTeamDisplay = (t) => {
 };
 
 const PresentationView = () => {
+  const [config, setConfig] = useState(null);
+  const [judgeCount, setJudgeCount] = useState(2);
+  const [criteria, setCriteria] = useState([]);
   const [teams, setTeams] = useState([]);
+  const [evaluations, setEvaluations] = useState({});
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const loadConfig = async () => {
+    try {
+      const active = await ScoringConfigService.getActiveConfig();
+      if (active) {
+        setConfig(active);
+        setJudgeCount(active.presentation_judge_count || 2);
+        setCriteria(active.presentation_criteria || [
+          { name: "Problem Understanding", max_score: 10 },
+          { name: "Feature Engineering", max_score: 15 },
+          { name: "Team Work", max_score: 10 },
+          { name: "Presentation Quality", max_score: 10 },
+          { name: "Q&A", max_score: 5 }
+        ]);
+      }
+    } catch (err) {
+      console.error("Failed to load active scoring configuration", err);
+    }
+  };
 
   const loadTeams = async () => {
     setLoading(true);
     try {
       const data = await TeamService.listTeams();
-      setTeams(data.map(t => ({
-        ...t,
-        ai_exp: 0,
-        qa: 0,
-        delivery: 0,
-      })));
+      setTeams(data);
     } catch (err) {
       setError('Failed to load teams: ' + (err.message || ''));
     } finally {
@@ -50,17 +58,75 @@ const PresentationView = () => {
     }
   };
 
-  useEffect(() => { loadTeams(); }, []);
+  useEffect(() => {
+    const init = async () => {
+      await loadConfig();
+      await loadTeams();
+    };
+    init();
+  }, []);
 
-  const getRawTotal = (t) => t.ai_exp + t.qa + t.delivery;
+  useEffect(() => {
+    if (teams.length > 0 && criteria.length > 0) {
+      setEvaluations(prev => {
+        const next = { ...prev };
+        teams.forEach(team => {
+          const existing = prev[team.id] || [];
+          const nextScores = [];
+          for (let j = 0; j < judgeCount; j++) {
+            const judgeObj = {};
+            criteria.forEach(c => {
+              judgeObj[c.name] = (existing[j] && existing[j][c.name] !== undefined) ? existing[j][c.name] : 0;
+            });
+            nextScores.push(judgeObj);
+          }
+          next[team.id] = nextScores;
+        });
+        return next;
+      });
+    }
+  }, [teams, judgeCount, criteria]);
 
-  const updateTeam = (index, field, value, max) => {
-    const v = Math.max(0, Math.min(max, value === '' ? 0 : parseInt(value, 10) || 0));
-    setTeams(prev => prev.map((t, i) => i === index ? { ...t, [field]: v } : t));
+  const handleScoreChange = (teamId, judgeIndex, criterionName, val, maxScore) => {
+    const cleanVal = Math.max(0, Math.min(maxScore, val === '' ? 0 : parseInt(val, 10) || 0));
+    setEvaluations(prev => {
+      const teamScores = [...(prev[teamId] || [])];
+      teamScores[judgeIndex] = {
+        ...teamScores[judgeIndex],
+        [criterionName]: cleanVal
+      };
+      return { ...prev, [teamId]: teamScores };
+    });
+  };
+
+  const getJudgeTotal = (teamId, judgeIndex) => {
+    const judgeObj = evaluations[teamId]?.[judgeIndex] || {};
+    return Object.values(judgeObj).reduce((sum, val) => sum + (val || 0), 0);
+  };
+
+  const getTeamAverage = (teamId) => {
+    const judgeScores = evaluations[teamId] || [];
+    if (judgeScores.length === 0) return 0;
+    const totalSum = judgeScores.reduce((sum, _, idx) => sum + getJudgeTotal(teamId, idx), 0);
+    return totalSum / judgeScores.length;
+  };
+
+  const getMaxTotal = () => {
+    return criteria.reduce((sum, c) => sum + (c.max_score || 0), 0);
   };
 
   const handleReset = () => {
-    setTeams(prev => prev.map(t => ({ ...t, ai_exp: 0, qa: 0, delivery: 0 })));
+    setEvaluations(prev => {
+      const next = {};
+      Object.keys(prev).forEach(teamId => {
+        next[teamId] = prev[teamId].map(judgeObj => {
+          const resetObj = {};
+          Object.keys(judgeObj).forEach(k => { resetObj[k] = 0; });
+          return resetObj;
+        });
+      });
+      return next;
+    });
     setResults(null);
   };
 
@@ -70,32 +136,11 @@ const PresentationView = () => {
     try {
       const payload = teams.map(t => ({
         team_id: t.id,
-        ai_explanation_score: t.ai_exp,
-        qa_score: t.qa,
-        delivery_score: t.delivery,
+        judge_scores: evaluations[t.id] || []
       }));
 
-      // In production, we send the entire batch to calculatePresentation
-      // However, if the backend endpoint expects one at a time, we do a loop.
-      // Wait, the backend endpoint for presentation accepts a list! 
-      // Actually, ScoringService.calculatePresentation(payload) takes one or a list?
-      // Let's check ScoringService.
-      await ScoringService.calculatePresentation(payload);
-
-      // Local computation for immediate result display
-      const ranked = payload.map(p => {
-        const raw = p.ai_explanation_score + p.qa_score + p.delivery_score;
-        return { ...p, raw };
-      }).sort((a, b) => b.raw - a.raw).map((p, i) => {
-        const rank = i + 1;
-        const mult = rank === 1 ? 3 : rank === payload.length ? 1 : 2;
-        const grade = rank === 1 ? 'A' : rank === payload.length ? 'C' : 'B';
-        const finalScore = ((p.raw * mult) / 150) * 20;
-        const pt = teams.find(t => t.id === p.team_id);
-        return { ...p, rank, mult, grade, final: finalScore, teamLabel: pt ? formatTeamDisplay(pt) : p.team_id };
-      });
-
-      setResults(ranked);
+      const response = await ScoringService.calculatePresentation(payload);
+      setResults(response);
       alert('Presentation scores submitted successfully!');
     } catch (e) {
       alert(`Failed to submit presentation scores: ${e.response?.data?.detail || e.message}`);
@@ -107,7 +152,7 @@ const PresentationView = () => {
       <div className="page-header">
         <div className="page-header-left">
           <h1 className="page-title">🎤 Presentation Evaluation</h1>
-          <p className="page-subtitle">Phase 3 · Peer Review · AI Explanation /20 + Q&A /15 + Delivery /15 = Raw /50 → Normalized /20</p>
+          <p className="page-subtitle">Phase 3 · Configure judges and criteria to evaluate team presentations</p>
         </div>
         <div className="page-header-actions">
           <button className="btn btn-ghost btn-sm" onClick={handleReset}>↺ Reset</button>
@@ -117,51 +162,101 @@ const PresentationView = () => {
       
       {error && <div className="alert alert-error" style={{ marginBottom: 'var(--space-md)' }}>{error}</div>}
 
-      <div className="alert alert-info" style={{ marginBottom: 'var(--space-md)' }}>
-        ℹ️ Scores are ranked and graded (A/B/C). Formula: Raw × Multiplier ÷ 150 × 20 = Final Score
+      <div className="card" style={{ marginBottom: 'var(--space-md)', padding: 'var(--space-md)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
+          <label style={{ fontWeight: 600 }}>Number of Judges:</label>
+          <input
+            className="form-input"
+            type="number"
+            min="1"
+            max="15"
+            value={judgeCount}
+            onChange={e => {
+              const val = Math.max(1, parseInt(e.target.value, 10) || 1);
+              setJudgeCount(val);
+            }}
+            style={{ maxWidth: '100px' }}
+          />
+        </div>
       </div>
 
       <div className="card section">
-        <div className="card-header"><span className="card-title">📝 Score Entry</span></div>
+        <div className="card-header"><span className="card-title">📝 Score Entry Form</span></div>
         {loading ? (
           <div style={{ padding: 'var(--space-md)' }}>Loading teams...</div>
         ) : teams.length === 0 ? (
           <div className="empty-state">No teams found.</div>
         ) : (
-          <div className="table-wrapper">
-            <table>
+          <div className="table-wrapper" style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', minWidth: '1000px' }}>
               <thead>
                 <tr>
-                  <th>Team</th>
-                  <th className="score-header">AI Explanation /20</th>
-                  <th className="score-header">Q&A /15</th>
-                  <th className="score-header">Delivery /15</th>
-                  <th className="score-header">Raw Total /50</th>
+                  <th rowSpan={2} style={{ verticalAlign: 'middle' }}>Team</th>
+                  {Array.from({ length: judgeCount }).map((_, jIdx) => (
+                    <th key={jIdx} colSpan={criteria.length + 1} style={{ textAlign: 'center', borderBottom: '2px solid var(--color-border)' }}>
+                      Judge {jIdx + 1}
+                    </th>
+                  ))}
+                  <th rowSpan={2} style={{ verticalAlign: 'middle', textAlign: 'center' }}>
+                    Average Score (/{getMaxTotal()})
+                  </th>
+                </tr>
+                <tr>
+                  {Array.from({ length: judgeCount }).map((_, jIdx) => (
+                    <React.Fragment key={jIdx}>
+                      {criteria.map(c => (
+                        <th key={c.name} className="score-header" style={{ fontSize: 'var(--text-xs)', fontWeight: 600 }}>
+                          {c.name} <span style={{ color: 'var(--color-text-secondary)', display: 'block', fontWeight: 400 }}>/{c.max_score}</span>
+                        </th>
+                      ))}
+                      <th className="score-header" style={{ fontSize: 'var(--text-xs)', fontWeight: 700, backgroundColor: 'rgba(0,0,0,0.02)' }}>
+                        Total
+                      </th>
+                    </React.Fragment>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {teams.map((t, i) => {
-                  const raw = getRawTotal(t);
+                  const avg = getTeamAverage(t.id);
                   return (
                     <tr key={t.id} style={{ animation: `fadeIn ${300 + i * 80}ms var(--ease-out) both` }}>
-                      <td style={{ fontWeight: 600, fontFamily: 'var(--font-display)', textTransform: 'uppercase' }}>
+                      <td style={{ fontWeight: 600, fontFamily: 'var(--font-display)', textTransform: 'uppercase', verticalAlign: 'middle' }}>
                         {formatTeamDisplay(t)}
                       </td>
-                      <td className="score-cell">
-                        <input className="form-input score-input" type="number" min="0" max="20" value={t.ai_exp}
-                          onChange={e => updateTeam(i, 'ai_exp', e.target.value, 20)} />
-                      </td>
-                      <td className="score-cell">
-                        <input className="form-input score-input" type="number" min="0" max="15" value={t.qa}
-                          onChange={e => updateTeam(i, 'qa', e.target.value, 15)} />
-                      </td>
-                      <td className="score-cell">
-                        <input className="form-input score-input" type="number" min="0" max="15" value={t.delivery}
-                          onChange={e => updateTeam(i, 'delivery', e.target.value, 15)} />
-                      </td>
-                      <td className="score-cell">
-                        <span style={{ fontFamily: 'var(--font-score)', fontSize: 'var(--text-2xl)', fontWeight: 700, ...getRawTotalColor(raw) }}>{raw}</span>
-                        <span style={{ color: 'var(--color-text-secondary)' }}>/50</span>
+                      {Array.from({ length: judgeCount }).map((_, jIdx) => {
+                        const jTotal = getJudgeTotal(t.id, jIdx);
+                        return (
+                          <React.Fragment key={jIdx}>
+                            {criteria.map(c => {
+                              const val = evaluations[t.id]?.[jIdx]?.[c.name] || 0;
+                              return (
+                                <td key={c.name} className="score-cell" style={{ verticalAlign: 'middle' }}>
+                                  <input
+                                    className="form-input score-input"
+                                    type="number"
+                                    min="0"
+                                    max={c.max_score}
+                                    value={val}
+                                    onChange={e => handleScoreChange(t.id, jIdx, c.name, e.target.value, c.max_score)}
+                                    style={{ minWidth: '60px' }}
+                                  />
+                                </td>
+                              );
+                            })}
+                            <td className="score-cell" style={{ verticalAlign: 'middle', fontWeight: 600, backgroundColor: 'rgba(0,0,0,0.01)', textAlign: 'center' }}>
+                              {jTotal}
+                            </td>
+                          </React.Fragment>
+                        );
+                      })}
+                      <td className="score-cell" style={{ verticalAlign: 'middle', textAlign: 'center' }}>
+                        <span style={{ fontFamily: 'var(--font-score)', fontSize: 'var(--text-xl)', fontWeight: 700 }}>
+                          {avg.toFixed(2)}
+                        </span>
+                        <span style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)' }}>
+                          /{getMaxTotal()}
+                        </span>
                       </td>
                     </tr>
                   );
@@ -173,25 +268,29 @@ const PresentationView = () => {
       </div>
 
       {results && (
-        <div className="card section" style={{ animation: 'slideUp 400ms var(--ease-out)' }}>
+        <div className="card section" style={{ animation: 'slideUp 400ms var(--ease-out)', marginTop: 'var(--space-lg)' }}>
           <div className="card-header"><span className="card-title">🏆 Phase 3 Results</span></div>
           <div className="table-wrapper">
             <table style={{ width: '100%' }}>
               <thead>
                 <tr>
-                  <th>Rank</th><th>Team</th><th className="score-header">Raw /50</th>
-                  <th>Grade</th><th className="score-header">Multiplier</th><th className="score-header">Final /20</th>
+                  <th>Rank</th>
+                  <th>Team</th>
+                  <th className="score-header">Number of Judges</th>
+                  <th className="score-header">Calculated Average Score</th>
                 </tr>
               </thead>
               <tbody>
                 {results.map((r, i) => (
                   <tr key={r.team_id} className={`rank-${r.rank <= 3 ? r.rank : 'n'}`} style={{ animation: `fadeIn ${400 + i * 80}ms var(--ease-out) both` }}>
                     <td>{rankBadge(r.rank)}</td>
-                    <td style={{ fontWeight: 600, fontFamily: 'var(--font-display)', textTransform: 'uppercase' }}>{r.teamLabel}</td>
-                    <td className="score-cell">{r.raw}/50</td>
-                    <td>{gradeBadge(r.grade)}</td>
-                    <td className="score-cell">{r.mult}×</td>
-                    <td className="score-cell" style={{ fontWeight: 800, fontSize: 'var(--text-lg)', fontFamily: 'var(--font-score)' }}>{r.final.toFixed(2)}</td>
+                    <td style={{ fontWeight: 600, fontFamily: 'var(--font-display)', textTransform: 'uppercase' }}>
+                      {teams.find(t => t.id === r.team_id) ? formatTeamDisplay(teams.find(t => t.id === r.team_id)) : r.team_id}
+                    </td>
+                    <td className="score-cell">{r.judge_count}</td>
+                    <td className="score-cell" style={{ fontWeight: 800, fontSize: 'var(--text-lg)', fontFamily: 'var(--font-score)' }}>
+                      {r.presentation_score.toFixed(2)} <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', fontWeight: 400 }}>/{r.max_marks}</span>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -201,10 +300,10 @@ const PresentationView = () => {
       )}
 
       <div className="formula-card section">
-        <div className="formula-title">Phase 3 Formula</div>
+        <div className="formula-title">Phase 3 Scoring Rule</div>
         <div className="formula-text">
-          Raw Score × Multiplier ÷ 150 × 20 = Final Score<br />
-          Example (Rank 1 — Top Team): 45 × 3 ÷ 150 × 20 = <strong>18.00</strong>
+          Final Presentation Score = Sum of Judge Totals ÷ Number of Judges<br />
+          Example: (41 + 45) ÷ 2 = <strong>43.00</strong>
         </div>
       </div>
     </div>

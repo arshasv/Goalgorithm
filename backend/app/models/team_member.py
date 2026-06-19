@@ -13,8 +13,11 @@ class TeamMemberModel(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    team_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("teams.id", ondelete="CASCADE"), nullable=False
+    team_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("teams.id", ondelete="SET NULL"), nullable=True
+    )
+    group_code: Mapped[str | None] = mapped_column(
+        String(10), nullable=True
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     employee_id: Mapped[str] = mapped_column(String(100), nullable=True)

@@ -21,61 +21,56 @@ def calculate_presentation_scores(
     if not evaluations:
         return []
 
-    denominator = config.get("presentation_denominator", PHASE3_FIXED_DENOMINATOR) if config else PHASE3_FIXED_DENOMINATOR
-    max_marks = config.get("presentation_max_marks", PHASE3_MAX_MARKS) if config else PHASE3_MAX_MARKS
-    mult_a = config.get("multiplier_a", MULTIPLIER_A) if config else MULTIPLIER_A
-    mult_b = config.get("multiplier_b", MULTIPLIER_B) if config else MULTIPLIER_B
-    mult_c = config.get("multiplier_c", MULTIPLIER_C) if config else MULTIPLIER_C
+    # Get active criteria from config to compute maximum possible marks (default is 50)
+    criteria_list = []
+    if config:
+        criteria_list = config.get("presentation_criteria")
+    if not criteria_list:
+        criteria_list = [
+            {"name": "Problem Understanding", "max_score": 10},
+            {"name": "Feature Engineering", "max_score": 15},
+            {"name": "Team Work", "max_score": 10},
+            {"name": "Presentation Quality", "max_score": 10},
+            {"name": "Q&A", "max_score": 5}
+        ]
 
-    scored: list[dict] = []
-    for ev in evaluations:
-        raw = ev["ai_explanation_score"] + ev["qa_score"] + ev["delivery_score"]
-        scored.append({
-            "team_id": ev["team_id"],
-            "raw_score": raw,
-        })
-
-    scored.sort(key=lambda x: x["raw_score"], reverse=True)
-
-    ranked: list[dict] = []
-    current_rank = 1
-    for i, entry in enumerate(scored):
-        if i > 0 and entry["raw_score"] < scored[i - 1]["raw_score"]:
-            current_rank = i + 1
-        ranked.append({
-            "team_id": entry["team_id"],
-            "raw_score": entry["raw_score"],
-            "rank": current_rank,
-        })
-
-    top_score = ranked[0]["raw_score"]
-    bottom_score = ranked[-1]["raw_score"]
-    top_count = sum(1 for r in ranked if r["raw_score"] == top_score)
-    all_tied = top_score == bottom_score
+    max_marks = sum(item["max_score"] for item in criteria_list)
 
     results: list[dict] = []
-    for entry in ranked:
-        score = entry["raw_score"]
-
-        if score == top_score and top_count == 1:
-            grade, multiplier = GRADE_A, mult_a
-        elif score == bottom_score and not all_tied:
-            grade, multiplier = GRADE_C, mult_c
+    for ev in evaluations:
+        judge_scores = ev.get("judge_scores", [])
+        
+        # Calculate sum of scores for each judge
+        judge_totals = []
+        for j_score in judge_scores:
+            # j_score is a dict of criteria name -> score
+            total = sum(float(val) for val in j_score.values())
+            judge_totals.append(total)
+        
+        n_judges = len(judge_totals)
+        if n_judges > 0:
+            avg_score = sum(judge_totals) / n_judges
         else:
-            grade, multiplier = GRADE_B, mult_b
+            avg_score = 0.0
 
-        multiplied = score * multiplier
-        presentation_score = round(
-            (multiplied / denominator) * max_marks, 2
-        )
-
+        # presentation_score = average judge score out of configured total
         results.append({
-            "team_id": entry["team_id"],
-            "raw_score": score,
-            "rank": entry["rank"],
-            "grade": grade,
-            "multiplier": multiplier,
-            "presentation_score": presentation_score,
+            "team_id": ev["team_id"],
+            "judge_count": n_judges,
+            "judge_scores": judge_scores,
+            "presentation_criteria_config": criteria_list,
+            "max_marks": max_marks,
+            "raw_total": round(avg_score, 2),
+            "presentation_score": round(avg_score, 2),
         })
 
+    # Sort results to assign rank
+    results.sort(key=lambda x: x["presentation_score"], reverse=True)
+    current_rank = 1
+    for i, entry in enumerate(results):
+        if i > 0 and entry["presentation_score"] < results[i - 1]["presentation_score"]:
+            current_rank = i + 1
+        entry["rank"] = current_rank
+
     return results
+

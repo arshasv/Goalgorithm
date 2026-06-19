@@ -97,7 +97,7 @@ class TeamResponse(BaseModel):
 
     team_leader: str = ""
 
-    team_leader_name: str = ""
+    team_leader_name: str | None = None
 
     registered_at: datetime
 
@@ -109,6 +109,7 @@ class TeamResponse(BaseModel):
 
     @model_validator(mode="after")
     def populate_aliases(self) -> "TeamResponse":
+        self.team_leader_name = self.team_leader_name or ""
         self.team_code = self.team_code or self.team_id or ""
         self.team_name = self.team_name or self.name or ""
         self.team_leader = self.team_leader or self.team_leader_name or ""

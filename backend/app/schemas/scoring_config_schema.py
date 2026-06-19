@@ -67,6 +67,8 @@ class ScoringConfigCreate(BaseModel):
     multiplier_b: int = 2
     multiplier_c: int = 1
     phase1_max_marks: int = 60
+    presentation_criteria: list[dict] | None = None
+    presentation_judge_count: int = 2
 
     @model_validator(mode="after")
     def validate_rules(self) -> "ScoringConfigCreate":
@@ -81,7 +83,7 @@ class ScoringConfigCreate(BaseModel):
                    "presentation_ai_explanation_max", "presentation_qa_score_max",
                    "presentation_delivery_score_max", "presentation_denominator", "presentation_max_marks",
                    "multiplier_a", "multiplier_b", "multiplier_c",
-                   "phase1_max_marks"]:
+                   "phase1_max_marks", "presentation_judge_count"]:
             _check_positive(f, getattr(self, f, None), errors)
         if self.probability_threshold < 0:
             errors.append("probability_threshold cannot be negative")
@@ -123,6 +125,8 @@ class ScoringConfigUpdate(BaseModel):
     multiplier_b: int | None = None
     multiplier_c: int | None = None
     phase1_max_marks: int | None = None
+    presentation_criteria: list[dict] | None = None
+    presentation_judge_count: int | None = None
 
     @model_validator(mode="after")
     def validate_rules(self) -> "ScoringConfigUpdate":
@@ -136,7 +140,7 @@ class ScoringConfigUpdate(BaseModel):
                    "presentation_ai_explanation_max", "presentation_qa_score_max",
                    "presentation_delivery_score_max", "presentation_denominator", "presentation_max_marks",
                    "multiplier_a", "multiplier_b", "multiplier_c",
-                   "phase1_max_marks"]:
+                   "phase1_max_marks", "presentation_judge_count"]:
             val = getattr(self, f, None)
             if val is not None:
                 _check_positive(f, val, errors)
@@ -185,8 +189,11 @@ class ScoringConfigResponse(BaseModel):
     multiplier_b: int
     multiplier_c: int
     phase1_max_marks: int
+    presentation_criteria: list[dict] | None = None
+    presentation_judge_count: int
 
     model_config = {"from_attributes": True}
+
 
 
 class ScoringConfigGuidelines(BaseModel):

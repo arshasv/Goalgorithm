@@ -91,6 +91,26 @@ class RegisterResponse(BaseModel):
 
 
 
+class ForgotPasswordRequest(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    email: str = Field(..., min_length=5, max_length=255)
+
+
+class ForgotPasswordResponse(BaseModel):
+    message: str
+
+
+class ResetPasswordRequest(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    email: str = Field(..., min_length=5, max_length=255)
+    otp: str = Field(..., min_length=6, max_length=6)
+    new_password: str = Field(..., min_length=6, max_length=128)
+
+
+class ResetPasswordResponse(BaseModel):
+    message: str
+
+
 class UserResponse(BaseModel):
 
     model_config = ConfigDict(

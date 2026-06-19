@@ -67,6 +67,9 @@ const Sidebar = () => {
               <a className={isActive('scoring-config')} data-page="scoring-config" onClick={() => nav('scoring-config')}>
                 <span className="nav-icon">⚙️</span><span className="nav-label">Scoring Config</span>
               </a>
+              <a className={isActive('leaderboard-settings')} data-page="leaderboard-settings" onClick={() => nav('leaderboard-settings')}>
+                <span className="nav-icon">👁️</span><span className="nav-label">Leaderboard Settings</span>
+              </a>
             </div>
           </>
         )}
