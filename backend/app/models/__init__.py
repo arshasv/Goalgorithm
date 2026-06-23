@@ -15,6 +15,8 @@ from app.models.model_submission import ModelSubmissionModel
 from app.models.upload_window import UploadWindowModel
 from app.models.leaderboard_visibility import LeaderboardVisibilityModel
 from app.models.password_reset_otp import PasswordResetOtpModel
+from app.models.judge import JudgeModel
+from app.models.presentation_round import PresentationRoundModel
 
 __all__ = [
     "TeamModel",
@@ -35,4 +37,6 @@ __all__ = [
     "UploadWindowModel",
     "LeaderboardVisibilityModel",
     "PasswordResetOtpModel",
+    "JudgeModel",
+    "PresentationRoundModel",
 ]

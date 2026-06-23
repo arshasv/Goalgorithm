@@ -118,7 +118,10 @@ class TestFullCompetitionFlow:
             PresentationEvaluation(**ev)
         pres_results = calculate_presentation_scores(pres_evals)
 
-        pres_scores = {r["team_id"]: r["presentation_score"] for r in pres_results}
+        pres_scores = {
+            r["team_id"]: round((r["weighted_score"] / 150) * 20, 2)
+            for r in pres_results
+        }
         assert len(pres_scores) == 5
         for tid, score in pres_scores.items():
             assert 0 <= score <= 20, f"{tid} presentation score {score} out of range"
@@ -223,4 +226,4 @@ class TestFullCompetitionFlow:
 
         pres_results = calculate_presentation_scores(_load_presentation())
         for r in pres_results:
-            assert r["presentation_score"] >= 0
+            assert r["weighted_score"] is None or r["weighted_score"] >= 0

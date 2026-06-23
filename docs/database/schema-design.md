@@ -122,6 +122,13 @@ Matches ────────────────────────
 | team_id | UUID | FK → Teams (unique) |
 | ai_explanation_score, qa_handling_score, delivery_score | Integer | Sub-scores |
 | raw_total | Integer | Sum (0–50) |
+| grade | Enum(A,B,C) | Relative rank grade |
+| multiplier | Integer | Grade multiplier (3,2,1) |
+| weighted_score | Float | raw_total × multiplier (max 150) |
+| judge_count | Integer | Number of judges |
+| judge_scores | JSON | Per-judge score breakdown |
+| presentation_criteria_config | JSON | Active criteria definition |
+| max_marks | Integer | Sum of criteria max scores |
 
 ### Leaderboard
 | Field | Type | Description |

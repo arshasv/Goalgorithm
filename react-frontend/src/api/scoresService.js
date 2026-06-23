@@ -13,8 +13,10 @@ export const ScoresService = {
     const res = await api.get('/evaluations/technical');
     return res.data;
   },
-  getPresentationEvaluations: async () => {
-    const res = await api.get('/evaluations/presentation');
+  getPresentationEvaluations: async (roundId) => {
+    let url = '/evaluations/presentation';
+    if (roundId) url += `?round_id=${roundId}`;
+    const res = await api.get(url);
     return res.data;
   }
 };

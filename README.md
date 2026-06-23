@@ -107,7 +107,7 @@ Full-stack tournament scoring platform for evaluating AI match prediction teams.
 
 ### Evaluation Phases
 - **Technical Evaluation (Phase 2)** — committee scores 4 sub-dimensions (Code Quality, Backend Quality, Teamwork, AI Explanation), each 0–5, summed to max **20 marks**
-- **Presentation Evaluation (Phase 3)** — peer raw scores across 3 dimensions, ranked, graded, multiplied, and normalized to **20 marks**
+- **Phase 3: Presentation Evaluation** — Team presentation delivery, AI explanation, and Q&A. Evaluated across **multiple rounds** by an active panel of judges (scored /50 per round). Each round applies a Grade multiplier (A=3×, B=2×, C=1×). The total weighted score is combined and normalized to a **20-mark** scale `(total_weighted / 300) × 20`.
 
 ### Leaderboard
 - **Aggregate scores** — Phase 1 + Phase 2 + Phase 3 = Grand Total out of **100 marks**

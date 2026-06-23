@@ -31,6 +31,11 @@ class ScoringConfigModel(Base):
     probability_points_pass: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
     probability_points_fail: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
+    probability_high_threshold: Mapped[float] = mapped_column(Float, default=15.0, nullable=False)
+    probability_high_points: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
+    probability_medium_threshold: Mapped[float] = mapped_column(Float, default=30.0, nullable=False)
+    probability_medium_points: Mapped[int] = mapped_column(Integer, default=2, nullable=False)
+
     player_points_exact: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
     player_points_close: Mapped[int] = mapped_column(Integer, default=2, nullable=False)
     player_points_wrong: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
@@ -72,6 +77,10 @@ class ScoringConfigModel(Base):
             "probability_threshold": self.probability_threshold,
             "probability_points_pass": self.probability_points_pass,
             "probability_points_fail": self.probability_points_fail,
+            "probability_high_threshold": self.probability_high_threshold,
+            "probability_high_points": self.probability_high_points,
+            "probability_medium_threshold": self.probability_medium_threshold,
+            "probability_medium_points": self.probability_medium_points,
             "player_points_exact": self.player_points_exact,
             "player_points_close": self.player_points_close,
             "player_points_wrong": self.player_points_wrong,

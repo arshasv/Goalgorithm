@@ -21,7 +21,6 @@ def calculate_presentation_scores(
     if not evaluations:
         return []
 
-    # Get active criteria from config to compute maximum possible marks (default is 50)
     criteria_list = []
     if config:
         criteria_list = config.get("presentation_criteria")
@@ -36,41 +35,75 @@ def calculate_presentation_scores(
 
     max_marks = sum(item["max_score"] for item in criteria_list)
 
-    results: list[dict] = []
+    scored = []
     for ev in evaluations:
         judge_scores = ev.get("judge_scores", [])
-        
-        # Calculate sum of scores for each judge
-        judge_totals = []
-        for j_score in judge_scores:
-            # j_score is a dict of criteria name -> score
-            total = sum(float(val) for val in j_score.values())
-            judge_totals.append(total)
-        
-        n_judges = len(judge_totals)
-        if n_judges > 0:
-            avg_score = sum(judge_totals) / n_judges
+        if judge_scores:
+            judge_totals = []
+            for j_score in judge_scores:
+                if isinstance(j_score, dict) and "scores" in j_score:
+                    s_dict = j_score["scores"]
+                else:
+                    s_dict = j_score
+                total = sum(float(val) for val in s_dict.values())
+                judge_totals.append(total)
+            raw = sum(judge_totals) / len(judge_totals) if judge_totals else 0.0
+            judge_count = len(judge_totals)
         else:
-            avg_score = 0.0
+            raw = float(ev.get("ai_explanation_score", 0) + ev.get("qa_score", 0) + ev.get("delivery_score", 0))
+            judge_count = 0
 
-        # presentation_score = average judge score out of configured total
-        results.append({
+        scored.append({
             "team_id": ev["team_id"],
-            "judge_count": n_judges,
+            "raw_score": raw,
+            "judge_count": judge_count,
             "judge_scores": judge_scores,
-            "presentation_criteria_config": criteria_list,
-            "max_marks": max_marks,
-            "raw_total": round(avg_score, 2),
-            "presentation_score": round(avg_score, 2),
         })
 
-    # Sort results to assign rank
-    results.sort(key=lambda x: x["presentation_score"], reverse=True)
+    scored.sort(key=lambda x: x["raw_score"], reverse=True)
+
+    ranked: list[dict] = []
     current_rank = 1
-    for i, entry in enumerate(results):
-        if i > 0 and entry["presentation_score"] < results[i - 1]["presentation_score"]:
+    for i, entry in enumerate(scored):
+        if i > 0 and entry["raw_score"] < scored[i - 1]["raw_score"]:
             current_rank = i + 1
-        entry["rank"] = current_rank
+        ranked.append({
+            "team_id": entry["team_id"],
+            "raw_score": entry["raw_score"],
+            "rank": current_rank,
+            "judge_count": entry["judge_count"],
+            "judge_scores": entry["judge_scores"],
+        })
+
+    num_teams = len(ranked)
+    last_rank = ranked[-1]["rank"] if ranked else 1
+
+    results: list[dict] = []
+    for entry in ranked:
+        rank = entry["rank"]
+        score = entry["raw_score"]
+
+        if rank == 1:
+            grade, multiplier = GRADE_A, MULTIPLIER_A
+        elif rank == last_rank and last_rank > 1:
+            grade, multiplier = GRADE_C, MULTIPLIER_C
+        else:
+            grade, multiplier = GRADE_B, MULTIPLIER_B
+
+        weighted_score = score * multiplier
+
+        results.append({
+            "team_id": entry["team_id"],
+            "raw_total": round(score, 2),
+            "rank": entry["rank"],
+            "grade": grade,
+            "multiplier": multiplier,
+            "weighted_score": round(weighted_score, 2),
+            "presentation_score": None,
+            "judge_count": entry["judge_count"],
+            "judge_scores": entry["judge_scores"],
+            "presentation_criteria_config": criteria_list,
+            "max_marks": max_marks,
+        })
 
     return results
-

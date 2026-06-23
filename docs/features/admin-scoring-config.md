@@ -4,8 +4,8 @@
 The Admin Scoring Configuration feature allows Organizers to dynamically adjust the rules, thresholds, and point allocations for the Base Scoring Engine and Evaluation phases without modifying code. 
 
 ## Features
-- **Editable Thresholds**: Organizers can update parameters such as `probability_threshold`, `player_avg_threshold_exact`, and max scores across the technical/presentation evaluations.
-- **Probability/Accuracy Rules**: Dynamic assignment of `probability_points_pass` vs `fail`.
+- **Editable Thresholds**: Organizers can update parameters such as `probability_threshold`, `probability_medium_threshold`, `player_avg_threshold_exact`, and max scores across the technical/presentation evaluations.
+- **Probability/Accuracy Rules**: Dynamic assignment of `probability_points_pass`, medium accuracy points, and failing points.
 - **Future Matches Only**: Changes strictly apply to future scoring operations. Existing scores and leaderboards are not retroactively recalculated to preserve historical integrity.
 - **Dynamic Grade Multipliers**: Update multiplier values for A, B, and C grades.
 

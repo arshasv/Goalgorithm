@@ -5,12 +5,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import router as api_router
+from app.api.routes.presentation_round_routes import router as presentation_round_router
+from app.api.judge_routes import router as judge_router
 from app.api.health_routes import router as health_router
 from app.config import settings
 from app.database.base import Base
 from app.database.connection import engine
 import app.models  # noqa: F401 — register ORM models with Base.metadata
 
+api_router.include_router(judge_router)
+api_router.include_router(presentation_round_router)
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> Generator:

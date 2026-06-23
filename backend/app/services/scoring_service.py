@@ -11,6 +11,8 @@ from app.scoring_engine.technical_evaluation.technical_score import (
     calculate_technical_score,
 )
 from app.scoring_engine.presentation_evaluation.presentation_score import (
+    PHASE3_FIXED_DENOMINATOR,
+    PHASE3_MAX_MARKS,
     calculate_presentation_scores,
 )
 from app.services.leaderboard_service import calculate_leaderboard
@@ -88,27 +90,37 @@ class ScoringService:
         return result
 
     def calculate_and_save_presentation_scores(
-        self, evaluations: list[dict]
+        self, evaluations: list[dict], round_id: str | None = None
     ) -> list[dict]:
-        config_dict, config_id = _load_active_config(self.db)
-        result = calculate_presentation_scores(evaluations, config_dict)
+        config, _ = _load_active_config(self.db)
+        result = calculate_presentation_scores(evaluations, config)
 
         from app.models.evaluation import PresentationEvaluationModel
 
         for ev in result:
             team_id = ev["team_id"]
-            existing = self.db.query(PresentationEvaluationModel).filter(
+            query = self.db.query(PresentationEvaluationModel).filter(
                 PresentationEvaluationModel.team_id == team_id
-            ).first()
+            )
+            if round_id:
+                query = query.filter(PresentationEvaluationModel.round_id == round_id)
+            else:
+                # To handle legacy items without round_id, fallback to picking the first one
+                pass
+                
+            existing = query.first()
 
             if existing:
                 existing.presentation_score = ev["presentation_score"]
                 existing.raw_total = ev["raw_total"]
                 existing.rank = ev["rank"]
+                existing.grade = ev["grade"]
+                existing.multiplier = ev["multiplier"]
                 existing.judge_count = ev["judge_count"]
                 existing.judge_scores = ev["judge_scores"]
                 existing.presentation_criteria_config = ev["presentation_criteria_config"]
                 existing.max_marks = ev["max_marks"]
+                existing.round_id = round_id
                 self.db.commit()
             else:
                 pres_eval = PresentationEvaluationModel(
@@ -116,10 +128,13 @@ class ScoringService:
                     raw_total=ev["raw_total"],
                     presentation_score=ev["presentation_score"],
                     rank=ev["rank"],
+                    grade=ev["grade"],
+                    multiplier=ev["multiplier"],
                     judge_count=ev["judge_count"],
                     judge_scores=ev["judge_scores"],
                     presentation_criteria_config=ev["presentation_criteria_config"],
                     max_marks=ev["max_marks"],
+                    round_id=round_id
                 )
                 self.db.add(pres_eval)
                 self.db.commit()
@@ -151,7 +166,30 @@ class ScoringService:
         max_base_score = max(team_base_scores.values()) if team_base_scores else 0.0
         
         tech_map = {str(e.team_id): e.total_score for e in tech_evals}
-        pres_map = {str(e.team_id): e.presentation_score for e in pres_evals}
+        # Aggregate presentation rounds (multiple rounds per team)
+        team_pres_totals = {}
+        unique_rounds = set()
+        has_null_round = False
+        
+        for e in pres_evals:
+            if e.raw_total is not None:
+                if e.round_id is not None:
+                    unique_rounds.add(e.round_id)
+                else:
+                    has_null_round = True
+                    
+                tid = str(e.team_id)
+                weighted = e.raw_total * (e.multiplier or 1)
+                team_pres_totals[tid] = team_pres_totals.get(tid, 0.0) + weighted
+                
+        round_count = len(unique_rounds) + (1 if has_null_round else 0)
+        presentation_denominator = max(round_count * 150, 150)
+                
+        # Normalize to max 20 using dynamic denominator
+        pres_map = {
+            tid: round((total / presentation_denominator) * PHASE3_MAX_MARKS, 2)
+            for tid, total in team_pres_totals.items()
+        }
         
         computed_input = []
         for t in teams:

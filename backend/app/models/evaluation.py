@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Enum as SAEnum, Float, Integer, String, Uuid, JSON
+from sqlalchemy import DateTime, Enum as SAEnum, Float, Integer, String, Uuid, JSON, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.schema import Index
 
@@ -39,7 +39,7 @@ class PresentationEvaluationModel(Base):
         Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     team_id: Mapped[str] = mapped_column(
-        String(255), unique=True, nullable=False
+        String(255), nullable=False
     )
     ai_explanation_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     qa_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -59,8 +59,11 @@ class PresentationEvaluationModel(Base):
     judge_scores: Mapped[list | None] = mapped_column(JSON, nullable=True)
     presentation_criteria_config: Mapped[list | None] = mapped_column(JSON, nullable=True)
     max_marks: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    
+    round_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("presentation_rounds.id", ondelete="CASCADE"), nullable=True)
 
     __table_args__ = (
-        Index("ix_presentation_evaluations_team_id", "team_id", unique=True),
+        Index("ix_presentation_evaluations_team_id", "team_id"),
+        UniqueConstraint("team_id", "round_id", name="uq_team_presentation_round")
     )
 

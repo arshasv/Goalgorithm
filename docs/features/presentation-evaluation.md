@@ -14,25 +14,33 @@ List of presentation evaluations (one per team):
 - `delivery_score` (0–15)
 
 ## Processing Workflow
-1. Panel submits raw scores for all teams
-2. Compute raw total per team: `ai_explanation_score + qa_score + delivery_score` (max 50)
-3. Rank teams by raw total descending
-4. Assign grades: top unique = A (3×), bottom unique = C (1×), all others = B (2×)
-5. Compute `multiplied = raw_total × multiplier`
-6. Normalize: `presentation_score = (multiplied / 150) × 20`, rounded to 2 decimals
+1. **Judge Entry/CSV Upload**: Judges submit scores /50 for each team in a specific presentation round. The system averages these scores.
+2. **Ranking & Multiplier**: Teams are ranked per round. The highest-ranked team gets a Grade A (×3 multiplier), middle teams Grade B (×2), lowest team Grade C (×1).
+3. **Round Weighted Score**: The raw average is multiplied by the grade multiplier. (Max: 50 × 3 = 150 marks per round).
+4. **Multiple Rounds**: There are TWO presentation rounds. The round weighted scores are summed together to form the Total Weighted Score (Max: 300).
+5. **Phase 3 Final Score**: The total weighted score is normalized to 20 marks: `(Total / 300) × 20`. This normalized score is fed into the Leaderboard.
 
 ## Validation Rules
 - Each sub-score within defined per-field max
 - Negative values rejected
 
-## Output
+## Output (per-round)
 ```json
 {
   "team_id": "...",
-  "raw_score": 48,
+  "raw_total": 48,
   "rank": 1,
   "grade": "A",
   "multiplier": 3,
+  "weighted_score": 144,
+  "presentation_score": null
+}
+```
+
+## Output (leaderboard)
+```json
+{
+  "team_id": "...",
   "presentation_score": 19.2
 }
 ```

@@ -50,6 +50,10 @@ class ScoringConfigCreate(BaseModel):
     probability_threshold: float = 15.0
     probability_points_pass: int = 5
     probability_points_fail: int = 0
+    probability_high_threshold: float = 15.0
+    probability_high_points: int = 5
+    probability_medium_threshold: float = 30.0
+    probability_medium_points: int = 2
     player_points_exact: int = 5
     player_points_close: int = 2
     player_points_wrong: int = 0
@@ -77,6 +81,7 @@ class ScoringConfigCreate(BaseModel):
                    "scoreline_points_exact", "scoreline_points_margin", "scoreline_points_incorrect"]:
             _check_positive(f, getattr(self, f, None), errors)
         for f in ["probability_points_pass", "probability_points_fail",
+                   "probability_high_points", "probability_medium_points",
                    "player_points_exact", "player_points_close", "player_points_wrong",
                    "max_base_score",
                    "technical_max_per_category", "technical_max_total",
@@ -108,6 +113,10 @@ class ScoringConfigUpdate(BaseModel):
     probability_threshold: float | None = None
     probability_points_pass: int | None = None
     probability_points_fail: int | None = None
+    probability_high_threshold: float | None = None
+    probability_high_points: int | None = None
+    probability_medium_threshold: float | None = None
+    probability_medium_points: int | None = None
     player_points_exact: int | None = None
     player_points_close: int | None = None
     player_points_wrong: int | None = None
@@ -134,6 +143,7 @@ class ScoringConfigUpdate(BaseModel):
         for f in ["winner_points_correct", "winner_points_incorrect",
                    "scoreline_points_exact", "scoreline_points_margin", "scoreline_points_incorrect",
                    "probability_points_pass", "probability_points_fail",
+                   "probability_high_points", "probability_medium_points",
                    "player_points_exact", "player_points_close", "player_points_wrong",
                    "max_base_score",
                    "technical_max_per_category", "technical_max_total",
@@ -172,6 +182,10 @@ class ScoringConfigResponse(BaseModel):
     probability_threshold: float
     probability_points_pass: int
     probability_points_fail: int
+    probability_high_threshold: float
+    probability_high_points: int
+    probability_medium_threshold: float
+    probability_medium_points: int
     player_points_exact: int
     player_points_close: int
     player_points_wrong: int

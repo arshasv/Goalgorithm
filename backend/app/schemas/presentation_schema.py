@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+from typing import Any
 
 
 class PresentationEvaluation(BaseModel):
@@ -6,5 +7,6 @@ class PresentationEvaluation(BaseModel):
     ai_explanation_score: int | None = Field(None)
     qa_score: int | None = Field(None)
     delivery_score: int | None = Field(None)
-    judge_scores: list[dict[str, float]] = Field(default_factory=list)
+    round_id: str | None = Field(None)
+    judge_scores: list[dict[str, Any]] = Field(default_factory=list)
 

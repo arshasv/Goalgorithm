@@ -210,13 +210,18 @@ def get_technical_evaluations(
 
 @router.get("/evaluations/presentation")
 def get_presentation_evaluations(
+    round_id: str | None = None,
     db: Session = Depends(get_db),
     _organizer: UserModel = Depends(get_current_organizer),
 ):
     team_names = _get_team_name_map(db)
     team_codes = _get_team_id_map(db)
 
-    evaluations = db.query(PresentationEvaluationModel).all()
+    query = db.query(PresentationEvaluationModel)
+    if round_id:
+        query = query.filter(PresentationEvaluationModel.round_id == round_id)
+        
+    evaluations = query.all()
 
     return [
         {

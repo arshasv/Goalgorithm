@@ -24,10 +24,13 @@ class TestPresentationScore:
         results = calculate_presentation_scores(evals)
         assert len(results) == 1
         assert results[0]["raw_total"] == 41.0
-        assert results[0]["presentation_score"] == 41.0
+        assert results[0]["presentation_score"] is None
         assert results[0]["judge_count"] == 1
         assert results[0]["max_marks"] == 50
         assert results[0]["rank"] == 1
+        assert results[0]["grade"] == "A"
+        assert results[0]["multiplier"] == 3
+        assert results[0]["weighted_score"] == 123.0  # 41.0 * 3
 
     def test_multiple_judges_average(self):
         evals = [
@@ -54,9 +57,12 @@ class TestPresentationScore:
         results = calculate_presentation_scores(evals)
         assert len(results) == 1
         assert results[0]["raw_total"] == 43.0  # (41 + 45) / 2
-        assert results[0]["presentation_score"] == 43.0
+        assert results[0]["presentation_score"] is None
         assert results[0]["judge_count"] == 2
         assert results[0]["max_marks"] == 50
+        assert results[0]["grade"] == "A"
+        assert results[0]["multiplier"] == 3
+        assert results[0]["weighted_score"] == 129.0  # 43.0 * 3
 
     def test_rank_assignment_based_on_average(self):
         evals = [
@@ -86,12 +92,18 @@ class TestPresentationScore:
         # TEAM_B should be rank 1
         assert results[0]["team_id"] == "TEAM_B"
         assert results[0]["rank"] == 1
-        assert results[0]["presentation_score"] == 29.0
-        
-        # TEAM_A should be rank 2
+        assert results[0]["presentation_score"] is None
+        assert results[0]["grade"] == "A"
+        assert results[0]["multiplier"] == 3
+        assert results[0]["weighted_score"] == 87.0  # 29.0 * 3
+
+        # TEAM_A should be rank 2 (last rank → Grade C ×1)
         assert results[1]["team_id"] == "TEAM_A"
         assert results[1]["rank"] == 2
-        assert results[1]["presentation_score"] == 22.5
+        assert results[1]["presentation_score"] is None
+        assert results[1]["grade"] == "C"
+        assert results[1]["multiplier"] == 1
+        assert results[1]["weighted_score"] == 22.5  # 22.5 * 1
 
     def test_empty_input(self):
         assert calculate_presentation_scores([]) == []
@@ -114,4 +126,7 @@ class TestPresentationScore:
             "raw_total",
             "presentation_score",
             "rank",
+            "grade",
+            "multiplier",
+            "weighted_score",
         }
