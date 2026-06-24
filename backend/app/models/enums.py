@@ -43,3 +43,10 @@ class ExternalSyncStatus(str, enum.Enum):
     PENDING = "PENDING"
     SYNCED = "SYNCED"
     FAILED = "FAILED"
+
+
+class ModelStatus(str, enum.Enum):
+    UPLOADED = "Uploaded"
+    TESTING = "Testing"
+    EVALUATED = "Evaluated"
+    FAILED = "Failed"

@@ -198,6 +198,55 @@ const ScoringView = () => {
           </div>
         </div>
       </div>
+
+      <div className="card section" style={{marginTop:'var(--space-xl)', border: '1px solid var(--color-status-error)'}}>
+        <div className="card-header" style={{borderBottom: '1px solid var(--color-status-error)', backgroundColor: 'rgba(239, 68, 68, 0.05)'}}>
+          <span className="card-title" style={{color: 'var(--color-status-error)'}}>⚠️ Danger Zone</span>
+        </div>
+        <div style={{padding: 'var(--space-md)', display: 'flex', flexDirection: 'column', gap: 'var(--space-md)'}}>
+          
+          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 'var(--space-md)', borderBottom: '1px solid var(--color-border)'}}>
+            <div>
+              <h4 style={{margin: '0 0 var(--space-xs) 0'}}>Clear Prediction Scores</h4>
+              <p style={{margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)'}}>
+                Deletes calculated Phase 1 scores. Leaderboard Phase 1 values will be cleared. Predictions and results are preserved.
+              </p>
+            </div>
+            <button className="btn btn-secondary" style={{borderColor: 'var(--color-status-error)', color: 'var(--color-status-error)'}} onClick={async () => {
+              if (window.confirm('Are you sure? This cannot be undone. All Phase 1 prediction scores will be deleted.')) {
+                try {
+                  await ScoringService.resetPredictionScores();
+                  window.alert('Prediction scores reset successfully.');
+                  loadData();
+                } catch (err) {
+                  window.alert(err.response?.data?.detail || 'Failed to reset prediction scores');
+                }
+              }
+            }}>Clear Phase 1 Scores</button>
+          </div>
+
+          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+            <div>
+              <h4 style={{margin: '0 0 var(--space-xs) 0'}}>Clear All Scores</h4>
+              <p style={{margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)'}}>
+                Resets Phase 1, Phase 2, Phase 3, and all Leaderboard totals to zero. Data like teams, models, and match results are kept.
+              </p>
+            </div>
+            <button className="btn btn-primary" style={{backgroundColor: 'var(--color-status-error)', borderColor: 'var(--color-status-error)'}} onClick={async () => {
+              if (window.confirm('Are you absolutely sure? This cannot be undone. ALL scores across ALL phases will be permanently deleted and leaderboards reset to zero.')) {
+                try {
+                  await ScoringService.resetAllScores();
+                  window.alert('All scores reset successfully. Leaderboard zeroed.');
+                  loadData();
+                } catch (err) {
+                  window.alert(err.response?.data?.detail || 'Failed to reset all scores');
+                }
+              }
+            }}>Clear All Scores</button>
+          </div>
+
+        </div>
+      </div>
     </div>
   );
 };

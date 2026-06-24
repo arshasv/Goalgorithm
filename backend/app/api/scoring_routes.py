@@ -316,3 +316,44 @@ def calculate_all_scores_for_match(
         
     service.compute_and_save_leaderboard(None)
     return {"status": "success", "calculated_count": count}
+@router.post("/reset-predictions")
+def reset_predictions(
+    db: Session = Depends(get_db),
+    _organizer: object = Depends(get_current_organizer),
+):
+    from app.models.score import ScoreModel
+    from app.services.scoring_service import ScoringService
+    
+    # Delete all phase 1 scores
+    deleted_count = db.query(ScoreModel).delete()
+    db.commit()
+    
+    # Recalculate leaderboard
+    service = ScoringService(db)
+    service.compute_and_save_leaderboard(None)
+    
+    return {"message": "Prediction scores reset successfully", "deleted": deleted_count}
+
+
+@router.post("/reset-all")
+def reset_all_scores(
+    db: Session = Depends(get_db),
+    _organizer: object = Depends(get_current_organizer),
+):
+    from app.models.score import ScoreModel
+    from app.models.evaluation import TechnicalEvaluationModel, PresentationEvaluationModel
+    from app.models.leaderboard import LeaderboardModel
+    from app.services.scoring_service import ScoringService
+    
+    # Delete all score records
+    db.query(ScoreModel).delete()
+    db.query(TechnicalEvaluationModel).delete()
+    db.query(PresentationEvaluationModel).delete()
+    db.query(LeaderboardModel).delete()
+    db.commit()
+    
+    # Recalculate leaderboard to re-initialize 0 values for all active teams
+    service = ScoringService(db)
+    service.compute_and_save_leaderboard(None)
+    
+    return {"message": "All scores and leaderboard reset successfully"}

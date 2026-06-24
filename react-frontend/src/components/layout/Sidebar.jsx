@@ -1,12 +1,22 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { LeaderboardSettingsService } from '../../api/leaderboardSettingsService';
 
 const Sidebar = () => {
   const { isOrganizer, isTeamLeader } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const currentPage = location.pathname.replace('/', '') || 'dashboard';
+  const [analyticsEnabled, setAnalyticsEnabled] = useState(false);
+
+  useEffect(() => {
+    if (isTeamLeader) {
+      LeaderboardSettingsService.getSettings()
+        .then(data => setAnalyticsEnabled(data.analytics_visibility_enabled))
+        .catch(() => setAnalyticsEnabled(false));
+    }
+  }, [isTeamLeader]);
 
   const nav = (page) => {
     navigate('/' + page);
@@ -52,6 +62,9 @@ const Sidebar = () => {
             </div>
             <div className="nav-section" id="org-nav-eval">
               <div className="nav-section-title">Evaluation</div>
+              <a className={isActive('model-evaluation')} data-page="model-evaluation" onClick={() => nav('model-evaluation')}>
+                <span className="nav-icon">🤖</span><span className="nav-label">Model Evaluation</span>
+              </a>
               <a className={isActive('technical')} data-page="technical" onClick={() => nav('technical')}>
                 <span className="nav-icon">💻</span><span className="nav-label">Technical Eval</span>
               </a>
@@ -63,6 +76,9 @@ const Sidebar = () => {
               <div className="nav-section-title">Intelligence</div>
               <a className={isActive('analytics')} data-page="analytics" onClick={() => nav('analytics')}>
                 <span className="nav-icon">📈</span><span className="nav-label">Analytics</span>
+              </a>
+              <a className={isActive('reports')} data-page="reports" onClick={() => nav('reports')}>
+                <span className="nav-icon">📑</span><span className="nav-label">Reports</span>
               </a>
               <a className={isActive('scoring-config')} data-page="scoring-config" onClick={() => nav('scoring-config')}>
                 <span className="nav-icon">⚙️</span><span className="nav-label">Scoring Config</span>
@@ -98,6 +114,11 @@ const Sidebar = () => {
               <a className={isActive('leaderboard')} data-page="leaderboard" onClick={() => nav('leaderboard')}>
                 <span className="nav-icon">🏆</span><span className="nav-label">Leaderboard</span>
               </a>
+              {analyticsEnabled && (
+                <a className={isActive('analytics')} data-page="analytics" onClick={() => nav('analytics')}>
+                  <span className="nav-icon">📈</span><span className="nav-label">Analytics</span>
+                </a>
+              )}
             </div>
           </>
         )}

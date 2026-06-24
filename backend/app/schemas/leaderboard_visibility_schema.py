@@ -17,6 +17,14 @@ class LeaderboardVisibilityUpdate(BaseModel):
     show_score_breakdown: bool | None = None
     show_predictions_count: bool | None = None
     show_correct_predictions: bool | None = None
+    analytics_visibility_enabled: bool | None = None
+    show_model_analytics: bool | None = None
+    show_prediction_analytics: bool | None = None
+    show_technical_analytics: bool | None = None
+    show_presentation_analytics: bool | None = None
+    show_overall_comparison: bool | None = None
+    show_judge_analytics: bool | None = None
+    show_leaderboard_analytics: bool | None = None
 
 
 class LeaderboardVisibilityResponse(BaseModel):
@@ -33,6 +41,14 @@ class LeaderboardVisibilityResponse(BaseModel):
     show_score_breakdown: bool
     show_predictions_count: bool
     show_correct_predictions: bool
+    analytics_visibility_enabled: bool
+    show_model_analytics: bool
+    show_prediction_analytics: bool
+    show_technical_analytics: bool
+    show_presentation_analytics: bool
+    show_overall_comparison: bool
+    show_judge_analytics: bool
+    show_leaderboard_analytics: bool
     updated_at: datetime
 
     class Config:

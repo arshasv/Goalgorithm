@@ -59,28 +59,64 @@ const renderTechCard = (tech) => {
 };
 
 const renderPresCard = (pres) => {
-  const dims = [
-    { label: 'AI Explanation', score: pres.ai_explanation_score, max: 20 },
-    { label: 'Q&A Score', score: pres.qa_score, max: 15 },
-    { label: 'Delivery Score', score: pres.delivery_score, max: 15 },
-  ];
+  let dims = [];
+  
+  if (pres.presentation_criteria_config && pres.presentation_criteria_config.length > 0) {
+    const judgeScores = pres.judge_scores || [];
+    dims = pres.presentation_criteria_config.map(c => {
+      const name = c.name;
+      const max = c.max_score || 10;
+      
+      const validScores = judgeScores
+        .map(j => j.scores && j.scores[name])
+        .filter(s => s != null && !isNaN(s));
+        
+      const score = validScores.length > 0 
+        ? validScores.reduce((sum, val) => sum + Number(val), 0) / validScores.length 
+        : 0;
+
+      return { label: name, score, max };
+    });
+  } else {
+    dims = [
+      { label: 'AI Explanation', score: pres.ai_explanation_score || 0, max: 20 },
+      { label: 'Q&A Score', score: pres.qa_score || 0, max: 15 },
+      { label: 'Delivery Score', score: pres.delivery_score || 0, max: 15 },
+    ];
+  }
+
+  const rawMax = dims.reduce((sum, d) => sum + d.max, 0);
+
   return (
     <div className="score-breakdown-card">
       <div className="card-header">
         <strong className="card-title">🎤 Presentation Evaluation</strong>
         {pres.grade ? gradeBadge(pres.grade) : null}
       </div>
-      {dims.map(d => (
-        <div key={d.label} className="dimension-row">
-          <span className="dimension-label">{d.label}</span>
-          <div className="dimension-bar-wrap"><div className="dimension-bar-fill" style={{ width: `${(d.score / d.max) * 100}%` }}></div></div>
-          <span className={`dimension-score ${scoreColor(d.score, d.max)}`}>{d.score}/{d.max}</span>
-        </div>
-      ))}
+      {dims.map(d => {
+        const pct = d.max > 0 ? (d.score / d.max) * 100 : 0;
+        const barColor = pct >= 80 ? '#FACC15' : '#38BDF8';
+        return (
+          <div key={d.label} className="dimension-row">
+            <span className="dimension-label">{d.label}</span>
+            <div className="dimension-bar-wrap" style={{ background: 'var(--color-surface-secondary)' }}>
+              <div 
+                className="dimension-bar-fill" 
+                style={{ 
+                  width: `${pct}%`,
+                  background: barColor,
+                  borderRadius: 'var(--radius-small)'
+                }}
+              ></div>
+            </div>
+            <span className={`dimension-score ${scoreColor(d.score, d.max)}`}>{fmt1(d.score)}/{d.max}</span>
+          </div>
+        );
+      })}
       <div className="score-total-row">
         <div>
           <div className="base-score-label">Raw Total</div>
-          <div className="base-score-value">{pres.raw_total}<span style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-lg)' }}>/50</span></div>
+          <div className="base-score-value">{fmt1(pres.raw_total)}<span style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-lg)' }}>/{rawMax}</span></div>
         </div>
         <div style={{ textAlign: 'right' }}>
           <div className="base-score-label">Final Score</div>

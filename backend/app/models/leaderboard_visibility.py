@@ -45,6 +45,16 @@ class LeaderboardVisibilityModel(Base):
     show_correct_predictions: Mapped[bool] = mapped_column(
         Boolean, default=True, nullable=False
     )
+    analytics_visibility_enabled: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
+    )
+    show_model_analytics: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    show_prediction_analytics: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    show_technical_analytics: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    show_presentation_analytics: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    show_overall_comparison: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    show_judge_analytics: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    show_leaderboard_analytics: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

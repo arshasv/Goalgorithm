@@ -15,7 +15,9 @@
 ├─────────────────────────────────────────┤
 │         Service / Use Case Layer          │
 │   (prediction_service, result_service,   │
-│    scoring_service, leaderboard_service)  │
+│    scoring_service, leaderboard_service,  │
+│    analytics_service, model_eval_service, │
+│    report_service)                       │
 ├─────────────────────────────────────────┤
 │         Domain / Core Layer               │
 │   (scoring_engine/ — pure functions)     │

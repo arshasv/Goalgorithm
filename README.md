@@ -81,11 +81,11 @@ Full-stack tournament scoring platform for evaluating AI match prediction teams.
 - **Extraction** — Stores/uses only `EmployeeID`, `Name`, and `Group` (which maps to Team ID)
 - **CSV management lock** — Once uploaded, teams are flagged `is_csv_managed = true`; manual member additions/removals are blocked to prevent roster corruption
 
-### Model Submission
+### Model Submission & Evaluation
 - **Supported ML Files** — accepts `.zip`, `.tar.gz`, `.py`, and `.ipynb` files up to 50MB
-- **Upload Workflow** — secure endpoints mapping uploads to the authenticated team leader
-- **Time Window Locking** — API strictly blocks uploads when the organizer-defined window is closed
+- **Model Versioning** — Multiple versions (v1, v2, v3) can be uploaded per team; the latest active model is used for evaluation
 - **Organizer Controls** — dedicated frontend module to dynamically configure window `start_time`, `end_time`, and `is_enabled`
+- **Model Performance Analytics** — An offline evaluation workflow (Future Automatic or Manual Upload) measuring the structural AI model quality (e.g., overall accuracy, strength/weakness categorization) stored directly against the `model_submissions` table
 
 ### Predictions Management
 - **Structured JSON submissions** — per-team, per-match predictions with winner, scoreline, probabilities, player predictions
@@ -115,11 +115,18 @@ Full-stack tournament scoring platform for evaluating AI match prediction teams.
 - **Rank display** — #1–5 with visual rank badges
 
 ### Analytics
+- **Model Performance Analytics** — Cross-team model accuracy comparison and version improvement tracking natively derived from `model_evaluations`
 - **Score progression line chart** — per-match earned points over time
 - **Phase contribution donut** — visual breakdown of Phase 1/2/3 scores
 - **Dimension profile radar** — per-dimension performance bars
 - **Per-match comparison** — side-by-side team comparison for individual matches
 - **Cross-team comparison** — dropdown-select any team to compare
+
+### Score Reports & Normalization Analysis
+- **Organizer Only** — provides transparent explanation for every final score.
+- **Team Score Journey** — tracks points through raw inputs, multipliers, weighting, and normalization.
+- **Multiplier Impact** — reveals point gains specific to presentation grades.
+- **Rank Movement Analysis** — visualizes ranking changes before and after scoring adjustments.
 
 ### Frontend Features
 - **React Single Page Application** — Vite-powered SPA with `react-router-dom` for client-side routing

@@ -168,7 +168,11 @@ const PredictionsView = () => {
                       const teamDisplay = p.team_code
                         ? `${p.team_code} – ${p.team_name || ''}`
                         : (p.team_name || p.team_id);
-                      const matchDisplay = p.match_label || p.match_id;
+                      
+                      const m = matchById[p.match_id];
+                      const matchDisplay = m 
+                        ? (p.match_label || `M${m.match_number}: ${m.home_team_name} vs ${m.away_team_name}`) 
+                        : 'Deleted Match';
 
                       return (
                         <tr key={p.id} className="pred-row" style={{ cursor: 'pointer' }} onClick={() => setSelectedPred(p)}>
@@ -225,7 +229,11 @@ const PredictionsView = () => {
                 )}
                 <div style={{ gridColumn: selectedPred.team_leader_name ? '1 / -1' : 'auto' }}>
                   <span style={{ display: 'block', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>Match</span>
-                  <strong>{selectedPred.match_label || selectedPred.match_id}</strong>
+                  <strong>
+                    {matchById[selectedPred.match_id] 
+                      ? (selectedPred.match_label || `M${matchById[selectedPred.match_id].match_number}: ${matchById[selectedPred.match_id].home_team_name} vs ${matchById[selectedPred.match_id].away_team_name}`)
+                      : 'Deleted Match'}
+                  </strong>
                 </div>
                 <div>
                   <span style={{ display: 'block', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>Predicted Winner</span>

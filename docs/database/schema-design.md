@@ -14,7 +14,10 @@ Teams ────────────────────────�
   │                                     │
   ├── PresentationEvaluation (one total) │
   │                                     │
-  └── LeaderboardEntry (one total)       │
+  ├── LeaderboardEntry (one total)       │
+  │                                     │
+  └── ModelSubmissions (many per team)   │
+        └── ModelEvaluations (one/model) │
                                           │
 Matches ─────────────────────────────────┘
   │
@@ -179,7 +182,36 @@ Matches ────────────────────────
 |---|---|---|
 | id | UUID | Primary key |
 | team_id | UUID | FK → Teams |
-| file_name, file_type, file_path | String | Uploaded file details |
-| file_size | Integer | File size in bytes |
-| is_active | Boolean | True for latest active upload |
+| model_name | String | Name of the model |
+| file_name | String | Uploaded file name |
+| file_path | String | Uploaded file path |
+| version | Integer | Sequential version number per team |
 | uploaded_at | Datetime | Upload timestamp |
+| is_active | Boolean | True for latest active upload (only one active model per team) |
+| status | Enum | Uploaded, Testing, Evaluated, Failed |
+| model_type | String | Type or framework of the model |
+| description | Text | Model description provided by team |
+| notes | Text | Internal tracking notes |
+
+**Notes:** One team can have many models. History is preserved, but only one active model per team is evaluated for final metrics.
+
+### ModelEvaluations
+| Field | Type | Description |
+|---|---|---|
+| id | UUID | Primary key |
+| model_id | UUID | FK → ModelSubmissions |
+| team_id | UUID | FK → Teams |
+| overall_accuracy | Float | Overall model accuracy % |
+| winner_prediction_accuracy | Float | Accuracy for winner predictions |
+| scoreline_accuracy | Float | Accuracy for exact scoreline predictions |
+| probability_accuracy | Float | Accuracy/quality of confidence probabilities |
+| player_prediction_accuracy | Float | Accuracy of player performance predictions |
+| matches_tested | Integer | Number of matches the model was evaluated against |
+| average_score | Float | Average score metric from tests |
+| final_ai_score | Float | Final computed AI score from the evaluation |
+| strength_category | String | Identified strongest prediction category |
+| weakness_category | String | Identified weakest prediction category |
+| evaluation_notes | Text | Notes from the organizer or automated pipeline |
+| evaluated_at | Datetime | Timestamp of evaluation |
+
+**Relationship:** `Teams` (1) → (N) `ModelSubmissions` (1) → (1) `ModelEvaluations`

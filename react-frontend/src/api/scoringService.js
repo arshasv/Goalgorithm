@@ -63,6 +63,14 @@ export const ScoringService = {
     if (roundId) url += `?round_id=${roundId}`;
     const res = await api.post(url);
     return res.data;
+  },
+  resetPredictionScores: async () => {
+    const res = await api.post('/reset-predictions');
+    return res.data;
+  },
+  resetAllScores: async () => {
+    const res = await api.post('/reset-all');
+    return res.data;
   }
 };
 

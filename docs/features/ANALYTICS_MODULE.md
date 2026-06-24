@@ -1,6 +1,6 @@
 # Analytics Module — GOALGORITHM
 
-> **Status:** Specification (pre-implementation)  
+> **Status:** Implemented (Backend refactored into Controller/Service/Repository, frontend updated with granular toggles)
 > **Scope:** Read-only insights and visualizations for competition scoring data
 
 ---
@@ -79,13 +79,13 @@ When master toggle is `true`, these individual toggles control which sections ar
 
 | Setting | Type | Default | Description |
 |---|---|---|---|
-| `show_overall_rankings` | bool | `false` | Final score breakdown with rankings |
-| `show_own_model_analytics` | bool | `false` | Team sees its own model performance only |
-| `show_all_team_model_comparison` | bool | `false` | Cross-team model accuracy comparison |
-| `show_prediction_breakdown` | bool | `false` | Prediction accuracy stats (winner, scoreline, etc.) |
-| `show_presentation_analysis` | bool | `false` | Presentation per-criteria scores and round breakdown |
-| `show_strength_weakness` | bool | `false` | Per-team strongest/weakest category analysis |
-| `show_judge_analytics` | bool | `false` | Judge score variation and consistency charts |
+| `show_overall_comparison` | bool | `true` | Displays the high-level competition overview cards. |
+| `show_model_analytics` | bool | `true` | Displays accuracy comparisons, final model scores, and version improvements. |
+| `show_prediction_analytics` | bool | `true` | Displays prediction scores across matches. |
+| `show_technical_analytics` | bool | `true` | Displays technical evaluation metrics and comparisons. |
+| `show_presentation_analytics` | bool | `true` | Allows teams to view criteria comparison charts and strength/weakness analysis. |
+| `show_judge_analytics` | bool | `true` | Displays judge scoring patterns, consistency metrics, and severity metrics to teams. |
+| `show_leaderboard_analytics` | bool | `true` | Allows teams to see top performers and competition-wide score distributions. |
 
 - For the **Organizer** all settings are implicitly `true`.
 - When the master toggle is `false`, all individual toggles are ignored and analytics are hidden from team leaders.
@@ -115,12 +115,11 @@ Reuse and extend the existing `LeaderboardVisibilityModel` (or create a new `Ana
   "id": "uuid",
   "enable_analytics": false,
   "show_overall_rankings": false,
-  "show_own_model_analytics": false,
-  "show_all_team_model_comparison": false,
-  "show_prediction_breakdown": false,
-  "show_presentation_analysis": false,
-  "show_strength_weakness": false,
+  "show_model_analytics": false,
+  "show_presentation_analytics": false,
   "show_judge_analytics": false,
+  "show_prediction_breakdown": false,
+  "show_strength_weakness": false,
   "anonymous_mode": false,
   "created_at": "datetime",
   "updated_at": "datetime"
@@ -167,7 +166,7 @@ Existing `leaderboard` table (populated by `compute_and_save_leaderboard`). This
 
 ---
 
-## 5. AI Model Analytics
+## 5. Prediction Scoring Analytics (Match Performance)
 
 ### Data Sources
 
@@ -263,7 +262,50 @@ All methods feed into the same `model_submissions` table. No separate table is n
 
 ---
 
-## 6. Presentation Analytics
+## 6. Model Performance Analytics (Actual AI Evaluation)
+
+### Data Source
+- `model_evaluations` table — stores offline test results, distinct from live match performance.
+
+### Purpose
+To understand the structural and mathematical robustness of the actual AI model files uploaded by teams.
+
+### 6.1 Model Performance Overview
+Display top-level summary cards for quick insights:
+- **Best Performing Model:** Model version with the highest overall accuracy.
+- **Highest Accuracy:** The peak percentage accuracy registered.
+- **Best Team Improvement:** The team that improved their accuracy the most from their first model version to their final version.
+
+### 6.2 Team Model Ranking
+Compare final, active models across teams using a horizontal bar chart.
+**Example:**
+- Team A model - 90%
+- Team B model - 85%
+
+### 6.3 Model Strength Analysis
+Grouped analysis breaking down the core capabilities. 
+**Show categories:**
+- Winner prediction
+- Scoreline prediction
+- Probability prediction
+- Player performance
+
+### 6.4 Version Improvement
+Line chart showing accuracy progression over multiple submissions for a single team.
+**Example:**
+- `v1` → 60%
+- `v2` → 75%
+- `v3` → 90%
+
+### 6.5 Strength and Weakness Insights
+Text-based insights generated from `strength_category` and `weakness_category` stored in `model_evaluations`.
+**Example for Team GoalGPT:**
+- **Strong:** Winner prediction
+- **Weak:** Scoreline prediction
+
+---
+
+## 7. Presentation Analytics
 
 ### Data Sources
 
@@ -413,13 +455,21 @@ Team A:
 
 (Described in §7.2 — highlights per-criterion ordering)
 
-### Chart 3: Judge Variation Chart
+### Chart 3: Judge Scoring Behavior & Variation (Judge Analytics)
 
 - **Type:** Scatter or box plot
 - **X-axis:** Judges
-- **Y-axis:** Score given
+- **Y-axis:** Normalized percentage score given
 - **One point per team–judge pair**
-- **Purpose:** Surface scoring differences — e.g., Judge A consistently scores 20% higher than Judge B, indicating a calibration need
+- **Purpose:** Analyze judge scoring behaviour. Surface scoring differences — e.g., identifying strict vs generous judges, or conducting consistency analysis (e.g. Judge A consistently scores 20% higher than Judge B, indicating a calibration need).
+
+### Important: Criteria Percentage Normalization
+When comparing presentation criteria, analytics must **always use percentage normalization**.
+Different criteria often have different maximum weights.
+
+**Example:**
+- Do not compare raw marks directly: e.g., Q&A (4/5 marks) vs Feature Engineering (12/15 marks).
+- Instead, compare the percentage achieved: Q&A (80%) vs Feature Engineering (80%).
 
 ---
 

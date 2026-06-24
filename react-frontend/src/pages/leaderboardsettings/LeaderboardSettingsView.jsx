@@ -53,8 +53,9 @@ const LeaderboardSettingsView = () => {
         payload[field.key] = settings[field.key];
       }
       payload.show_all_teams_leaderboard = settings.show_all_teams_leaderboard;
+      payload.analytics_visibility_enabled = settings.analytics_visibility_enabled;
       await LeaderboardSettingsService.updateSettings(payload);
-      setSuccess('Leaderboard visibility settings saved successfully');
+      setSuccess('Settings saved successfully');
       await loadSettings();
     } catch (err) {
       setError(err.response?.data?.detail || err.message || 'Failed to save settings');
@@ -79,8 +80,8 @@ const LeaderboardSettingsView = () => {
     <div>
       <div className="page-header">
         <div className="page-header-left">
-          <h1 className="page-title">Leaderboard Settings</h1>
-          <p className="page-subtitle">Control what Team Leaders can see on the leaderboard</p>
+          <h1 className="page-title">Leaderboard & Analytics Settings</h1>
+          <p className="page-subtitle">Control what Team Leaders can see on the platform</p>
         </div>
         <div className="page-header-actions">
           <button className="btn btn-secondary" onClick={loadSettings}>🔄 Refresh</button>
@@ -89,6 +90,83 @@ const LeaderboardSettingsView = () => {
 
       {error && <div className="alert alert-error" style={{ marginBottom: 'var(--space-lg)' }}>{error}</div>}
       {success && <div className="alert alert-success" style={{ marginBottom: 'var(--space-lg)' }}>{success}</div>}
+
+      <div className="card" style={{ marginBottom: 'var(--space-lg)' }}>
+        <div className="card-header">
+          <span className="card-title">Analytics Access</span>
+        </div>
+        <div style={{ padding: 'var(--space-md)' }}>
+          <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={settings?.analytics_visibility_enabled ?? false}
+              onChange={e => handleToggle('analytics_visibility_enabled', e.target.checked)}
+            />
+            <span style={{ fontWeight: '600' }}>Enable Overall Analytics Access for Team Leaders</span>
+          </label>
+          <p style={{ margin: 'var(--space-xs) 0 var(--space-md) calc(1.5em + var(--space-sm))', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
+            Controls whether participants can view the main Analytics page. Individual sections can be toggled below.
+          </p>
+
+          <div style={{ paddingLeft: 'calc(1.5em + var(--space-sm))', display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+            <div style={{ marginBottom: 'var(--space-md)' }}>
+              <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', cursor: 'pointer' }}>
+                <input type="checkbox" checked={settings?.show_model_analytics ?? true} onChange={e => handleToggle('show_model_analytics', e.target.checked)} />
+                <span style={{ fontWeight: 500 }}>Show Model Analytics</span>
+              </label>
+              <p style={{ margin: '2px 0 0 calc(1.5em + var(--space-sm))', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>Displays accuracy comparisons, final model scores, and version improvements based on offline evaluations.</p>
+            </div>
+
+            <div style={{ marginBottom: 'var(--space-md)' }}>
+              <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', cursor: 'pointer' }}>
+                <input type="checkbox" checked={settings?.show_presentation_analytics ?? true} onChange={e => handleToggle('show_presentation_analytics', e.target.checked)} />
+                <span style={{ fontWeight: 500 }}>Show Presentation Analytics</span>
+              </label>
+              <p style={{ margin: '2px 0 0 calc(1.5em + var(--space-sm))', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>Allows teams to view criteria comparison charts and strength/weakness analysis.</p>
+            </div>
+
+            <div style={{ marginBottom: 'var(--space-md)' }}>
+              <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', cursor: 'pointer' }}>
+                <input type="checkbox" checked={settings?.show_judge_analytics ?? true} onChange={e => handleToggle('show_judge_analytics', e.target.checked)} />
+                <span style={{ fontWeight: 500 }}>Show Judge Analytics</span>
+              </label>
+              <p style={{ margin: '2px 0 0 calc(1.5em + var(--space-sm))', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>Displays judge scoring patterns, consistency metrics, and severity metrics to teams.</p>
+            </div>
+
+            <div style={{ marginBottom: 'var(--space-md)' }}>
+              <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', cursor: 'pointer' }}>
+                <input type="checkbox" checked={settings?.show_leaderboard_analytics ?? true} onChange={e => handleToggle('show_leaderboard_analytics', e.target.checked)} />
+                <span style={{ fontWeight: 500 }}>Show Leaderboard Analytics</span>
+              </label>
+              <p style={{ margin: '2px 0 0 calc(1.5em + var(--space-sm))', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>Allows teams to see top performers and competition-wide score distributions.</p>
+            </div>
+
+            <div style={{ marginBottom: 'var(--space-md)' }}>
+              <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', cursor: 'pointer' }}>
+                <input type="checkbox" checked={settings?.show_prediction_analytics ?? true} onChange={e => handleToggle('show_prediction_analytics', e.target.checked)} />
+                <span style={{ fontWeight: 500 }}>Show Prediction Analytics</span>
+              </label>
+              <p style={{ margin: '2px 0 0 calc(1.5em + var(--space-sm))', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>Displays prediction scores across matches.</p>
+            </div>
+
+            <div style={{ marginBottom: 'var(--space-md)' }}>
+              <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', cursor: 'pointer' }}>
+                <input type="checkbox" checked={settings?.show_technical_analytics ?? true} onChange={e => handleToggle('show_technical_analytics', e.target.checked)} />
+                <span style={{ fontWeight: 500 }}>Show Technical Analytics</span>
+              </label>
+              <p style={{ margin: '2px 0 0 calc(1.5em + var(--space-sm))', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>Displays technical evaluation metrics and comparisons.</p>
+            </div>
+
+            <div style={{ marginBottom: '0' }}>
+              <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', cursor: 'pointer' }}>
+                <input type="checkbox" checked={settings?.show_overall_comparison ?? true} onChange={e => handleToggle('show_overall_comparison', e.target.checked)} />
+                <span style={{ fontWeight: 500 }}>Show Overall Comparison</span>
+              </label>
+              <p style={{ margin: '2px 0 0 calc(1.5em + var(--space-sm))', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>Displays the high-level competition overview cards (Total Teams, Current Leader, etc).</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div className="card" style={{ marginBottom: 'var(--space-lg)' }}>
         <div className="card-header">

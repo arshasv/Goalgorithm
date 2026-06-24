@@ -4,6 +4,7 @@ import { PredictionService } from '../../api/predictionService';
 import { TeamService } from '../../api/teamService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import SubmitPredictionModal from '../predictions/SubmitPredictionModal';
 
 const MatchDetailModal = ({ match, isOpen, onClose, onMatchUpdated, onEnterResult }) => {
   const navigate = useNavigate();
@@ -16,6 +17,9 @@ const MatchDetailModal = ({ match, isOpen, onClose, onMatchUpdated, onEnterResul
   const [predictions, setPredictions] = useState([]);
   const [teams, setTeams] = useState([]);
   const [jsonView, setJsonView] = useState(null);
+  
+  const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [submitMode, setSubmitMode] = useState('manual');
 
   React.useEffect(() => {
     if (isOpen && match) {
@@ -186,32 +190,53 @@ const MatchDetailModal = ({ match, isOpen, onClose, onMatchUpdated, onEnterResul
             </table>
           </div>
 
-          <div style={{marginBottom: 'var(--space-lg)'}}>
-            <div className="progress-bar"><div className="progress-fill" style={{width: `${(predCount / 5) * 100}%`}}></div></div>
-            <div style={{fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)', marginTop: '4px'}}>{predCount} of 5 teams submitted</div>
-          </div>
+          {isOrganizer && (
+            <div style={{marginBottom: 'var(--space-lg)'}}>
+              <div className="progress-bar"><div className="progress-fill" style={{width: `${(predCount / 5) * 100}%`}}></div></div>
+              <div style={{fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)', marginTop: '4px'}}>{predCount} of 5 teams submitted</div>
+            </div>
+          )}
 
-          <div style={{display: 'flex', gap: 'var(--space-sm)'}}>
-            <button className="btn btn-ghost" style={{flex: 1}} onClick={() => { onClose(); navigate(isOrganizer ? `/predictions?match=${match.id}` : `/my-predictions?match=${match.id}`); }}>📋 Predictions Log</button>
+          <div style={{display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)'}}>
+            <button className="btn btn-ghost" style={{flex: '1 1 calc(50% - var(--space-sm))'}} onClick={() => { onClose(); navigate(isOrganizer ? `/predictions?match=${match.id}` : `/my-predictions?match=${match.id}`); }}>📋 Predictions Log</button>
             
+            {isOrganizer && (
+              <>
+                <button className="btn btn-secondary" style={{flex: '1 1 calc(50% - var(--space-sm))'}} onClick={() => { setSubmitMode('manual'); setShowSubmitModal(true); }}>➕ Add Prediction</button>
+                <button className="btn btn-secondary" style={{flex: '1 1 calc(50% - var(--space-sm))'}} onClick={() => { setSubmitMode('json'); setShowSubmitModal(true); }}>📄 Upload Prediction JSON</button>
+              </>
+            )}
+
             {!isEditing ? (
-              isOrganizer && <button className="btn btn-secondary" style={{flex: 1}} onClick={handleStartEdit}>✏️ Edit Time</button>
+              isOrganizer && <button className="btn btn-secondary" style={{flex: '1 1 calc(50% - var(--space-sm))'}} onClick={handleStartEdit}>✏️ Edit Time</button>
             ) : (
-              <button className={`btn btn-secondary ${isSubmitting ? 'loading' : ''}`} style={{flex: 1}} disabled={isSubmitting} onClick={handleSaveEdit}>
+              <button className={`btn btn-secondary ${isSubmitting ? 'loading' : ''}`} style={{flex: '1 1 calc(50% - var(--space-sm))'}} disabled={isSubmitting} onClick={handleSaveEdit}>
                 {isSubmitting ? 'Saving...' : '💾 Save Time'}
               </button>
             )}
             
-            {(status === 'scheduled' || status === 'frozen') && isOrganizer && (
-              <button className="btn btn-primary" style={{flex: 1}} onClick={() => { onClose(); onEnterResult(); }}>📋 Enter Result</button>
+            {isOrganizer && (
+              <button className="btn btn-primary" style={{flex: '1 1 calc(50% - var(--space-sm))'}} onClick={() => { onClose(); onEnterResult(); }}>📋 Enter Result</button>
             )}
 
             {(status === 'completed' || status === 'scored' || status === 'result_entered') && isOrganizer && (
-              <button className="btn btn-primary" style={{flex: 1}} onClick={() => { onClose(); navigate(`/scoring?match=${match.id}`); }}>⚡ Calculate Scores</button>
+              <button className="btn btn-primary" style={{flex: '1 1 calc(50% - var(--space-sm))'}} onClick={() => { onClose(); navigate(`/scoring?match=${match.id}`); }}>⚡ Calculate Scores</button>
             )}
           </div>
         </div>
       </div>
+
+      <SubmitPredictionModal 
+        match={match} 
+        isOpen={showSubmitModal} 
+        onClose={() => setShowSubmitModal(false)} 
+        onPredictionSubmitted={() => {
+          PredictionService.listPredictions().then(res => {
+            setPredictions((Array.isArray(res) ? res : (res.predictions || [res])).filter(p => p.match_id === match.id));
+          }).catch(() => {});
+        }} 
+        initialMode={submitMode}
+      />
 
       {jsonView && (
         <div className="modal-overlay" style={{zIndex: 1100}} onClick={() => setJsonView(null)}>

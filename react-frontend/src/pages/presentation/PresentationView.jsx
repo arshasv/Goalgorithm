@@ -251,7 +251,9 @@ const PresentationView = () => {
                           <td className="score-cell">{Number(r.raw_total).toFixed(2)}</td>
                           <td>{gradeBadge(r.grade)}</td>
                           <td className="score-cell">{r.multiplier}×</td>
-                          <td className="score-cell" style={{ fontWeight: 800, fontSize: 'var(--text-lg)', fontFamily: 'var(--font-score)' }}>{Number(r.weighted_score).toFixed(2)}</td>
+                          <td className="score-cell" style={{ fontWeight: 800, fontSize: 'var(--text-lg)', fontFamily: 'var(--font-score)' }}>
+                            {r.weighted_score != null ? Number(r.weighted_score).toFixed(2) : '-'}
+                          </td>
                         </tr>
                       );
                     })}
@@ -285,7 +287,7 @@ const PresentationView = () => {
                           <td style={{ fontWeight: 600, fontFamily: 'var(--font-display)' }}>{formatTeamDisplay(t)}</td>
                           {rounds.map(r => {
                             const roundEval = s.rounds.find(ev => ev.round_id === r.id);
-                            return <td key={r.id} className="score-cell">{roundEval ? roundEval.weighted_score.toFixed(2) : '-'}</td>;
+                            return <td key={r.id} className="score-cell">{(roundEval && roundEval.weighted_score != null) ? Number(roundEval.weighted_score).toFixed(2) : '-'}</td>;
                           })}
                           <td className="score-cell" style={{ fontWeight: 800 }}>{s.totalWeighted.toFixed(2)}</td>
                           <td className="score-cell" style={{ fontWeight: 800, fontSize: 'var(--text-lg)', fontFamily: 'var(--font-score)', color: 'var(--color-primary)' }}>{s.finalScore.toFixed(2)}</td>

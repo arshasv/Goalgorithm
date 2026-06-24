@@ -259,11 +259,19 @@ const MatchesView = () => {
                   <div className="match-team">{away}</div>
                   <div className="match-date">{dateStr}{timeStr ? ' ' + timeStr : ''}</div>
                 </div>
-                <div className="match-footer">
-                  <span className="badge badge-info">📥 {m.predictions || 0}/5 predictions</span>
+                  <div className="match-footer">
+                  {isOrganizer ? (
+                    <span className="badge badge-info">📥 {m.predictions || 0}/5 submissions</span>
+                  ) : (
+                    <span className={`badge ${m.predictions > 0 ? 'badge-success' : 'badge-warning'}`}>
+                      {m.predictions > 0 ? '✅ Submitted' : '⏳ Not Submitted'}
+                    </span>
+                  )}
                   <div style={{display: 'flex', gap: 'var(--space-xs)'}}>
                     {canPredict && (isTeamLeader || isOrganizer) && (
-                      <button className="btn btn-secondary btn-sm" onClick={e => { e.stopPropagation(); setPredictionMatch(m); }}>📝 Predict</button>
+                      <button className="btn btn-secondary btn-sm" onClick={e => { e.stopPropagation(); setPredictionMatch(m); }}>
+                        {isTeamLeader && m.predictions > 0 ? '✏️ View/Edit Prediction' : '📝 Predict'}
+                      </button>
                     )}
                     {isOrganizer && (
                       <button className="btn btn-ghost btn-sm" title="Delete" onClick={e => { e.stopPropagation(); handleDelete(m.id, `${home} vs ${away}`); }}>🗑️</button>

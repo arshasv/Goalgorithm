@@ -25,6 +25,21 @@ from app.schemas.team_schema import (
     TeamUpdate,
     TeamResponse,
 )
+from app.schemas.analytics_schema import (
+    OverviewResponse,
+    AverageScores,
+    TopTeam,
+    TeamModelAnalytics,
+    PresentationResponse,
+    TeamPresentationAnalytics,
+    CriterionAverage,
+    StrengthWeakness,
+    CriteriaRanking,
+    CriteriaRankingEntry,
+    TeamAnalyticsResponse,
+    ScoreBreakdown,
+    LeaderboardEntry,
+)
 
 __all__ = [
     "PredictionSubmission",
@@ -46,4 +61,17 @@ __all__ = [
     "TeamMemberResponse",
     "TeamUpdate",
     "TeamResponse",
+    "OverviewResponse",
+    "AverageScores",
+    "TopTeam",
+    "TeamModelAnalytics",
+    "PresentationResponse",
+    "TeamPresentationAnalytics",
+    "CriterionAverage",
+    "StrengthWeakness",
+    "CriteriaRanking",
+    "CriteriaRankingEntry",
+    "TeamAnalyticsResponse",
+    "ScoreBreakdown",
+    "LeaderboardEntry",
 ]

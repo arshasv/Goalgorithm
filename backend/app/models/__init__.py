@@ -12,6 +12,7 @@ from app.models.user import UserModel
 from app.models.team_member import TeamMemberModel
 from app.models.scoring_config import ScoringConfigModel
 from app.models.model_submission import ModelSubmissionModel
+from app.models.model_evaluation import ModelEvaluationModel
 from app.models.upload_window import UploadWindowModel
 from app.models.leaderboard_visibility import LeaderboardVisibilityModel
 from app.models.password_reset_otp import PasswordResetOtpModel
@@ -34,6 +35,7 @@ __all__ = [
     "TeamMemberModel",
     "ScoringConfigModel",
     "ModelSubmissionModel",
+    "ModelEvaluationModel",
     "UploadWindowModel",
     "LeaderboardVisibilityModel",
     "PasswordResetOtpModel",

@@ -20,6 +20,8 @@ import ScoringConfigView from './pages/scoringconfig/ScoringConfigView';
 import ModelManagementView from './pages/modelmanagement/ModelManagementView';
 import ModelSubmissionView from './pages/modelsubmission/ModelSubmissionView';
 import LeaderboardSettingsView from './pages/leaderboardsettings/LeaderboardSettingsView';
+import ModelEvaluation from './pages/modelevaluation/ModelEvaluation';
+import ReportsView from './pages/reports/ReportsView';
 
 const PrivateRoute = ({ element, roleRequired }) => {
   const { isAuthenticated, user, loading } = useAuth();
@@ -101,12 +103,20 @@ const App = () => {
               element={<PrivateRoute element={<PredictionsView />} roleRequired="ORGANIZER" />} 
             />
             <Route 
+              path="/model-evaluation" 
+              element={<PrivateRoute element={<ModelEvaluation />} roleRequired="ORGANIZER" />} 
+            />
+            <Route 
               path="/my-predictions" 
               element={<PrivateRoute element={<PredictionsView />} roleRequired="TEAM_LEADER" />} 
             />
             <Route 
               path="/analytics" 
-              element={<PrivateRoute element={<AnalyticsView />} roleRequired="ORGANIZER" />} 
+              element={<PrivateRoute element={<AnalyticsView />} />} 
+            />
+            <Route 
+              path="/reports" 
+              element={<PrivateRoute element={<ReportsView />} roleRequired="ORGANIZER" />} 
             />
             <Route 
               path="/match-results" 

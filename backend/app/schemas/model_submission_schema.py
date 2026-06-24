@@ -15,9 +15,16 @@ class ModelSubmissionResponse(BaseModel):
 
     id: uuid.UUID
     team_id: uuid.UUID
+    team_name: str | None = None
+    model_name: str | None = None
     file_name: str
     file_type: str
     file_size: int
+    version: int
+    model_type: str | None = None
+    description: str | None = None
+    notes: str | None = None
+    status: str
     is_active: bool
     uploaded_at: datetime
 

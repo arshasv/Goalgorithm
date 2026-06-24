@@ -10,12 +10,18 @@ import { TeamService } from '../../api/teamService';
  *   - goal_scorers.away.length === predicted_scoreline.away_team_goals
  *   - player_predictions cannot be empty
  */
-const SubmitPredictionModal = ({ match, isOpen, onClose, onPredictionSubmitted, existingPrediction }) => {
+const SubmitPredictionModal = ({ match, isOpen, onClose, onPredictionSubmitted, existingPrediction, initialMode = 'manual' }) => {
   const { isOrganizer } = useAuth();
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [entryMode, setEntryMode] = useState('manual');
+  const [entryMode, setEntryMode] = useState(initialMode);
+
+  useEffect(() => {
+    if (isOpen) {
+      setEntryMode(initialMode);
+    }
+  }, [isOpen, initialMode]);
 
   // Organizer team selection
   const [teams, setTeams] = useState([]);

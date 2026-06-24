@@ -60,3 +60,4 @@ Pool settings (`DB_POOL_SIZE`, `DB_MAX_OVERFLOW`, etc.) are also read from envir
 - Scores are recomputable from raw inputs (idempotent re-run)
 - Leaderboard `is_final` flag marks the published version
 - All records are permanent (no deletion)
+- Score Reports are generated on-the-fly using calculated views and existing records. Do not create unnecessary duplicate tables for reporting unless export history is explicitly needed.

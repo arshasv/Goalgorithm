@@ -123,6 +123,9 @@ frontend/
 │   │   │   ├── TechnicalEvalPage.tsx
 │   │   │   ├── PresentationEvalPage.tsx
 │   │   │   └── Evaluations.module.css
+│   │   ├── Reports/
+│   │   │   ├── ReportsPage.tsx
+│   │   │   └── Reports.module.css
 │   │   ├── Admin/
 │   │   │   ├── MatchManagementPage.tsx
 │   │   │   ├── ScoreRecalcPage.tsx
@@ -145,7 +148,8 @@ frontend/
 │   │   ├── predictionService.ts      ← Prediction submission/retrieval
 │   │   ├── scoringService.ts         ← Score calculation triggers
 │   │   ├── evaluationService.ts      ← Phase 2/3 evaluation API calls
-│   │   └── teamService.ts           ← Team management API calls
+│   │   ├── teamService.ts           ← Team management API calls
+│   │   └── reportService.ts          ← Score reports API calls
 │   │
 │   ├── stores/                        ← Zustand state stores
 │   │   ├── themeStore.ts             ← Light/dark mode state
@@ -158,7 +162,8 @@ frontend/
 │   │   ├── useMatches.ts             ← Match list and detail fetching
 │   │   ├── useTeams.ts               ← Team data fetching
 │   │   ├── useScores.ts              ← Score breakdown fetching
-│   │   └── useEvaluations.ts         ← Evaluation data fetching
+│   │   ├── useEvaluations.ts         ← Evaluation data fetching
+│   │   └── useReports.ts             ← Score reports data fetching
 │   │
 │   ├── types/                         ← TypeScript type definitions
 │   │   ├── api.types.ts              ← API response/request types
@@ -328,6 +333,7 @@ Components access error state via TanStack Query's `error` field and render appr
 | `/teams/:teamId` | Team Profile | DashboardLayout | All roles |
 | `/evaluations/technical` | Technical Evaluation Form | DashboardLayout | Committee |
 | `/evaluations/presentation` | Presentation Evaluation Form | DashboardLayout | Committee |
+| `/reports` | Score Reports & Analysis | DashboardLayout | Organizer |
 | `/admin/matches` | Match Management | DashboardLayout | Organizer |
 | `/admin/recalculate` | Score Recalculation | DashboardLayout | Organizer |
 | `/admin/audit` | Audit Log | DashboardLayout | Organizer |
@@ -348,6 +354,7 @@ Routes are organized using React Router v6 nested layout routes:
     <Route path="teams/:teamId" element={<TeamProfilePage />} />
     <Route path="evaluations/technical" element={<TechnicalEvalPage />} />
     <Route path="evaluations/presentation" element={<PresentationEvalPage />} />
+    <Route path="reports" element={<ReportsPage />} />
     <Route path="admin/matches" element={<MatchManagementPage />} />
     <Route path="admin/recalculate" element={<ScoreRecalcPage />} />
     <Route path="admin/audit" element={<AuditLogPage />} />

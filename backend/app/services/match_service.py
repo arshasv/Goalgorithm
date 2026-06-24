@@ -92,6 +92,31 @@ class MatchService:
         match = self.match_repo.get(match_id)
         if not match:
             raise HTTPException(status_code=404, detail="Match not found")
+
+        db = self.match_repo.db
+        from app.models.prediction import PredictionModel, PlayerPredictionModel
+        from app.models.score import ScoreModel
+        from app.models.actual_result import ActualResultModel, PlayerActualModel
+        
+        # Cascade delete related data manually since relations are string-based
+        db.query(ScoreModel).filter(ScoreModel.match_id == str(match_id)).delete(synchronize_session=False)
+        
+        # Predictions and their children
+        preds = db.query(PredictionModel.id).filter(PredictionModel.match_id == str(match_id)).all()
+        if preds:
+            pred_ids = [p[0] for p in preds]
+            db.query(PlayerPredictionModel).filter(PlayerPredictionModel.prediction_id.in_(pred_ids)).delete(synchronize_session=False)
+            db.query(PredictionModel).filter(PredictionModel.id.in_(pred_ids)).delete(synchronize_session=False)
+            
+        # Actual results and their children
+        results = db.query(ActualResultModel.id).filter(ActualResultModel.match_id == str(match_id)).all()
+        if results:
+            res_ids = [r[0] for r in results]
+            db.query(PlayerActualModel).filter(PlayerActualModel.actual_result_id.in_(res_ids)).delete(synchronize_session=False)
+            db.query(ActualResultModel).filter(ActualResultModel.id.in_(res_ids)).delete(synchronize_session=False)
+            
+        db.commit()
+
         self.match_repo.delete(match)
 
     def upload_match_csv(self, content: str) -> dict:
