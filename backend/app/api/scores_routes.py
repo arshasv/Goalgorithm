@@ -101,7 +101,7 @@ def get_match_breakdown(
 
     predictions_by_key: dict[tuple[str, str], PredictionModel] = {}
     for p in db.query(PredictionModel).all():
-        predictions_by_key[(p.team_id, p.match_id)] = p
+        predictions_by_key[(str(p.team_id), str(p.match_id))] = p
 
     result = []
     for m in matches:
@@ -111,11 +111,11 @@ def get_match_breakdown(
 
         teams = []
         for s in match_scores:
-            if not is_organizer and s.team_id != user_team_id:
+            if not is_organizer and str(s.team_id) != user_team_id:
                 continue
 
-            team_name = team_names.get(s.team_id, "Unknown Team")
-            pred = predictions_by_key.get((s.team_id, mid))
+            team_name = team_names.get(str(s.team_id), "Unknown Team")
+            pred = predictions_by_key.get((str(s.team_id), mid))
             prediction_detail = None
             if pred:
                 prediction_detail = {

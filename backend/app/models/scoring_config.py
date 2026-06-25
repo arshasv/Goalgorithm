@@ -42,6 +42,18 @@ class ScoringConfigModel(Base):
     player_avg_threshold_exact: Mapped[float] = mapped_column(Float, default=4.0, nullable=False)
     player_avg_threshold_close: Mapped[float] = mapped_column(Float, default=2.0, nullable=False)
 
+    total_goals_points_exact: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
+    total_goals_points_wrong: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    btts_points_correct: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
+    btts_points_incorrect: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    first_team_to_score_points_correct: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
+    first_team_to_score_points_incorrect: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    clean_sheet_points_correct: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
+    clean_sheet_points_incorrect: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
     max_base_score: Mapped[int] = mapped_column(Integer, default=25, nullable=False)
 
     technical_max_per_category: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
@@ -86,6 +98,14 @@ class ScoringConfigModel(Base):
             "player_points_wrong": self.player_points_wrong,
             "player_avg_threshold_exact": self.player_avg_threshold_exact,
             "player_avg_threshold_close": self.player_avg_threshold_close,
+            "total_goals_points_exact": self.total_goals_points_exact,
+            "total_goals_points_wrong": self.total_goals_points_wrong,
+            "btts_points_correct": self.btts_points_correct,
+            "btts_points_incorrect": self.btts_points_incorrect,
+            "first_team_to_score_points_correct": self.first_team_to_score_points_correct,
+            "first_team_to_score_points_incorrect": self.first_team_to_score_points_incorrect,
+            "clean_sheet_points_correct": self.clean_sheet_points_correct,
+            "clean_sheet_points_incorrect": self.clean_sheet_points_incorrect,
             "max_base_score": self.max_base_score,
             "technical_max_per_category": self.technical_max_per_category,
             "technical_max_total": self.technical_max_total,

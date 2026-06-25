@@ -288,14 +288,14 @@ def calculate_all_scores_for_match(
                     "home_team": p.home_clean_sheet_probability or 0.0,
                     "away_team": p.away_clean_sheet_probability or 0.0
                 },
-                "first_goal_team": p.first_goal_team or "none",
+                "first_goal_team": p.first_goal_team.value if p.first_goal_team else "none",
                 "both_teams_to_score_probability": p.both_teams_to_score_probability or 0.0,
                 "total_goals_prediction": p.total_goals_prediction or 0,
                 "goal_scorers": p.goal_scorers or {"home": [], "away": []}
             },
             "player_predictions": [
                 {
-                    "player_id": pp.player_id,
+                    "player_id": pp.player_id or f"pp-{pp.player_name}",
                     "player_name": pp.player_name,
                     "goal_probability": pp.goal_probability or 0.0,
                     "predicted_goals": pp.predicted_goals or 0,
@@ -313,6 +313,33 @@ def calculate_all_scores_for_match(
             
         service.calculate_and_save_match_score(pred_payload, actual_payload)
         count += 1
+        
+    # --- RELATIVE RANK MULTIPLIER ---
+    from app.models.enums import Grade
+    scores = db.query(ScoreModel).filter(ScoreModel.match_id == match_id).order_by(ScoreModel.base_score.desc()).all()
+    
+    current_rank = 1
+    for i, s in enumerate(scores):
+        if i > 0 and s.base_score == scores[i-1].base_score:
+            pass # keep current_rank
+        else:
+            current_rank = i + 1
+            
+        s.match_rank = current_rank
+        
+        if current_rank == 1:
+            s.grade = Grade.A
+            s.multiplier = 3
+        elif current_rank in [2, 3, 4]:
+            s.grade = Grade.B
+            s.multiplier = 2
+        else:
+            s.grade = Grade.C
+            s.multiplier = 1
+            
+        s.earned_points = s.base_score * s.multiplier
+        
+    db.commit()
         
     service.compute_and_save_leaderboard(None)
     return {"status": "success", "calculated_count": count}

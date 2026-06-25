@@ -143,7 +143,7 @@ async def sync_results(
             
         # Create ActualResultModel
         actual_result = ActualResultModel(
-            match_id=str(match_record.id),
+            match_id=match_record.id,
             actual_winner=Winner(r["winner"]),
             actual_home_goals=r["home_goals"] or 0,
             actual_away_goals=r["away_goals"] or 0,

@@ -4,6 +4,9 @@ from app.schemas.prediction_schema import (
     PredictedScoreline,
     Probabilities,
     CleanSheetProbability,
+    CleanSheetEntry,
+    BothTeamsToScore,
+    FirstTeamToScore,
     PlayerPrediction,
 )
 from app.schemas.actual_result_schema import (

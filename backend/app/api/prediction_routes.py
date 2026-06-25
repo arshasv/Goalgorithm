@@ -42,6 +42,10 @@ def list_predictions(
         else:
             predictions = []
 
+    from app.models.score import ScoreModel
+    scores = db.query(ScoreModel.team_id, ScoreModel.match_id).all()
+    scored_set = {(str(s.team_id), str(s.match_id)) for s in scores}
+
     result = []
     for p in predictions:
         tm = team_by_uuid.get(str(p.team_id)) or team_by_letter.get(str(p.team_id))
@@ -51,6 +55,12 @@ def list_predictions(
             match_label = f"M{match_obj.match_number}: {match_obj.home_team_name} vs {match_obj.away_team_name}"
         else:
             match_label = str(p.match_id)
+
+        # Check actual scoring status
+        if (str(p.team_id), str(p.match_id)) in scored_set:
+            display_status = "SCORED"
+        else:
+            display_status = p.status.value if p.status else None
 
         result.append({
             "id": str(p.id),
@@ -62,7 +72,7 @@ def list_predictions(
             "match_label": match_label,
             "submission_id": p.submission_id,
             "idempotency_key": p.idempotency_key,
-            "status": p.status.value if p.status else None,
+            "status": display_status,
             "match_prediction": {
                 "predicted_winner": p.predicted_winner.value if p.predicted_winner else None,
                 "predicted_scoreline": {
@@ -74,17 +84,37 @@ def list_predictions(
                     "draw_probability": p.draw_probability,
                     "away_win_probability": p.away_win_probability,
                 },
+                "total_goals_prediction": p.total_goals_prediction,
+                # Goal insights
+                "both_teams_to_score": {
+                    "prediction": p.both_teams_to_score_prediction,
+                    "probability": p.both_teams_to_score_probability,
+                },
+                "first_team_to_score": {
+                    "team": p.first_goal_team.value if p.first_goal_team else None,
+                    "probability": p.first_goal_team_probability,
+                },
+                # Legacy flat fields (kept for backward compat)
                 "first_goal_team": p.first_goal_team.value if p.first_goal_team else None,
                 "both_teams_to_score_probability": p.both_teams_to_score_probability,
-                "total_goals_prediction": p.total_goals_prediction,
+                # Clean sheet predictions
+                "clean_sheet_predictions": p.clean_sheet_predictions or [],
+                # Legacy flat clean sheet (for backward compat)
+                "clean_sheet_probability": {
+                    "home_team": p.home_clean_sheet_probability,
+                    "away_team": p.away_clean_sheet_probability,
+                },
                 "goal_scorers": p.goal_scorers or {},
             },
             "player_predictions": [
                 {
-                    "player_id": pp.player_id,
                     "player_name": pp.player_name,
-                    "goal_probability": pp.goal_probability,
+                    "team": pp.team,
                     "predicted_goals": pp.predicted_goals,
+                    "probability": pp.goal_probability,
+                    # Legacy fields
+                    "player_id": pp.player_id,
+                    "goal_probability": pp.goal_probability,
                     "assist_probability": pp.assist_probability,
                 }
                 for pp in p.player_predictions

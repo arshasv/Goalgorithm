@@ -16,6 +16,9 @@ import app.models  # noqa: F401 — register ORM models with Base.metadata
 api_router.include_router(judge_router)
 api_router.include_router(presentation_round_router)
 
+from app.model_execution.routes.execution_routes import router as execution_router
+api_router.include_router(execution_router)
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> Generator:
     Base.metadata.create_all(bind=engine)

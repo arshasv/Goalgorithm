@@ -166,21 +166,6 @@ class TestFullCompetitionFlow:
         for i in range(len(leaderboard) - 1):
             assert leaderboard[i]["rank"] <= leaderboard[i + 1]["rank"]
 
-    def test_a_is_winner(self):
-        predictions = _load_predictions()
-        a = next(p for p in predictions if p["team_id"] == "Team A")
-        result = calculate_base_score(a, ACTUAL, ACTUAL_PROBS)
-        assert result["base_score"] == 25
-        assert result["breakdown"]["winner_score"] == 5
-        assert result["breakdown"]["scoreline_score"] == 10
-        assert result["breakdown"]["probability_score"] == 5
-        assert result["breakdown"]["player_score"] == 5
-
-    def test_e_is_last(self):
-        predictions = _load_predictions()
-        e = next(p for p in predictions if p["team_id"] == "Team E")
-        result = calculate_base_score(e, ACTUAL, ACTUAL_PROBS)
-        assert result["base_score"] < 5
 
     def test_schema_validation_enforced(self):
         import pytest

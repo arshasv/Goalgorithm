@@ -19,6 +19,24 @@ def _serialize(m: MatchModel) -> dict:
     ext_sync = m.external_sync_status
     if hasattr(ext_sync, "value"):
         ext_sync = ext_sync.value
+    
+    # Check for actual results to compute dynamic status and include scores
+    home_score = None
+    away_score = None
+    if hasattr(m, '_actual_home_goals') and m._actual_home_goals is not None:
+        home_score = m._actual_home_goals
+    if hasattr(m, '_actual_away_goals') and m._actual_away_goals is not None:
+        away_score = m._actual_away_goals
+
+    if home_score is not None and away_score is not None:
+        status_val = MatchStatus.COMPLETED
+    else:
+        now = datetime.now(timezone.utc)
+        if m.scheduled_at < now:
+            status_val = MatchStatus.AWAITING_RESULT
+        else:
+            status_val = MatchStatus.SCHEDULED
+
     return {
         "id": str(m.id),
         "match_number": m.match_number,
@@ -27,11 +45,13 @@ def _serialize(m: MatchModel) -> dict:
         "scheduled_at": m.scheduled_at.isoformat(),
         "freeze_deadline": m.freeze_deadline.isoformat(),
         "round": m.round,
-        "status": m.status.value if hasattr(m.status, "value") else str(m.status),
+        "status": status_val.value if hasattr(status_val, "value") else str(status_val),
         "created_at": m.created_at.isoformat(),
         "external_api_id": m.external_api_id,
         "competition_name": m.competition_name,
         "external_sync_status": ext_sync,
+        "home_score": home_score,
+        "away_score": away_score,
     }
 
 def map_api_status_to_match_status(short_status: str) -> MatchStatus:
@@ -56,6 +76,10 @@ class MatchService:
         return [_serialize(m) for m in matches]
 
     def create_match(self, payload: MatchCreate) -> dict:
+        # Validate match_number uniqueness
+        existing = self.match_repo.get_by_match_number(payload.match_number)
+        if existing:
+            raise HTTPException(status_code=400, detail="Match number already exists")
         freeze = payload.freeze_deadline or (payload.scheduled_at - timedelta(hours=1))
         match = self.match_repo.create(
             match_number=payload.match_number,

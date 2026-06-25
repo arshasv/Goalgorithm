@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import csv
 import io
+import logging
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import List
@@ -17,13 +18,28 @@ from app.models.match import MatchModel
 from app.models.user import UserModel
 from app.schemas.match_schema import MatchCreate, MatchUpdate, MatchResponse
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/matches", tags=["matches"])
 
 
-def _serialize(m: MatchModel) -> dict:
+def _serialize(m: MatchModel, act=None) -> dict:
     ext_sync = m.external_sync_status
     if hasattr(ext_sync, "value"):
         ext_sync = ext_sync.value
+
+    # Dynamically compute status — RESULT ALWAYS OVERRIDES DATE
+    home_score = act.actual_home_goals if act else None
+    away_score = act.actual_away_goals if act else None
+
+    if home_score is not None and away_score is not None:
+        status = MatchStatus.COMPLETED
+    else:
+        now = datetime.now(timezone.utc)
+        if m.scheduled_at < now:
+            status = MatchStatus.AWAITING_RESULT
+        else:
+            status = MatchStatus.SCHEDULED
+
     return {
         "id": str(m.id),
         "match_number": m.match_number,
@@ -32,11 +48,15 @@ def _serialize(m: MatchModel) -> dict:
         "scheduled_at": m.scheduled_at.isoformat(),
         "freeze_deadline": m.freeze_deadline.isoformat(),
         "round": m.round,
-        "status": m.status.value if hasattr(m.status, "value") else str(m.status),
+        "status": status.value if hasattr(status, "value") else str(status),
         "created_at": m.created_at.isoformat(),
         "external_api_id": m.external_api_id,
         "competition_name": m.competition_name,
         "external_sync_status": ext_sync,
+        "home_score": home_score,
+        "away_score": away_score,
+        "actual_home_goals": home_score,
+        "actual_away_goals": away_score,
     }
 
 
@@ -47,8 +67,17 @@ def list_matches(
     db: Session = Depends(get_db),
     _user: UserModel = Depends(get_current_user),
 ):
+    from app.models.actual_result import ActualResultModel
     matches = db.query(MatchModel).order_by(MatchModel.match_number).all()
-    return [_serialize(m) for m in matches]
+    actuals = db.query(ActualResultModel).all()
+    actuals_map = {a.match_id: a for a in actuals}
+    
+    result = []
+    for m in matches:
+        act = actuals_map.get(m.id)
+        m_dict = _serialize(m, act)
+        result.append(m_dict)
+    return result
 
 
 # ── Create a single match (organizer only) ─────────────────────────────────
@@ -59,6 +88,14 @@ def create_match(
     db: Session = Depends(get_db),
     _organizer: UserModel = Depends(get_current_organizer),
 ):
+    logger.warning(f"--- CREATE_MATCH called for match_number={payload.match_number} ---")
+    # check if match_number already exists
+    existing_match = db.query(MatchModel).filter(MatchModel.match_number == payload.match_number).first()
+    logger.warning(f"--- existing_match result: {existing_match is not None} ---")
+    if existing_match:
+        logger.warning(f"=== DUPLICATE DETECTED: match_number {payload.match_number} ===")
+        raise HTTPException(status_code=400, detail="Match number already exists")
+
     # auto-compute freeze_deadline if not supplied (1 hour before kickoff)
     freeze = payload.freeze_deadline or (payload.scheduled_at - timedelta(hours=1))
 
@@ -71,9 +108,18 @@ def create_match(
         round=payload.round,
         status=MatchStatus.SCHEDULED,
     )
+    logger.warning(f"--- Adding match with num={payload.match_number} to session ---")
     db.add(match)
-    db.commit()
+    try:
+        logger.warning("--- Attempting db.commit() ---")
+        db.commit()
+        logger.warning("--- db.commit() SUCCEEDED ---")
+    except Exception as e:
+        db.rollback()
+        logger.error(f"=== COMMIT FAILED: {e} ===")
+        raise HTTPException(status_code=400, detail=f"Match number {payload.match_number} already exists")
     db.refresh(match)
+    logger.warning("--- Returning serialized match ---")
     return _serialize(match)
 
 
@@ -154,6 +200,7 @@ def upload_match_csv(
 
     created: List[dict] = []
     errors: List[str] = []
+    seen_match_numbers = set()
 
     for i, raw_row in enumerate(reader, start=2):
         row = {k.strip().lower(): v.strip() for k, v in raw_row.items()}
@@ -167,6 +214,17 @@ def upload_match_csv(
             if not home or not away:
                 errors.append(f"Row {i}: home/away team name is empty")
                 continue
+
+            if match_number in seen_match_numbers:
+                errors.append(f"Row {i}: Match number {match_number} is duplicated in the CSV")
+                continue
+            
+            existing_match = db.query(MatchModel).filter(MatchModel.match_number == match_number).first()
+            if existing_match:
+                errors.append(f"Row {i}: Match number {match_number} already exists")
+                continue
+            
+            seen_match_numbers.add(match_number)
 
             # parse kickoff — try ISO first, then date-only
             kickoff: datetime

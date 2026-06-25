@@ -12,8 +12,12 @@ class PredictionRepository(BaseRepository[PredictionModel]):
         super().__init__(db, PredictionModel)
 
     def get_by_team_and_match(
-        self, team_id: str, match_id: str
+        self, team_id: str | uuid.UUID, match_id: str | uuid.UUID
     ) -> PredictionModel | None:
+        if isinstance(team_id, str):
+            team_id = uuid.UUID(team_id)
+        if isinstance(match_id, str):
+            match_id = uuid.UUID(match_id)
         return self.db.execute(
             select(PredictionModel).where(
                 PredictionModel.team_id == team_id,
@@ -21,7 +25,9 @@ class PredictionRepository(BaseRepository[PredictionModel]):
             )
         ).scalar_one_or_none()
 
-    def get_by_match(self, match_id: str) -> list[PredictionModel]:
+    def get_by_match(self, match_id: str | uuid.UUID) -> list[PredictionModel]:
+        if isinstance(match_id, str):
+            match_id = uuid.UUID(match_id)
         return list(
             self.db.execute(
                 select(PredictionModel).where(
@@ -32,7 +38,9 @@ class PredictionRepository(BaseRepository[PredictionModel]):
             .all()
         )
 
-    def get_by_team(self, team_id: str) -> list[PredictionModel]:
+    def get_by_team(self, team_id: str | uuid.UUID) -> list[PredictionModel]:
+        if isinstance(team_id, str):
+            team_id = uuid.UUID(team_id)
         return list(
             self.db.execute(
                 select(PredictionModel).where(

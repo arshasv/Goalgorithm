@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Enum as SAEnum, Float, Integer, String, Uuid
+from sqlalchemy import DateTime, Enum as SAEnum, Float, Integer, String, Uuid, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.schema import Index
 
@@ -15,14 +15,20 @@ class ScoreModel(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    team_id: Mapped[str] = mapped_column(String(255), nullable=False)
-    match_id: Mapped[str] = mapped_column(String(255), nullable=False)
-    winner_points: Mapped[int | None] = mapped_column(Integer, default=0, nullable=True)
-    scoreline_points: Mapped[int | None] = mapped_column(Integer, default=0, nullable=True)
-    probability_points: Mapped[int | None] = mapped_column(
-        Integer, default=0, nullable=True
+    team_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("teams.id", ondelete="RESTRICT"), nullable=False)
+    match_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("matches.id", ondelete="RESTRICT"), nullable=False)
+    winner_points: Mapped[float | None] = mapped_column(Float, default=0.0, nullable=True)
+    scoreline_points: Mapped[float | None] = mapped_column(Float, default=0.0, nullable=True)
+    probability_points: Mapped[float | None] = mapped_column(
+        Float, default=0.0, nullable=True
     )
-    player_points: Mapped[int | None] = mapped_column(Integer, default=0, nullable=True)
+    player_points: Mapped[float | None] = mapped_column(Float, default=0.0, nullable=True)
+    
+    total_goals_points: Mapped[float | None] = mapped_column(Float, default=0.0, nullable=True)
+    btts_points: Mapped[float | None] = mapped_column(Float, default=0.0, nullable=True)
+    first_team_to_score_points: Mapped[float | None] = mapped_column(Float, default=0.0, nullable=True)
+    clean_sheet_points: Mapped[float | None] = mapped_column(Float, default=0.0, nullable=True)
+
     base_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     match_rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
     grade: Mapped[Grade | None] = mapped_column(

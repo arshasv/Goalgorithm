@@ -7,6 +7,7 @@ class MatchStatus(str, enum.Enum):
     COMPLETED = "COMPLETED"
     RESULT_ENTERED = "RESULT_ENTERED"
     SCORED = "SCORED"
+    AWAITING_RESULT = "AWAITING_RESULT"
 
 
 class PredictionStatus(str, enum.Enum):

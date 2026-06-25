@@ -1,25 +1,14 @@
-SCORELINE_POINTS_EXACT = 10
-SCORELINE_POINTS_MARGIN = 5
-SCORELINE_POINTS_INCORRECT = 0
-
-
-def _goal_margin(home_goals: int, away_goals: int) -> int:
-    return abs(home_goals - away_goals)
-
-
-def _goal_direction(home_goals: int, away_goals: int) -> str:
-    if home_goals > away_goals:
-        return "home"
-    if away_goals > home_goals:
-        return "away"
-    return "draw"
+SCORELINE_POINTS_EXACT = 10.0
+SCORELINE_POINTS_MARGIN = 5.0
+SCORELINE_POINTS_PARTIAL = 2.5
+SCORELINE_POINTS_INCORRECT = 0.0
 
 
 def calculate_scoreline_score(
     prediction: dict,
     actual_result: dict,
     config: dict | None = None,
-) -> int:
+) -> float:
     pred_scoreline = prediction["match_prediction"]["predicted_scoreline"]
     actual_scoreline = actual_result["final_score"]
 
@@ -30,17 +19,26 @@ def calculate_scoreline_score(
 
     points_exact = config.get("scoreline_points_exact", SCORELINE_POINTS_EXACT) if config else SCORELINE_POINTS_EXACT
     points_margin = config.get("scoreline_points_margin", SCORELINE_POINTS_MARGIN) if config else SCORELINE_POINTS_MARGIN
+    points_partial = config.get("scoreline_points_partial", SCORELINE_POINTS_PARTIAL) if config else SCORELINE_POINTS_PARTIAL
     points_incorrect = config.get("scoreline_points_incorrect", SCORELINE_POINTS_INCORRECT) if config else SCORELINE_POINTS_INCORRECT
 
+    # Priority 1: EXACT SCORE
     if (pred_home, pred_away) == (actual_home, actual_away):
-        return points_exact
+        return float(points_exact)
 
-    pred_margin = _goal_margin(pred_home, pred_away)
-    actual_margin = _goal_margin(actual_home, actual_away)
-    pred_direction = _goal_direction(pred_home, pred_away)
-    actual_direction = _goal_direction(actual_home, actual_away)
+    pred_margin = pred_home - pred_away
+    actual_margin = actual_home - actual_away
 
-    if pred_margin == actual_margin and pred_direction == actual_direction:
-        return points_margin
+    # Priority 2: Correct goal difference
+    if pred_margin == actual_margin:
+        return float(points_margin)
 
-    return points_incorrect
+    # Priority 3: Individual team goal accuracy
+    score = 0.0
+    if pred_home == actual_home:
+        score += float(points_partial)
+    if pred_away == actual_away:
+        score += float(points_partial)
+
+    return score if score > 0 else float(points_incorrect)
+

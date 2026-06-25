@@ -15,8 +15,8 @@ class ActualResultModel(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    match_id: Mapped[str] = mapped_column(
-        String(255), unique=True, nullable=False
+    match_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("matches.id", ondelete="RESTRICT"), unique=True, nullable=False
     )
     actual_winner: Mapped[Winner] = mapped_column(
         SAEnum(Winner, name="winner_enum", create_constraint=True), nullable=False
@@ -24,6 +24,7 @@ class ActualResultModel(Base):
     actual_home_goals: Mapped[int | None] = mapped_column(Integer, nullable=True)
     actual_away_goals: Mapped[int | None] = mapped_column(Integer, nullable=True)
     goal_scorers: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    first_team_to_score: Mapped[str] = mapped_column(String(50), default="none", nullable=False)
     entered_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

@@ -15,7 +15,7 @@ class MatchModel(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    match_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    match_number: Mapped[int] = mapped_column(Integer, nullable=False, unique=True)
     home_team_name: Mapped[str] = mapped_column(String(255), nullable=False)
     away_team_name: Mapped[str] = mapped_column(String(255), nullable=False)
     scheduled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

@@ -165,7 +165,8 @@ class TestPredictionSchema:
         with pytest.raises(ValidationError):
             PredictionSubmission(**data)
 
-    def test_empty_player_list_fails(self):
+    def test_empty_player_list_is_valid(self):
+        """Empty player_predictions is now valid (AI format may omit players)."""
         data = {
             "team_id": "t-1",
             "match_id": "m-1",
@@ -185,10 +186,11 @@ class TestPredictionSchema:
             },
             "player_predictions": [],
         }
-        with pytest.raises(ValidationError):
-            PredictionSubmission(**data)
+        model = PredictionSubmission(**data)
+        assert len(model.player_predictions) == 0
 
-    def test_missing_required_field_fails(self):
+    def test_missing_player_predictions_defaults_empty(self):
+        """player_predictions now defaults to empty list when omitted."""
         data = {
             "team_id": "t-1",
             "match_id": "m-1",
@@ -207,15 +209,40 @@ class TestPredictionSchema:
                 "total_goals_prediction": 1,
             },
         }
-        with pytest.raises(ValidationError):
-            PredictionSubmission(**data)
+        model = PredictionSubmission(**data)
+        assert len(model.player_predictions) == 0
+
+    def test_ai_format_auto_calculates_winner(self):
+        """predicted_winner should be auto-calculated from highest probability."""
+        data = {
+            "team_id": "t-1",
+            "match_id": "m-1",
+            "submission_id": "s-1",
+            "match_prediction": {
+                "predicted_scoreline": {"home_team_goals": 2, "away_team_goals": 1},
+                "probabilities": {
+                    "home_win_probability": 48.0,
+                    "draw_probability": 25.0,
+                    "away_win_probability": 27.0,
+                },
+                "both_teams_to_score": {"prediction": True, "probability": 62.5},
+                "first_team_to_score": {"team": "home", "probability": 55.0},
+            },
+            "player_predictions": [
+                {"player_name": "Messi", "team": "Argentina", "predicted_goals": 1, "probability": 45.5}
+            ],
+        }
+        model = PredictionSubmission(**data)
+        assert model.match_prediction.predicted_winner == "home"
+        assert model.match_prediction.total_goals_prediction == 3
+        assert model.player_predictions[0].team == "Argentina"
 
 
 class TestActualResultSchema:
     def test_valid_actual_result_passes(self):
         data = json.loads((FIXTURES / "actual_result.json").read_text())
         model = ActualResultSubmission(**data)
-        assert model.match_id == "match-001"
+        assert str(model.match_id) == "00000000-0000-0000-0000-000000000001"
         assert model.actual_winner == "home"
 
     def test_negative_goals_fails(self):
@@ -244,7 +271,7 @@ class TestActualResultSchema:
 
     def test_invalid_winner_fails(self):
         data = {
-            "match_id": "m-1",
+            "match_id": "00000000-0000-0000-0000-000000000001",
             "actual_winner": "invalid",
             "final_score": {"home_team_goals": 1, "away_team_goals": 0},
             "player_results": [
@@ -256,7 +283,7 @@ class TestActualResultSchema:
 
     def test_empty_player_list_fails(self):
         data = {
-            "match_id": "m-1",
+            "match_id": "00000000-0000-0000-0000-000000000001",
             "actual_winner": "home",
             "final_score": {"home_team_goals": 1, "away_team_goals": 0},
             "player_results": [],

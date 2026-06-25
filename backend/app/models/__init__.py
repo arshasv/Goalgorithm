@@ -18,6 +18,8 @@ from app.models.leaderboard_visibility import LeaderboardVisibilityModel
 from app.models.password_reset_otp import PasswordResetOtpModel
 from app.models.judge import JudgeModel
 from app.models.presentation_round import PresentationRoundModel
+from app.model_execution.models.model_upload import ModelUploadModel
+from app.model_execution.models.model_execution import ModelExecutionModel
 
 __all__ = [
     "TeamModel",
@@ -41,4 +43,6 @@ __all__ = [
     "PasswordResetOtpModel",
     "JudgeModel",
     "PresentationRoundModel",
+    "ModelUploadModel",
+    "ModelExecutionModel",
 ]

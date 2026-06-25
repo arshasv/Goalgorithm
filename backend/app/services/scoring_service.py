@@ -39,13 +39,19 @@ class ScoringService:
         config_dict, config_id = _load_active_config(self.db)
         result = calculate_base_score(prediction, actual_result, actual_probabilities, config_dict)
 
+        import uuid
         score = ScoreModel(
-            team_id=prediction["team_id"],
-            match_id=prediction["match_id"],
+            team_id=uuid.UUID(prediction["team_id"]) if isinstance(prediction["team_id"], str) else prediction["team_id"],
+            match_id=uuid.UUID(prediction["match_id"]) if isinstance(prediction["match_id"], str) else prediction["match_id"],
             winner_points=result["breakdown"].get("winner_score"),
             scoreline_points=result["breakdown"].get("scoreline_score"),
             probability_points=result["breakdown"].get("probability_score"),
             player_points=result["breakdown"].get("player_score"),
+            total_goals_points=result["breakdown"].get("total_goals_score"),
+            btts_points=result["breakdown"].get("btts_score"),
+            first_team_to_score_points=result["breakdown"].get("first_team_to_score_score"),
+            clean_sheet_points=result["breakdown"].get("clean_sheet_score"),
+
             base_score=result["base_score"],
             config_id=config_id,
         )
@@ -156,14 +162,14 @@ class ScoringService:
         config_dict, _ = _load_active_config(self.db)
         phase1_max = config_dict.get("phase1_max_marks", 60) if config_dict else 60
         
-        team_base_scores = {str(t.id): 0.0 for t in teams}
+        team_earned_points = {str(t.id): 0.0 for t in teams}
         for s in all_scores:
-            if s.base_score is not None:
+            if s.earned_points is not None:
                 tid = str(s.team_id)
-                if tid in team_base_scores:
-                    team_base_scores[tid] += s.base_score
+                if tid in team_earned_points:
+                    team_earned_points[tid] += s.earned_points
                 
-        max_base_score = max(team_base_scores.values()) if team_base_scores else 0.0
+        max_earned_points = max(team_earned_points.values()) if team_earned_points else 0.0
         
         tech_map = {str(e.team_id): e.total_score for e in tech_evals}
         # Aggregate presentation rounds (multiple rounds per team)
@@ -194,9 +200,9 @@ class ScoringService:
         computed_input = []
         for t in teams:
             tid = str(t.id)
-            base = team_base_scores[tid]
-            if max_base_score > 0:
-                p1 = (base / max_base_score) * phase1_max
+            earned = team_earned_points[tid]
+            if max_earned_points > 0:
+                p1 = (earned / max_earned_points) * phase1_max
             else:
                 p1 = 0.0
                 

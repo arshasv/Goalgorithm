@@ -157,8 +157,8 @@ class TestScoringConfigAPI:
         old_breakdown = calc_resp.json()["breakdown"]
 
         old_score_db = db_session.query(ScoreModel).filter(
-            ScoreModel.team_id == str(team_a.id),
-            ScoreModel.match_id == str(sample_match.id),
+            ScoreModel.team_id == team_a.id,
+            ScoreModel.match_id == sample_match.id,
         ).first()
         assert old_score_db is not None
         assert old_score_db.config_id == DEFAULT_CONFIG_ID
@@ -174,8 +174,8 @@ class TestScoringConfigAPI:
         )
 
         old_score_again = db_session.query(ScoreModel).filter(
-            ScoreModel.team_id == str(team_a.id),
-            ScoreModel.match_id == str(sample_match.id),
+            ScoreModel.team_id == team_a.id,
+            ScoreModel.match_id == sample_match.id,
         ).first()
         assert old_score_again is not None
         assert old_score_again.config_id == DEFAULT_CONFIG_ID

@@ -90,14 +90,19 @@ class TestAnalyticsModels:
     def test_models_with_scores(
         self, client, organizer_headers, db_session, team_a, sample_match
     ):
-        # Create scores for team_a
-        tid = str(team_a.id)
-        mid = str(sample_match.id)
+        import uuid
+        from app.models.match import MatchModel
+        from datetime import datetime, timezone
+        match2 = MatchModel(id=uuid.uuid4(), home_team_name="H2", away_team_name="A2", status="COMPLETED", match_number=2, scheduled_at=datetime(2026, 6, 20, 20, 0, 0, tzinfo=timezone.utc), freeze_deadline=datetime(2026, 6, 20, 18, 0, 0, tzinfo=timezone.utc), round="Group Stage")
+        match3 = MatchModel(id=uuid.uuid4(), home_team_name="H3", away_team_name="A3", status="COMPLETED", match_number=3, scheduled_at=datetime(2026, 6, 20, 20, 0, 0, tzinfo=timezone.utc), freeze_deadline=datetime(2026, 6, 20, 18, 0, 0, tzinfo=timezone.utc), round="Group Stage")
+        db_session.add(match2)
+        db_session.add(match3)
+        db_session.flush()
 
         scores_data = [
-            ScoreModel(team_id=tid, match_id=mid, winner_points=5, base_score=20.0, earned_points=20.0),
-            ScoreModel(team_id=tid, match_id=mid + "_y", winner_points=0, base_score=10.0, earned_points=5.0),
-            ScoreModel(team_id=tid, match_id=mid + "_x", winner_points=5, base_score=25.0, earned_points=25.0),
+            ScoreModel(team_id=team_a.id, match_id=sample_match.id, winner_points=5, base_score=20.0, earned_points=20.0),
+            ScoreModel(team_id=team_a.id, match_id=match2.id, winner_points=0, base_score=10.0, earned_points=5.0),
+            ScoreModel(team_id=team_a.id, match_id=match3.id, winner_points=5, base_score=25.0, earned_points=25.0),
         ]
         for s in scores_data:
             db_session.add(s)
@@ -134,7 +139,7 @@ class TestAnalyticsModels:
         db_session.add(model)
 
         # Add a score
-        db_session.add(ScoreModel(team_id=tid, match_id=mid, winner_points=5, base_score=20.0))
+        db_session.add(ScoreModel(team_id=team_a.id, match_id=sample_match.id, winner_points=5, base_score=20.0))
         db_session.commit()
 
         resp = client.get("/api/v1/analytics/models", headers=organizer_headers)
@@ -233,18 +238,22 @@ class TestAnalyticsTeam:
     def test_team_by_uuid(
         self, client, organizer_headers, db_session, team_a, sample_match
     ):
-        tid = str(team_a.id)
-        mid = str(sample_match.id)
+        import uuid
+        from app.models.match import MatchModel
+        from datetime import datetime, timezone
+        match2 = MatchModel(id=uuid.uuid4(), home_team_name="H2", away_team_name="A2", status="COMPLETED", match_number=2, scheduled_at=datetime(2026, 6, 20, 20, 0, 0, tzinfo=timezone.utc), freeze_deadline=datetime(2026, 6, 20, 18, 0, 0, tzinfo=timezone.utc), round="Group Stage")
+        db_session.add(match2)
+        db_session.flush()
 
         scores = [
-            ScoreModel(team_id=tid, match_id=mid, winner_points=5, base_score=22.0),
-            ScoreModel(team_id=tid, match_id=mid + "_x", winner_points=5, base_score=18.0),
+            ScoreModel(team_id=team_a.id, match_id=sample_match.id, winner_points=5, base_score=22.0),
+            ScoreModel(team_id=team_a.id, match_id=match2.id, winner_points=5, base_score=18.0),
         ]
         for s in scores:
             db_session.add(s)
 
         lb = LeaderboardModel(
-            team_id=tid, rank=1, phase1_score=55.0, technical_score=18.0,
+            team_id=str(team_a.id), rank=1, phase1_score=55.0, technical_score=18.0,
             presentation_score=16.0, final_score=89.0,
         )
         db_session.add(lb)
@@ -254,7 +263,7 @@ class TestAnalyticsTeam:
             {"judge_id": str(uuid.uuid4()), "scores": {"Q&A": 4.0}},
         ]
         ev = PresentationEvaluationModel(
-            team_id=tid,
+            team_id=str(team_a.id),
             raw_total=4.0,
             grade=Grade.A,
             multiplier=3,
@@ -267,7 +276,7 @@ class TestAnalyticsTeam:
         db_session.commit()
 
         resp = client.get(
-            f"/api/v1/analytics/team/{tid}",
+            f"/api/v1/analytics/team/{team_a.id}",
             headers=organizer_headers,
         )
         assert resp.status_code == 200

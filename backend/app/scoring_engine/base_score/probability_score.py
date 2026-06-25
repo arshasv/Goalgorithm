@@ -1,31 +1,66 @@
-PROBABILITY_THRESHOLD = 15.0
-PROBABILITY_POINTS_PASS = 5
-PROBABILITY_POINTS_FAIL = 0
-
-
-def _probabilities_to_check(prediction: dict) -> list[tuple[str, float]]:
-    mp = prediction["match_prediction"]
-    return [
-        ("home_win_probability", mp["probabilities"]["home_win_probability"]),
-        ("draw_probability", mp["probabilities"]["draw_probability"]),
-        ("away_win_probability", mp["probabilities"]["away_win_probability"]),
-        ("home_clean_sheet_probability", mp["clean_sheet_probability"]["home_team"]),
-        ("away_clean_sheet_probability", mp["clean_sheet_probability"]["away_team"]),
-    ]
-
-
 def calculate_probability_score(
     prediction: dict,
-    actual_probabilities: dict,
+    actual_result: dict,
     config: dict | None = None,
-) -> int:
-    threshold = config.get("probability_threshold", PROBABILITY_THRESHOLD) if config else PROBABILITY_THRESHOLD
-    points_pass = config.get("probability_points_pass", PROBABILITY_POINTS_PASS) if config else PROBABILITY_POINTS_PASS
-    points_fail = config.get("probability_points_fail", PROBABILITY_POINTS_FAIL) if config else PROBABILITY_POINTS_FAIL
+) -> float:
+    score = 0.0
+    mp = prediction["match_prediction"]
+    actual_scoreline = actual_result["final_score"]
+    actual_home = actual_scoreline["home_team_goals"]
+    actual_away = actual_scoreline["away_team_goals"]
+    actual_winner = actual_result["actual_winner"]
+    pred_winner = mp["predicted_winner"]
 
-    for key, predicted_value in _probabilities_to_check(prediction):
-        actual_value = actual_probabilities[key]
-        if abs(predicted_value - actual_value) > threshold:
-            return points_fail
+    # A. Winner confidence accuracy (2 points)
+    if pred_winner == actual_winner:
+        probs = mp.get("probabilities", {})
+        highest_prob = max([
+            probs.get("home_win_probability", 0),
+            probs.get("draw_probability", 0),
+            probs.get("away_win_probability", 0)
+        ] + [0])
+        
+        if highest_prob >= 70:
+            score += 2.0
+        elif highest_prob >= 50:
+            score += 1.5
+        elif highest_prob >= 30:
+            score += 1.0
 
-    return points_pass
+    # B. Both Teams To Score (1 point)
+    actual_btts = actual_home > 0 and actual_away > 0
+    btts = mp.get("both_teams_to_score")
+    pred_btts = None
+    if btts and isinstance(btts, dict) and "prediction" in btts:
+        pred_btts = btts["prediction"]
+    else:
+        # Fallback to legacy probability
+        pred_btts = mp.get("both_teams_to_score_probability", 0) >= 50.0
+
+    if pred_btts == actual_btts:
+        score += 1.0
+
+    # C. Clean Sheet Prediction (2 points)
+    actual_home_cs = actual_away == 0
+    actual_away_cs = actual_home == 0
+
+    pred_home_cs = None
+    pred_away_cs = None
+
+    csp = mp.get("clean_sheet_predictions")
+    if csp and isinstance(csp, list) and len(csp) >= 2:
+        # Assume first is home, second is away
+        pred_home_cs = csp[0].get("prediction", False)
+        pred_away_cs = csp[1].get("prediction", False)
+    else:
+        # Fallback to legacy
+        legacy_cs = mp.get("clean_sheet_probability", {})
+        pred_home_cs = legacy_cs.get("home_team", 0) >= 50.0
+        pred_away_cs = legacy_cs.get("away_team", 0) >= 50.0
+
+    if pred_home_cs == actual_home_cs:
+        score += 1.0
+    if pred_away_cs == actual_away_cs:
+        score += 1.0
+
+    return score

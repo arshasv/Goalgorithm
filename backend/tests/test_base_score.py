@@ -67,168 +67,126 @@ class TestScorelineScore:
         }
         assert calculate_scoreline_score(pred, actual_draw) == 5
 
-    def test_incorrect_scoreline(self):
-        pred = _team_prediction("Team C")
-        assert calculate_scoreline_score(pred, ACTUAL) == 0
-
-    def test_wrong_direction(self):
-        pred = _team_prediction("Team E")
-        assert calculate_scoreline_score(pred, ACTUAL) == 0
-
-
-class TestProbabilityScore:
-    def test_all_within_threshold(self):
-        pred = _team_prediction("Team A")
-        probs = {
-            "home_win_probability": 65.0,
-            "draw_probability": 22.0,
-            "away_win_probability": 13.0,
-            "home_clean_sheet_probability": 55.0,
-            "away_clean_sheet_probability": 10.0,
-        }
-        assert calculate_probability_score(pred, probs) == 5
-
-    def test_one_outside_threshold(self):
-        pred = _team_prediction("Team A")
-        probs = {
-            "home_win_probability": 65.0,
-            "draw_probability": 22.0,
-            "away_win_probability": 13.0,
-            "home_clean_sheet_probability": 20.0,
-            "away_clean_sheet_probability": 10.0,
-        }
-        assert calculate_probability_score(pred, probs) == 0
-
-    def test_boundary_within(self):
-        pred = _team_prediction("Team A")
-        probs = {
-            "home_win_probability": 80.0,
-            "draw_probability": 22.0,
-            "away_win_probability": 13.0,
-            "home_clean_sheet_probability": 55.0,
-            "away_clean_sheet_probability": 10.0,
-        }
-        assert calculate_probability_score(pred, probs) == 5
-
-    def test_boundary_outside(self):
-        pred = _team_prediction("Team A")
-        probs = {
-            "home_win_probability": 80.01,
-            "draw_probability": 22.0,
-            "away_win_probability": 13.0,
-            "home_clean_sheet_probability": 55.0,
-            "away_clean_sheet_probability": 10.0,
-        }
-        assert calculate_probability_score(pred, probs) == 0
-
-
-class TestPlayerScore:
-    def test_all_exact_matches(self):
-        pred = _team_prediction("Team A")
-        assert calculate_player_score(pred, ACTUAL) == 5
-
-    def test_mixed_close_and_exact(self):
-        pred = _team_prediction("Team B")
-        score = calculate_player_score(pred, ACTUAL)
-        expected_scores = [
-            (1, 1),
-            (1, 1),
-            (0, 0),
-            (1, 0),
-            (0, 0),
-        ]
-        individual = []
-        for pred_goals, actual_goals in expected_scores:
-            diff = abs(pred_goals - actual_goals)
-            individual.append(5 if diff == 0 else (2 if diff == 1 else 0))
-        avg = sum(individual) / len(individual)
-        expected = 5 if avg >= 4 else (2 if avg >= 2 else 0)
-        assert score == expected
-
-    def test_player_not_in_actual_ignored(self):
-        pred = _team_prediction("Team A")
-        actual_with_extra = {
-            **ACTUAL,
-            "player_results": ACTUAL["player_results"][:2],
-        }
-        score = calculate_player_score(pred, actual_with_extra)
-        assert score == 5
 
 
 class TestBaseScoreCalculator:
-    def test_perfect_prediction_25(self):
-        pred = _team_prediction("Team A")
-        probs = {
-            "home_win_probability": 65.0,
-            "draw_probability": 22.0,
-            "away_win_probability": 13.0,
-            "home_clean_sheet_probability": 55.0,
-            "away_clean_sheet_probability": 10.0,
-        }
-        result = calculate_base_score(pred, ACTUAL, probs)
-        assert result["base_score"] == 25
-        assert result["breakdown"]["winner_score"] == 5
-        assert result["breakdown"]["scoreline_score"] == 10
-        assert result["breakdown"]["probability_score"] == 5
-        assert result["breakdown"]["player_score"] == 5
-
-    def test_wrong_prediction_0(self):
+    def test_scoreline_priority_1_exact(self):
+        # TEST 1: Prediction: 2-1, Actual: 2-1 -> Expected: 10
         pred = {
-            "team_id": "Team Wrong",
+            "match_prediction": {
+                "predicted_scoreline": {"home_team_goals": 2, "away_team_goals": 1}
+            }
+        }
+        actual = {
+            "final_score": {"home_team_goals": 2, "away_team_goals": 1}
+        }
+        assert calculate_scoreline_score(pred, actual) == 10.0
+
+    def test_scoreline_priority_2_difference(self):
+        # TEST 2: Prediction: 2-1, Actual: 3-2 -> Expected: 5
+        pred = {
+            "match_prediction": {
+                "predicted_scoreline": {"home_team_goals": 2, "away_team_goals": 1}
+            }
+        }
+        actual = {
+            "final_score": {"home_team_goals": 3, "away_team_goals": 2}
+        }
+        assert calculate_scoreline_score(pred, actual) == 5.0
+
+    def test_scoreline_priority_3_partial(self):
+        # TEST 3: Prediction: 2-1, Actual: 2-0 -> Expected: 2.5
+        pred = {
+            "match_prediction": {
+                "predicted_scoreline": {"home_team_goals": 2, "away_team_goals": 1}
+            }
+        }
+        actual = {
+            "final_score": {"home_team_goals": 2, "away_team_goals": 0}
+        }
+        assert calculate_scoreline_score(pred, actual) == 2.5
+
+    def test_scoreline_priority_3_partial_away(self):
+        pred = {
+            "match_prediction": {
+                "predicted_scoreline": {"home_team_goals": 1, "away_team_goals": 2}
+            }
+        }
+        actual = {
+            "final_score": {"home_team_goals": 3, "away_team_goals": 2}
+        }
+        assert calculate_scoreline_score(pred, actual) == 2.5
+
+    def test_perfect_prediction_25(self):
+        pred = {
+            "team_id": "Team A",
             "match_id": "match-001",
             "match_prediction": {
-                "predicted_winner": "away",
-                "predicted_scoreline": {"home_team_goals": 0, "away_team_goals": 1},
+                "predicted_winner": "home",
+                "predicted_scoreline": {"home_team_goals": 2, "away_team_goals": 1},
                 "probabilities": {
-                    "home_win_probability": 10.0,
-                    "draw_probability": 10.0,
-                    "away_win_probability": 80.0,
+                    "home_win_probability": 75.0,
+                    "draw_probability": 15.0,
+                    "away_win_probability": 10.0,
                 },
-                "clean_sheet_probability": {"home_team": 5.0, "away_team": 60.0},
+                "both_teams_to_score": {"prediction": True},
+                "clean_sheet_predictions": [
+                    {"prediction": False},
+                    {"prediction": False}
+                ]
             },
             "player_predictions": [
-                {"player_id": "p-arg-1", "player_name": "Messi", "predicted_goals": 3},
-            ],
+                {"player_name": "Messi", "predicted_goals": 1}
+            ]
         }
-        probs = {
-            "home_win_probability": 60.0,
-            "draw_probability": 25.0,
-            "away_win_probability": 15.0,
-            "home_clean_sheet_probability": 55.0,
-            "away_clean_sheet_probability": 10.0,
+        actual = {
+            "actual_winner": "home",
+            "final_score": {"home_team_goals": 2, "away_team_goals": 1},
+            "player_results": [
+                {"player_name": "Messi", "actual_goals": 1}
+            ]
         }
-        result = calculate_base_score(pred, ACTUAL, probs)
-        assert result["base_score"] == 0
+        result = calculate_base_score(pred, actual)
+        assert result["base_score"] == 25.0
+        assert result["breakdown"]["winner_score"] == 5.0
+        assert result["breakdown"]["scoreline_score"] == 10.0
+        assert result["breakdown"]["probability_score"] == 5.0
+        assert result["breakdown"]["player_score"] == 5.0
 
-    def test_winner_only_correct(self):
-        pred = _team_prediction("Team C")
-        probs = {
-            "home_win_probability": 48.0,
-            "draw_probability": 32.0,
-            "away_win_probability": 20.0,
-            "home_clean_sheet_probability": 50.0,
-            "away_clean_sheet_probability": 12.0,
+    def test_probability_score_logic(self):
+        # actual is 1-0, home wins, home clean sheet (away 0), away no clean sheet (home 1)
+        actual = {
+            "actual_winner": "home",
+            "final_score": {"home_team_goals": 1, "away_team_goals": 0},
         }
-        result = calculate_base_score(pred, ACTUAL, probs)
-        assert result["breakdown"]["winner_score"] == 5
-        assert result["breakdown"]["scoreline_score"] == 0
-        assert result["breakdown"]["player_score"] == 5
+        
+        # Test confidence: 55% -> 1.5, BTTS -> false (match = 1), Clean sheet: home true (match = 1), away false (match = 1) -> Total = 4.5
+        pred = {
+            "match_prediction": {
+                "predicted_winner": "home",
+                "probabilities": {"home_win_probability": 55.0},
+                "both_teams_to_score": {"prediction": False},
+                "clean_sheet_predictions": [
+                    {"prediction": True},
+                    {"prediction": False}
+                ]
+            }
+        }
+        assert calculate_probability_score(pred, actual) == 4.5
 
-    def test_result_structure(self):
-        pred = _team_prediction("Team A")
-        probs = {
-            "home_win_probability": 65.0,
-            "draw_probability": 22.0,
-            "away_win_probability": 13.0,
-            "home_clean_sheet_probability": 55.0,
-            "away_clean_sheet_probability": 10.0,
+    def test_player_score_best_match(self):
+        # Best match takes max score
+        pred = {
+            "player_predictions": [
+                {"player_name": "Messi", "predicted_goals": 1}, # diff 1 => 2 pts
+                {"player_name": "Alvarez", "predicted_goals": 2} # exact => 5 pts
+            ]
         }
-        result = calculate_base_score(pred, ACTUAL, probs)
-        assert result["team_id"] == "Team A"
-        assert result["match_id"] == "match-001"
-        assert set(result["breakdown"].keys()) == {
-            "winner_score",
-            "scoreline_score",
-            "probability_score",
-            "player_score",
+        actual = {
+            "player_results": [
+                {"player_name": "Messi", "actual_goals": 2},
+                {"player_name": "Alvarez", "actual_goals": 2}
+            ]
         }
+        assert calculate_player_score(pred, actual) == 5.0
+

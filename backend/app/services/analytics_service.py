@@ -75,7 +75,7 @@ class AnalyticsService:
         all_scores = self.repo.get_all_calculated_scores()
         scores_by_team = defaultdict(list)
         for s in all_scores:
-            scores_by_team[s.team_id].append(s)
+            scores_by_team[str(s.team_id)].append(s)
 
         matches = {str(m.id): m for m in self.repo.get_all_matches()}
 
@@ -139,7 +139,7 @@ class AnalyticsService:
         evals = self.repo.get_all_presentation_evaluations()
         evals_by_team = defaultdict(list)
         for ev in evals:
-            evals_by_team[ev.team_id].append(ev)
+            evals_by_team[str(ev.team_id)].append(ev)
 
         team_criteria = defaultdict(lambda: defaultdict(lambda: {"sum": 0.0, "count": 0, "max_score": 0}))
 

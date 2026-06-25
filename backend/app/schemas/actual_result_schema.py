@@ -18,12 +18,23 @@ class GoalScorers(BaseModel):
     away: List[str] = Field(default_factory=list)
 
 
+import uuid
+
 class ActualResultSubmission(BaseModel):
-    match_id: str = Field(..., min_length=1)
+    match_id: uuid.UUID
     actual_winner: str
     final_score: FinalScore
     goal_scorers: GoalScorers = Field(default_factory=GoalScorers)
     player_results: List[PlayerResult]
+    first_team_to_score: str = "none"
+
+    @field_validator("first_team_to_score")
+    @classmethod
+    def validate_first_team_to_score(cls, v: str) -> str:
+        allowed = {"home", "away", "none"}
+        if v.lower() not in allowed:
+            raise ValueError(f"first_team_to_score must be one of {allowed}")
+        return v.lower()
 
     @field_validator("actual_winner")
     @classmethod

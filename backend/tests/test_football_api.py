@@ -87,8 +87,8 @@ class TestFootballAPI(unittest.TestCase):
         with patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get:
             mock_get.return_value = mock_response
             
-            with self.assertRaisesRegex(FootballAPIError, "Error from external API"):
-                asyncio.run(service.fetch_fixtures_by_date(date(2026, 6, 18)))
+            with self.assertRaisesRegex(FootballAPIError, "Football API Error: Rate limit exceeded"):
+                asyncio.run(service.fetch_fixtures_by_date(date(2024, 6, 1)))
 
     def test_fetch_fixtures_http_error(self):
         service = FootballAPIService()
@@ -100,5 +100,5 @@ class TestFootballAPI(unittest.TestCase):
             )
             mock_get.return_value = mock_response
             
-            with self.assertRaisesRegex(FootballAPIError, "External API HTTP error"):
-                asyncio.run(service.fetch_fixtures_by_date(date(2026, 6, 18)))
+            with self.assertRaisesRegex(FootballAPIError, "Football API is currently unavailable"):
+                asyncio.run(service.fetch_fixtures_by_date(date(2024, 6, 1)))
