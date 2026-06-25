@@ -26,7 +26,7 @@ const ModelExecutionView = () => {
       try {
         const [matchesData, teamsData] = await Promise.all([
           MatchService.listMatches(),
-          TeamService.getAllTeams()
+          TeamService.listTeams()
         ]);
         setMatches(matchesData);
         setTeams(teamsData);
