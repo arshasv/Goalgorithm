@@ -8,6 +8,12 @@ class ModelUploadResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+class ModelExecutionResponse(BaseModel):
+    execution_id: uuid.UUID
+    status: str
+
+    model_config = ConfigDict(from_attributes=True)
+
 class ModelExecutionStatusResponse(BaseModel):
     status: str
     error_message: Optional[str] = None

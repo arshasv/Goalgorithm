@@ -54,6 +54,9 @@ def override_get_db() -> Generator[Session, None, None]:
 
 app.dependency_overrides[get_db] = override_get_db
 
+import app.database.session as session_module
+session_module.SessionLocal = TestSessionLocal
+
 
 @pytest.fixture(scope="session", autouse=True)
 def _setup_test_database():
