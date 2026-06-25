@@ -186,10 +186,10 @@ const PredictionsView = () => {
                       const teamDisplay = p.team_code
                         ? `${p.team_code} – ${p.team_name || ''}`
                         : (p.team_name || p.team_id);
-                      
+
                       const m = matchById[p.match_id];
-                      const matchDisplay = m 
-                        ? (p.match_label || `M${m.match_number}: ${m.home_team_name} vs ${m.away_team_name}`) 
+                      const matchDisplay = m
+                        ? (p.match_label || `M${m.match_number}: ${m.home_team_name} vs ${m.away_team_name}`)
                         : 'Deleted Match';
 
                       return (
@@ -248,7 +248,7 @@ const PredictionsView = () => {
                 <div style={{ gridColumn: selectedPred.team_leader_name ? '1 / -1' : 'auto' }}>
                   <span style={{ display: 'block', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>Match</span>
                   <strong>
-                    {matchById[selectedPred.match_id] 
+                    {matchById[selectedPred.match_id]
                       ? (selectedPred.match_label || `M${matchById[selectedPred.match_id].match_number}: ${matchById[selectedPred.match_id].home_team_name} vs ${matchById[selectedPred.match_id].away_team_name}`)
                       : 'Deleted Match'}
                   </strong>
@@ -332,25 +332,60 @@ const PredictionsView = () => {
               </div>
 
               {/* Goal scorers */}
-              <div style={{ marginBottom: 'var(--space-lg)' }}>
-                <h4 style={{ marginBottom: 'var(--space-sm)', textTransform: 'uppercase', fontSize: 'var(--text-xs)', letterSpacing: '0.04em' }}>🥅 Predicted Scorers</h4>
+              < div style={{ marginBottom: 'var(--space-lg)' }}>
+                <h4 style={{ marginBottom: 'var(--space-sm)', textTransform: 'uppercase', fontSize: 'var(--text-xs)', letterSpacing: '0.04em' }}>
+                  🥅 Predicted Scorers
+                </h4>
+
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)' }}>
+
                   <div style={{ background: 'var(--color-surface)', padding: 'var(--space-sm)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-small)' }}>
-                    <div style={{ fontWeight: 600, marginBottom: 4, color: 'var(--color-primary)' }}>Home Team</div>
+                    <div style={{ fontWeight: 600, marginBottom: 4, color: 'var(--color-primary)' }}>
+                      Home Team
+                    </div>
+
                     <ul style={{ margin: 0, paddingLeft: 'var(--space-md)' }}>
                       {selectedPred.match_prediction?.goal_scorers?.home?.length > 0
-                        ? selectedPred.match_prediction.goal_scorers.home.map((s, i) => <li key={i}>⚽ {s}</li>)
-                        : <li style={{ color: 'var(--color-text-muted)', listStyle: 'none' }}>None</li>}
+                        ? selectedPred.match_prediction.goal_scorers.home.map((s, i) => (
+                          <li key={i}>
+                            ⚽ {
+                              typeof s === "object"
+                                ? `${s.name} (${s.predicted_goals ?? 0} goal, ${s.probability ?? 0}%)`
+                                : s
+                            }
+                          </li>
+                        ))
+                        : <li style={{ color: 'var(--color-text-muted)', listStyle: 'none' }}>
+                          None
+                        </li>
+                      }
                     </ul>
                   </div>
+
+
                   <div style={{ background: 'var(--color-surface)', padding: 'var(--space-sm)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-small)' }}>
-                    <div style={{ fontWeight: 600, marginBottom: 4, color: 'var(--color-accent)' }}>Away Team</div>
+                    <div style={{ fontWeight: 600, marginBottom: 4, color: 'var(--color-accent)' }}>
+                      Away Team
+                    </div>
+
                     <ul style={{ margin: 0, paddingLeft: 'var(--space-md)' }}>
                       {selectedPred.match_prediction?.goal_scorers?.away?.length > 0
-                        ? selectedPred.match_prediction.goal_scorers.away.map((s, i) => <li key={i}>⚽ {s}</li>)
-                        : <li style={{ color: 'var(--color-text-muted)', listStyle: 'none' }}>None</li>}
+                        ? selectedPred.match_prediction.goal_scorers.away.map((s, i) => (
+                          <li key={i}>
+                            ⚽ {
+                              typeof s === "object"
+                                ? `${s.name} (${s.predicted_goals ?? 0} goal, ${s.probability ?? 0}%)`
+                                : s
+                            }
+                          </li>
+                        ))
+                        : <li style={{ color: 'var(--color-text-muted)', listStyle: 'none' }}>
+                          None
+                        </li>
+                      }
                     </ul>
                   </div>
+
                 </div>
               </div>
 
@@ -419,20 +454,20 @@ const PredictionsView = () => {
                 selectedPred.match_prediction?.clean_sheet_probability?.home_team != null ||
                 selectedPred.match_prediction?.clean_sheet_probability?.away_team != null
               ) && (
-                <div style={{ marginBottom: 'var(--space-lg)' }}>
-                  <h4 style={{ marginBottom: 'var(--space-sm)', textTransform: 'uppercase', fontSize: 'var(--text-xs)', letterSpacing: '0.04em' }}>🧤 Clean Sheet Probability</h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-sm)' }}>
-                    <div className="card" style={{ padding: 'var(--space-sm)', textAlign: 'center' }}>
-                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>Home CS</div>
-                      <div style={{ fontWeight: 'bold', fontSize: 'var(--text-lg)' }}>{selectedPred.match_prediction?.clean_sheet_probability?.home_team ?? 0}%</div>
-                    </div>
-                    <div className="card" style={{ padding: 'var(--space-sm)', textAlign: 'center' }}>
-                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>Away CS</div>
-                      <div style={{ fontWeight: 'bold', fontSize: 'var(--text-lg)' }}>{selectedPred.match_prediction?.clean_sheet_probability?.away_team ?? 0}%</div>
+                  <div style={{ marginBottom: 'var(--space-lg)' }}>
+                    <h4 style={{ marginBottom: 'var(--space-sm)', textTransform: 'uppercase', fontSize: 'var(--text-xs)', letterSpacing: '0.04em' }}>🧤 Clean Sheet Probability</h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-sm)' }}>
+                      <div className="card" style={{ padding: 'var(--space-sm)', textAlign: 'center' }}>
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>Home CS</div>
+                        <div style={{ fontWeight: 'bold', fontSize: 'var(--text-lg)' }}>{selectedPred.match_prediction?.clean_sheet_probability?.home_team ?? 0}%</div>
+                      </div>
+                      <div className="card" style={{ padding: 'var(--space-sm)', textAlign: 'center' }}>
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>Away CS</div>
+                        <div style={{ fontWeight: 'bold', fontSize: 'var(--text-lg)' }}>{selectedPred.match_prediction?.clean_sheet_probability?.away_team ?? 0}%</div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
               <div className="modal-footer" style={{ marginTop: 'var(--space-lg)', display: 'flex', gap: 'var(--space-sm)', justifyContent: 'flex-end' }}>
                 <button className="btn btn-secondary" onClick={() => { setEditModePred(selectedPred); setSelectedPred(null); }}>✏️ Edit Prediction</button>
@@ -441,19 +476,22 @@ const PredictionsView = () => {
             </div>
           </div>
         </div>
-      )}
+      )
+      }
 
       {/* Edit prediction modal — passes real match team names */}
-      {editModePred && (
-        <SubmitPredictionModal
-          match={getMatchForEdit(editModePred)}
-          isOpen={true}
-          onClose={() => setEditModePred(null)}
-          onPredictionSubmitted={() => { setEditModePred(null); loadData(); }}
-          existingPrediction={editModePred}
-        />
-      )}
-    </div>
+      {
+        editModePred && (
+          <SubmitPredictionModal
+            match={getMatchForEdit(editModePred)}
+            isOpen={true}
+            onClose={() => setEditModePred(null)}
+            onPredictionSubmitted={() => { setEditModePred(null); loadData(); }}
+            existingPrediction={editModePred}
+          />
+        )
+      }
+    </div >
   );
 };
 
