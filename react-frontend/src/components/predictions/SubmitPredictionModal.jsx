@@ -243,9 +243,29 @@ const SubmitPredictionModal = ({ match, isOpen, onClose, onPredictionSubmitted, 
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {
-        const json = JSON.parse(event.target.result);
-        if (!json.match_prediction) {
-          throw new Error('Invalid JSON format: missing match_prediction');
+        const rawJson = JSON.parse(event.target.result);
+        const json = rawJson.output ? rawJson.output : rawJson;
+
+        const missing = [];
+        if (!json.match_prediction) missing.push('match_prediction');
+        if (!json.score_prediction && !json.match_prediction?.predicted_scoreline) missing.push('score_prediction');
+        if (!json.goal_insights && !json.match_prediction?.both_teams_to_score) missing.push('goal_insights');
+        if (!json.player_prediction && !json.player_predictions) missing.push('player_prediction');
+
+        if (missing.length > 0) {
+          throw new Error(`Invalid JSON format. Missing required fields: ${missing.join(', ')}`);
+        }
+
+        // Map AI format to backend schema if needed
+        if (json.score_prediction && !json.match_prediction.predicted_scoreline) {
+          json.match_prediction.predicted_scoreline = json.score_prediction.predicted_scoreline || json.score_prediction;
+        }
+        if (json.goal_insights) {
+          json.match_prediction.both_teams_to_score = json.goal_insights.both_teams_to_score;
+          json.match_prediction.first_team_to_score = json.goal_insights.first_team_to_score;
+        }
+        if (json.player_prediction && !json.player_predictions) {
+          json.player_predictions = Array.isArray(json.player_prediction) ? json.player_prediction : [json.player_prediction];
         }
 
         // Validate match_id instead of blindly overwriting

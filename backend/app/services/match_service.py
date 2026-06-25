@@ -184,6 +184,10 @@ class MatchService:
                     errors.append(f"Row {i}: cannot parse kickoff_date '{kickoff_str}'")
                     continue
 
+                if self.match_repo.get_by_match_number(match_number):
+                    errors.append(f"Row {i}: Match number {match_number} already exists")
+                    continue
+
                 freeze = kickoff - timedelta(hours=1)
                 match = self.match_repo.create(
                     match_number=match_number,
