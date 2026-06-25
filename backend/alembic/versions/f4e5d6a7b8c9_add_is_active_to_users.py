@@ -18,10 +18,15 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "users",
-        sa.Column("is_active", sa.Boolean(), server_default="true", nullable=False),
-    )
+    from sqlalchemy.engine.reflection import Inspector
+    conn = op.get_bind()
+    inspector = Inspector.from_engine(conn)
+    columns = [c['name'] for c in inspector.get_columns('users')]
+    if 'is_active' not in columns:
+        op.add_column(
+            "users",
+            sa.Column("is_active", sa.Boolean(), server_default="true", nullable=False),
+        )
 
 
 def downgrade() -> None:

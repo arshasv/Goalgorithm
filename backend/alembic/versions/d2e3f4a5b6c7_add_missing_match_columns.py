@@ -18,13 +18,23 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column("matches", sa.Column("round", sa.String(100), nullable=True))
-    op.add_column("matches", sa.Column("external_api_id", sa.String(255), nullable=True))
-    op.add_column("matches", sa.Column("competition_name", sa.String(255), nullable=True))
-    op.add_column("matches", sa.Column("external_sync_status", sa.String(20), nullable=True))
+    from sqlalchemy.engine.reflection import Inspector
+    
+    conn = op.get_bind()
+    inspector = Inspector.from_engine(conn)
+    
+    def safe_add_column(table, column):
+        columns = [c['name'] for c in inspector.get_columns(table)]
+        if column.name not in columns:
+            op.add_column(table, column)
 
-    op.add_column("actual_results", sa.Column("result_source", sa.String(50), server_default="MANUAL", nullable=False))
-    op.add_column("actual_results", sa.Column("last_synced_at", sa.DateTime(timezone=True), nullable=True))
+    safe_add_column("matches", sa.Column("round", sa.String(100), nullable=True))
+    safe_add_column("matches", sa.Column("external_api_id", sa.String(255), nullable=True))
+    safe_add_column("matches", sa.Column("competition_name", sa.String(255), nullable=True))
+    safe_add_column("matches", sa.Column("external_sync_status", sa.String(20), nullable=True))
+
+    safe_add_column("actual_results", sa.Column("result_source", sa.String(50), server_default="MANUAL", nullable=False))
+    safe_add_column("actual_results", sa.Column("last_synced_at", sa.DateTime(timezone=True), nullable=True))
 
 
 def downgrade() -> None:

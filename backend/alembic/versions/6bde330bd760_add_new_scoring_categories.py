@@ -20,21 +20,37 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    # Add columns to scores table
-    op.add_column('scores', sa.Column('total_goals_points', sa.Float(), nullable=True))
-    op.add_column('scores', sa.Column('btts_points', sa.Float(), nullable=True))
-    op.add_column('scores', sa.Column('first_team_to_score_points', sa.Float(), nullable=True))
-    op.add_column('scores', sa.Column('clean_sheet_points', sa.Float(), nullable=True))
+    from sqlalchemy.engine.reflection import Inspector
+    conn = op.get_bind()
+    inspector = Inspector.from_engine(conn)
+    score_cols = [c['name'] for c in inspector.get_columns('scores')]
+    config_cols = [c['name'] for c in inspector.get_columns('scoring_configs')]
 
-    # Add columns to scoring_configs table
-    op.add_column('scoring_configs', sa.Column('total_goals_points_exact', sa.Integer(), server_default='5', nullable=False))
-    op.add_column('scoring_configs', sa.Column('total_goals_points_wrong', sa.Integer(), server_default='0', nullable=False))
-    op.add_column('scoring_configs', sa.Column('btts_points_correct', sa.Integer(), server_default='5', nullable=False))
-    op.add_column('scoring_configs', sa.Column('btts_points_incorrect', sa.Integer(), server_default='0', nullable=False))
-    op.add_column('scoring_configs', sa.Column('first_team_to_score_points_correct', sa.Integer(), server_default='5', nullable=False))
-    op.add_column('scoring_configs', sa.Column('first_team_to_score_points_incorrect', sa.Integer(), server_default='0', nullable=False))
-    op.add_column('scoring_configs', sa.Column('clean_sheet_points_correct', sa.Integer(), server_default='5', nullable=False))
-    op.add_column('scoring_configs', sa.Column('clean_sheet_points_incorrect', sa.Integer(), server_default='0', nullable=False))
+    if 'total_goals_points' not in score_cols:
+        op.add_column('scores', sa.Column('total_goals_points', sa.Float(), nullable=True))
+    if 'btts_points' not in score_cols:
+        op.add_column('scores', sa.Column('btts_points', sa.Float(), nullable=True))
+    if 'first_team_to_score_points' not in score_cols:
+        op.add_column('scores', sa.Column('first_team_to_score_points', sa.Float(), nullable=True))
+    if 'clean_sheet_points' not in score_cols:
+        op.add_column('scores', sa.Column('clean_sheet_points', sa.Float(), nullable=True))
+
+    if 'total_goals_points_exact' not in config_cols:
+        op.add_column('scoring_configs', sa.Column('total_goals_points_exact', sa.Integer(), server_default='5', nullable=False))
+    if 'total_goals_points_wrong' not in config_cols:
+        op.add_column('scoring_configs', sa.Column('total_goals_points_wrong', sa.Integer(), server_default='0', nullable=False))
+    if 'btts_points_correct' not in config_cols:
+        op.add_column('scoring_configs', sa.Column('btts_points_correct', sa.Integer(), server_default='5', nullable=False))
+    if 'btts_points_incorrect' not in config_cols:
+        op.add_column('scoring_configs', sa.Column('btts_points_incorrect', sa.Integer(), server_default='0', nullable=False))
+    if 'first_team_to_score_points_correct' not in config_cols:
+        op.add_column('scoring_configs', sa.Column('first_team_to_score_points_correct', sa.Integer(), server_default='5', nullable=False))
+    if 'first_team_to_score_points_incorrect' not in config_cols:
+        op.add_column('scoring_configs', sa.Column('first_team_to_score_points_incorrect', sa.Integer(), server_default='0', nullable=False))
+    if 'clean_sheet_points_correct' not in config_cols:
+        op.add_column('scoring_configs', sa.Column('clean_sheet_points_correct', sa.Integer(), server_default='5', nullable=False))
+    if 'clean_sheet_points_incorrect' not in config_cols:
+        op.add_column('scoring_configs', sa.Column('clean_sheet_points_incorrect', sa.Integer(), server_default='0', nullable=False))
 
 
 def downgrade() -> None:

@@ -20,20 +20,21 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Add new columns to predictions and player_predictions for AI JSON format."""
+    from sqlalchemy.engine.reflection import Inspector
+    conn = op.get_bind()
+    inspector = Inspector.from_engine(conn)
+    pred_cols = [c['name'] for c in inspector.get_columns('predictions')]
+    player_cols = [c['name'] for c in inspector.get_columns('player_predictions')]
 
-    # --- predictions table: new columns ---
-    # BTTS prediction boolean
-    op.add_column('predictions', sa.Column('both_teams_to_score_prediction', sa.Boolean(), nullable=True))
+    if 'both_teams_to_score_prediction' not in pred_cols:
+        op.add_column('predictions', sa.Column('both_teams_to_score_prediction', sa.Boolean(), nullable=True))
+    if 'first_goal_team_probability' not in pred_cols:
+        op.add_column('predictions', sa.Column('first_goal_team_probability', sa.Float(), nullable=True))
+    if 'clean_sheet_predictions' not in pred_cols:
+        op.add_column('predictions', sa.Column('clean_sheet_predictions', sa.JSON(), nullable=True))
 
-    # First goal team probability
-    op.add_column('predictions', sa.Column('first_goal_team_probability', sa.Float(), nullable=True))
-
-    # Clean sheet predictions as JSON array
-    op.add_column('predictions', sa.Column('clean_sheet_predictions', sa.JSON(), nullable=True))
-
-    # --- player_predictions table: new column ---
-    # Team name for player
-    op.add_column('player_predictions', sa.Column('team', sa.String(length=255), nullable=True))
+    if 'team' not in player_cols:
+        op.add_column('player_predictions', sa.Column('team', sa.String(length=255), nullable=True))
 
     # Make player_id nullable (AI format doesn't require it)
     with op.batch_alter_table('player_predictions') as batch_op:
