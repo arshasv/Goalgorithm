@@ -22,6 +22,7 @@ import ModelSubmissionView from './pages/modelsubmission/ModelSubmissionView';
 import LeaderboardSettingsView from './pages/leaderboardsettings/LeaderboardSettingsView';
 import ModelEvaluation from './pages/modelevaluation/ModelEvaluation';
 import ReportsView from './pages/reports/ReportsView';
+import ModelExecutionView from './pages/modelexecution/ModelExecutionView';
 
 const PrivateRoute = ({ element, roleRequired }) => {
   const { isAuthenticated, user, loading } = useAuth();
@@ -137,6 +138,10 @@ const App = () => {
             <Route 
               path="/submit-predictions" 
               element={<PrivateRoute element={<ModelSubmissionView />} roleRequired="TEAM_LEADER" />} 
+            />
+            <Route 
+              path="/model-execution" 
+              element={<PrivateRoute element={<ModelExecutionView />} roleRequired="TEAM_LEADER" />} 
             />
           </Route>
         </Routes>

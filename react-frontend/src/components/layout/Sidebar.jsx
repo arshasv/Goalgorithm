@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { LeaderboardSettingsService } from '../../api/leaderboardSettingsService';
 
-const Sidebar = () => {
+const Sidebar = ({ collapsed, toggleSidebar }) => {
   const { isOrganizer, isTeamLeader } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -25,8 +25,8 @@ const Sidebar = () => {
   const isActive = (page) => currentPage === page ? 'nav-item active' : 'nav-item';
 
   return (
-    <aside className="sidebar" id="sidebar">
-      <button className="sidebar-toggle" id="sidebar-toggle" title="Toggle sidebar">☰</button>
+    <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`} id="sidebar">
+      <button className="sidebar-toggle" id="sidebar-toggle" title="Toggle sidebar" onClick={toggleSidebar}>☰</button>
       <nav>
         {isOrganizer && (
           <>
@@ -42,7 +42,7 @@ const Sidebar = () => {
                 <span className="nav-icon">👥</span><span className="nav-label">Teams</span>
               </a>
               <a className={isActive('prediction-upload')} data-page="prediction-upload" onClick={() => nav('prediction-upload')}>
-                <span className="nav-icon">🤖</span><span className="nav-label">Model Mgmt</span>
+                <span className="nav-icon">🤖</span><span className="nav-label">Model Management</span>
               </a>
               <a className={isActive('match-results')} data-page="match-results" onClick={() => nav('match-results')}>
                 <span className="nav-icon">📊</span><span className="nav-label">Final Scores</span>
@@ -98,6 +98,9 @@ const Sidebar = () => {
               </a>
               <a className={isActive('submit-predictions')} data-page="submit-predictions" onClick={() => nav('submit-predictions')}>
                 <span className="nav-icon">🤖</span><span className="nav-label">Model Submission</span>
+              </a>
+              <a className={isActive('model-execution')} data-page="model-execution" onClick={() => nav('model-execution')}>
+                <span className="nav-icon">⚡</span><span className="nav-label">Model Execution</span>
               </a>
             </div>
             <div className="nav-section" id="tl-nav-matches">

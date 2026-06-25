@@ -9,6 +9,10 @@ export const ScoringService = {
     const res = await api.get('/scores/match-breakdown');
     return res.data;
   },
+  calculateTechnical: async (payload) => {
+    const res = await api.post('/technical-score', payload);
+    return res.data;
+  },
   calculatePresentation: async (evaluations, roundId) => {
     let url = '/presentation-score';
     if (roundId) url += `?round_id=${roundId}`;

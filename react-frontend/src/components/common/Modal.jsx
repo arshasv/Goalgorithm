@@ -1,6 +1,8 @@
 import React, { useEffect } from 'react';
+import { useScrollLock } from '../../hooks/useScrollLock';
 
 const Modal = ({ isOpen, onClose, title, children }) => {
+  useScrollLock(isOpen);
   useEffect(() => {
     if (!isOpen) return;
     const handler = (e) => { if (e.key === 'Escape') onClose(); };

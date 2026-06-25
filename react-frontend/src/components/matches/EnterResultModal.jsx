@@ -1,24 +1,46 @@
 import React, { useState, useEffect } from 'react';
 import { ResultService } from '../../api/resultService';
+import { useScrollLock } from '../../hooks/useScrollLock';
 
 const EnterResultModal = ({ match, isOpen, onClose, onResultEntered }) => {
+  useScrollLock(isOpen);
   const [homeGoals, setHomeGoals] = useState(0);
   const [awayGoals, setAwayGoals] = useState(0);
   const [homeScorers, setHomeScorers] = useState([]);
   const [awayScorers, setAwayScorers] = useState([]);
+  const [firstTeamToScore, setFirstTeamToScore] = useState('none');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [showJsonRef, setShowJsonRef] = useState(false);
 
   useEffect(() => {
-    if (isOpen) {
-      setHomeGoals(0);
-      setAwayGoals(0);
-      setHomeScorers([]);
-      setAwayScorers([]);
-      setError('');
-    }
-  }, [isOpen]);
+    const fetchExistingResult = async () => {
+      if (isOpen && match && match.id) {
+        setError('');
+        setHomeGoals(0);
+        setAwayGoals(0);
+        setHomeScorers([]);
+        setAwayScorers([]);
+        setFirstTeamToScore('none');
+        
+        try {
+          const res = await ResultService.getActualResult(match.id);
+          if (res) {
+            setHomeGoals(res.final_score?.home_team_goals || 0);
+            setAwayGoals(res.final_score?.away_team_goals || 0);
+            setHomeScorers(res.goal_scorers?.home || []);
+            setAwayScorers(res.goal_scorers?.away || []);
+            setFirstTeamToScore(res.first_team_to_score || 'none');
+          }
+        } catch (err) {
+          if (err.response?.status !== 404) {
+            setError(err.response?.data?.detail || err.message || 'Failed to load existing result');
+          }
+        }
+      }
+    };
+    fetchExistingResult();
+  }, [isOpen, match]);
 
   useEffect(() => {
     setHomeScorers(prev => Array.from({length: homeGoals}, (_, i) => prev[i] || ''));
@@ -81,7 +103,8 @@ const EnterResultModal = ({ match, isOpen, onClose, onResultEntered }) => {
         home: homeScorers.map(s => s.trim()),
         away: awayScorers.map(s => s.trim())
       },
-      player_results: playerResults
+      player_results: playerResults,
+      first_team_to_score: firstTeamToScore
     };
 
     setIsSubmitting(true);
@@ -115,7 +138,8 @@ const EnterResultModal = ({ match, isOpen, onClose, onResultEntered }) => {
           actual_winner: data.actual_winner,
           final_score: data.final_score,
           goal_scorers: data.goal_scorers || { home: [], away: [] },
-          player_results: data.player_results || []
+          player_results: data.player_results || [],
+          first_team_to_score: data.first_team_to_score || 'none'
         };
 
         setIsSubmitting(true);
@@ -167,7 +191,16 @@ const EnterResultModal = ({ match, isOpen, onClose, onResultEntered }) => {
                     <input key={i} type="text" className="form-input" placeholder={`${away} scorer ${i+1}`} value={val} onChange={e => { const ns = [...awayScorers]; ns[i] = e.target.value; setAwayScorers(ns); }} style={{width: '100%', marginBottom: '4px', fontSize: 'var(--text-sm)', padding: '6px'}} required />
                   ))}
                 </div>
-              </div>
+            </div>
+            </div>
+            
+            <div className="form-group" style={{ marginTop: 'var(--space-md)' }}>
+              <label className="form-label">First Team to Score <span className="required">*</span></label>
+              <select className="form-input" value={firstTeamToScore} onChange={e => setFirstTeamToScore(e.target.value)} required style={{ width: '100%' }}>
+                <option value="none">None (0-0 / No goals)</option>
+                <option value="home">{home}</option>
+                <option value="away">{away}</option>
+              </select>
             </div>
 
             <div style={{ marginTop: 'var(--space-md)', padding: 'var(--space-md)', background: 'var(--color-surface-secondary)', borderRadius: 'var(--radius-medium)' }}>
@@ -218,7 +251,8 @@ const EnterResultModal = ({ match, isOpen, onClose, onResultEntered }) => {
     { player_id: "P1", player_name: "Player Name 1", actual_goals: 1 },
     { player_id: "P2", player_name: "Player Name 2", actual_goals: 1 },
     { player_id: "P3", player_name: "Player Name 3", actual_goals: 1 }
-  ]
+  ],
+  first_team_to_score: "home | away | none"
 }, null, 2)}
             </pre>
             <div className="modal-footer" style={{ marginTop: 'var(--space-lg)' }}>

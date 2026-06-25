@@ -4,11 +4,13 @@ import { useAuth } from '../../contexts/AuthContext';
 import { PredictionService } from '../../api/predictionService';
 import { MatchService } from '../../api/matchService';
 import SubmitPredictionModal from '../../components/predictions/SubmitPredictionModal';
+import { useScrollLock } from '../../hooks/useScrollLock';
 
 const statusBadge = (status) => {
   const map = {
     'PENDING_VALIDATION': 'badge-warning',
     'VALIDATED': 'badge-success',
+    'SCORED': 'badge-success',
     'INVALID': 'badge-error',
     'LATE': 'badge-info',
   };
@@ -29,6 +31,8 @@ const PredictionsView = () => {
   const [filterStatus, setFilterStatus] = useState('');
   const [selectedPred, setSelectedPred] = useState(null);
   const [editModePred, setEditModePred] = useState(null);
+
+  useScrollLock(!!selectedPred);
 
   const loadData = async () => {
     setLoading(true);
@@ -77,6 +81,19 @@ const PredictionsView = () => {
       away_team_name: m?.away_team_name || 'Away',
     };
   };
+
+  // Helper: render a probability bar
+  const ProbBar = ({ label, value, color }) => (
+    <div style={{ marginBottom: '6px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-xs)', marginBottom: '2px' }}>
+        <span style={{ color: 'var(--color-text-secondary)' }}>{label}</span>
+        <span style={{ fontWeight: 600 }}>{value != null ? `${value}%` : '—'}</span>
+      </div>
+      <div style={{ background: 'var(--color-surface-secondary)', borderRadius: '4px', height: '6px', overflow: 'hidden' }}>
+        <div style={{ width: `${value || 0}%`, height: '100%', background: color || 'var(--color-primary)', borderRadius: '4px', transition: 'width 0.3s ease' }} />
+      </div>
+    </div>
+  );
 
   return (
     <div>
@@ -146,6 +163,7 @@ const PredictionsView = () => {
                   <option value="">All status</option>
                   <option value="PENDING_VALIDATION">Pending</option>
                   <option value="VALIDATED">Validated</option>
+                  <option value="SCORED">Scored</option>
                   <option value="INVALID">Invalid</option>
                   <option value="LATE">Late</option>
                 </select>
@@ -205,7 +223,7 @@ const PredictionsView = () => {
       {/* Prediction detail modal */}
       {selectedPred && (
         <div className="modal-overlay" onClick={() => setSelectedPred(null)}>
-          <div className="modal" onClick={e => e.stopPropagation()} style={{ minWidth: '520px' }}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ minWidth: '560px', maxWidth: '680px', maxHeight: '90vh', overflowY: 'auto' }}>
             <div className="modal-header">
               <span className="modal-title">Prediction Details</span>
               <button className="btn btn-ghost btn-sm" onClick={() => setSelectedPred(null)}>✕</button>
@@ -246,6 +264,12 @@ const PredictionsView = () => {
                   </strong>
                 </div>
                 <div>
+                  <span style={{ display: 'block', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>Total Goals</span>
+                  <strong style={{ fontFamily: 'var(--font-score)', fontSize: 'var(--text-lg)' }}>
+                    {selectedPred.match_prediction?.total_goals_prediction ?? '—'}
+                  </strong>
+                </div>
+                <div>
                   <span style={{ display: 'block', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>Status</span>
                   {statusBadge(selectedPred.status)}
                 </div>
@@ -255,9 +279,61 @@ const PredictionsView = () => {
                 </div>
               </div>
 
+              {/* Win Probabilities */}
+              <div style={{ marginBottom: 'var(--space-lg)' }}>
+                <h4 style={{ marginBottom: 'var(--space-sm)', textTransform: 'uppercase', fontSize: 'var(--text-xs)', letterSpacing: '0.04em' }}>🎯 Win Probabilities</h4>
+                <div style={{ background: 'var(--color-surface)', padding: 'var(--space-md)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-small)' }}>
+                  <ProbBar label="Home Win" value={selectedPred.match_prediction?.probabilities?.home_win_probability} color="var(--color-primary)" />
+                  <ProbBar label="Draw" value={selectedPred.match_prediction?.probabilities?.draw_probability} color="var(--color-warning)" />
+                  <ProbBar label="Away Win" value={selectedPred.match_prediction?.probabilities?.away_win_probability} color="var(--color-accent)" />
+                </div>
+              </div>
+
+              {/* Goal Insights */}
+              <div style={{ marginBottom: 'var(--space-lg)' }}>
+                <h4 style={{ marginBottom: 'var(--space-sm)', textTransform: 'uppercase', fontSize: 'var(--text-xs)', letterSpacing: '0.04em' }}>⚽ Goal Insights</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-sm)' }}>
+                  <div className="card" style={{ padding: 'var(--space-sm)', textAlign: 'center' }}>
+                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: '4px' }}>Both Teams to Score</div>
+                    {(() => {
+                      const btts = selectedPred.match_prediction?.both_teams_to_score;
+                      if (btts && btts.prediction !== null && btts.prediction !== undefined) {
+                        return (
+                          <>
+                            <div style={{ fontWeight: 'bold', fontSize: 'var(--text-lg)', color: btts.prediction ? 'var(--color-success)' : 'var(--color-error)' }}>
+                              {btts.prediction ? 'YES' : 'NO'}
+                            </div>
+                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>{btts.probability != null ? `${btts.probability}%` : ''}</div>
+                          </>
+                        );
+                      }
+                      // Legacy fallback
+                      const prob = selectedPred.match_prediction?.both_teams_to_score_probability;
+                      return <div style={{ fontWeight: 'bold', fontSize: 'var(--text-lg)' }}>{prob != null ? `${prob}%` : '—'}</div>;
+                    })()}
+                  </div>
+                  <div className="card" style={{ padding: 'var(--space-sm)', textAlign: 'center' }}>
+                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: '4px' }}>First Team to Score</div>
+                    {(() => {
+                      const fts = selectedPred.match_prediction?.first_team_to_score;
+                      if (fts && fts.team) {
+                        return (
+                          <>
+                            <div style={{ fontWeight: 'bold', textTransform: 'capitalize' }}>{fts.team}</div>
+                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>{fts.probability != null ? `${fts.probability}%` : ''}</div>
+                          </>
+                        );
+                      }
+                      // Legacy fallback
+                      return <div style={{ fontWeight: 'bold' }}>{capitalize(selectedPred.match_prediction?.first_goal_team)}</div>;
+                    })()}
+                  </div>
+                </div>
+              </div>
+
               {/* Goal scorers */}
               <div style={{ marginBottom: 'var(--space-lg)' }}>
-                <h4 style={{ marginBottom: 'var(--space-sm)', textTransform: 'uppercase', fontSize: 'var(--text-xs)', letterSpacing: '0.04em' }}>Predicted Scorers</h4>
+                <h4 style={{ marginBottom: 'var(--space-sm)', textTransform: 'uppercase', fontSize: 'var(--text-xs)', letterSpacing: '0.04em' }}>🥅 Predicted Scorers</h4>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)' }}>
                   <div style={{ background: 'var(--color-surface)', padding: 'var(--space-sm)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-small)' }}>
                     <div style={{ fontWeight: 600, marginBottom: 4, color: 'var(--color-primary)' }}>Home Team</div>
@@ -278,32 +354,85 @@ const PredictionsView = () => {
                 </div>
               </div>
 
-              {/* Probabilities */}
-              <div style={{ marginBottom: 'var(--space-md)' }}>
-                <h4 style={{ marginBottom: 'var(--space-sm)', textTransform: 'uppercase', fontSize: 'var(--text-xs)', letterSpacing: '0.04em' }}>Probabilities & Stats</h4>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-sm)' }}>
-                  {[
-                    { label: 'Home Win', val: selectedPred.match_prediction?.probabilities?.home_win_probability },
-                    { label: 'Draw', val: selectedPred.match_prediction?.probabilities?.draw_probability },
-                    { label: 'Away Win', val: selectedPred.match_prediction?.probabilities?.away_win_probability },
-                  ].map(({ label, val }) => (
-                    <div key={label} className="card" style={{ padding: 'var(--space-sm)', textAlign: 'center' }}>
-                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>{label}</div>
-                      <div style={{ fontWeight: 'bold', fontSize: 'var(--text-lg)' }}>{val ?? 0}%</div>
+              {/* Player predictions */}
+              {selectedPred.player_predictions?.length > 0 && (
+                <div style={{ marginBottom: 'var(--space-lg)' }}>
+                  <h4 style={{ marginBottom: 'var(--space-sm)', textTransform: 'uppercase', fontSize: 'var(--text-xs)', letterSpacing: '0.04em' }}>👤 Player Predictions</h4>
+                  <div className="table-wrapper">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Player</th>
+                          <th>Team</th>
+                          <th>Goals</th>
+                          <th>Probability</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedPred.player_predictions.map((pp, i) => (
+                          <tr key={i}>
+                            <td><strong>{pp.player_name}</strong></td>
+                            <td style={{ textTransform: 'capitalize', color: 'var(--color-text-secondary)' }}>{pp.team || '—'}</td>
+                            <td style={{ fontFamily: 'var(--font-score)', fontWeight: 600 }}>{pp.predicted_goals ?? 0}</td>
+                            <td>{pp.probability != null ? `${pp.probability}%` : (pp.goal_probability != null ? `${pp.goal_probability}%` : '—')}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Clean sheet predictions */}
+              {selectedPred.match_prediction?.clean_sheet_predictions?.length > 0 && (
+                <div style={{ marginBottom: 'var(--space-lg)' }}>
+                  <h4 style={{ marginBottom: 'var(--space-sm)', textTransform: 'uppercase', fontSize: 'var(--text-xs)', letterSpacing: '0.04em' }}>🧤 Clean Sheet Predictions</h4>
+                  <div className="table-wrapper">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Goalkeeper</th>
+                          <th>Prediction</th>
+                          <th>Probability</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedPred.match_prediction.clean_sheet_predictions.map((cs, i) => (
+                          <tr key={i}>
+                            <td><strong>{cs.goalkeeper}</strong></td>
+                            <td>
+                              <span className={`badge ${cs.prediction ? 'badge-success' : 'badge-error'}`}>
+                                {cs.prediction ? 'Yes' : 'No'}
+                              </span>
+                            </td>
+                            <td>{cs.probability != null ? `${cs.probability}%` : '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Legacy clean sheet (backward compat display) */}
+              {(!selectedPred.match_prediction?.clean_sheet_predictions?.length) && (
+                selectedPred.match_prediction?.clean_sheet_probability?.home_team != null ||
+                selectedPred.match_prediction?.clean_sheet_probability?.away_team != null
+              ) && (
+                <div style={{ marginBottom: 'var(--space-lg)' }}>
+                  <h4 style={{ marginBottom: 'var(--space-sm)', textTransform: 'uppercase', fontSize: 'var(--text-xs)', letterSpacing: '0.04em' }}>🧤 Clean Sheet Probability</h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-sm)' }}>
+                    <div className="card" style={{ padding: 'var(--space-sm)', textAlign: 'center' }}>
+                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>Home CS</div>
+                      <div style={{ fontWeight: 'bold', fontSize: 'var(--text-lg)' }}>{selectedPred.match_prediction?.clean_sheet_probability?.home_team ?? 0}%</div>
                     </div>
-                  ))}
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-sm)', marginTop: 'var(--space-sm)' }}>
-                  <div className="card" style={{ padding: 'var(--space-sm)', textAlign: 'center' }}>
-                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>First Goal</div>
-                    <div style={{ fontWeight: 'bold' }}>{capitalize(selectedPred.match_prediction?.first_goal_team)}</div>
-                  </div>
-                  <div className="card" style={{ padding: 'var(--space-sm)', textAlign: 'center' }}>
-                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>BTTS</div>
-                    <div style={{ fontWeight: 'bold' }}>{selectedPred.match_prediction?.both_teams_to_score_probability ?? 0}%</div>
+                    <div className="card" style={{ padding: 'var(--space-sm)', textAlign: 'center' }}>
+                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>Away CS</div>
+                      <div style={{ fontWeight: 'bold', fontSize: 'var(--text-lg)' }}>{selectedPred.match_prediction?.clean_sheet_probability?.away_team ?? 0}%</div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               <div className="modal-footer" style={{ marginTop: 'var(--space-lg)', display: 'flex', gap: 'var(--space-sm)', justifyContent: 'flex-end' }}>
                 <button className="btn btn-secondary" onClick={() => { setEditModePred(selectedPred); setSelectedPred(null); }}>✏️ Edit Prediction</button>

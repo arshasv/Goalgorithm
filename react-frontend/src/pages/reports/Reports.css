@@ -35,7 +35,7 @@
 
 .journey-team-info h3 {
   margin: 0 0 0.5rem 0;
-  color: var(--text-primary);
+  color: var(--color-text-primary);
   font-size: 1.1rem;
 }
 
@@ -46,7 +46,7 @@
 
 .expand-icon {
   font-size: 1.2rem;
-  color: var(--text-muted);
+  color: var(--color-text-muted);
 }
 
 .journey-card-body {
@@ -69,7 +69,7 @@
 .journey-phase h4 {
   margin: 0 0 1rem 0;
   font-size: 0.95rem;
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -83,11 +83,11 @@
 }
 
 .journey-step span {
-  color: var(--text-muted);
+  color: var(--color-text-muted);
 }
 
 .journey-step strong {
-  color: var(--text-primary);
+  color: var(--color-text-primary);
 }
 
 .journey-step.highlight {
@@ -102,7 +102,7 @@
 
 .journey-arrow {
   text-align: center;
-  color: var(--text-muted);
+  color: var(--color-text-muted);
   font-size: 0.8rem;
   margin: 0.5rem 0;
 }
@@ -117,7 +117,7 @@
 .presentation-round-box h5 {
   margin: 0 0 0.5rem 0;
   font-size: 0.85rem;
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
 }
 
 .presentation-total-box {

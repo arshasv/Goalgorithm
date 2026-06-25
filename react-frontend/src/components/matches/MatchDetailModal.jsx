@@ -5,8 +5,10 @@ import { TeamService } from '../../api/teamService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import SubmitPredictionModal from '../predictions/SubmitPredictionModal';
+import { useScrollLock } from '../../hooks/useScrollLock';
 
 const MatchDetailModal = ({ match, isOpen, onClose, onMatchUpdated, onEnterResult }) => {
+  useScrollLock(isOpen);
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [scheduledAt, setScheduledAt] = useState('');
@@ -44,8 +46,8 @@ const MatchDetailModal = ({ match, isOpen, onClose, onMatchUpdated, onEnterResul
   const dateStr = dateObj ? dateObj.toLocaleDateString() : '?';
   const timeStr = dateObj ? dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '';
 
-  const homeScore = match.actual_home_goals ?? match.home_goals;
-  const awayScore = match.actual_away_goals ?? match.away_goals;
+  const homeScore = match.home_score ?? match.actual_home_goals ?? match.home_goals;
+  const awayScore = match.away_score ?? match.actual_away_goals ?? match.away_goals;
 
   const handleStartEdit = () => {
     // format for datetime-local input
@@ -82,8 +84,11 @@ const MatchDetailModal = ({ match, isOpen, onClose, onMatchUpdated, onEnterResul
         return <span className="badge badge-error">FROZEN</span>;
       case 'scheduled':
         return <span className="badge badge-warning">SCHEDULED</span>;
+      case 'awaiting_result':
+      case 'awaiting result':
+        return <span className="badge badge-info">AWAITING RESULT</span>;
       default:
-        return <span className="badge badge-info">{status.toUpperCase()}</span>;
+        return <span className="badge badge-info">{status.replace('_', ' ').toUpperCase()}</span>;
     }
   };
 
@@ -126,10 +131,10 @@ const MatchDetailModal = ({ match, isOpen, onClose, onMatchUpdated, onEnterResul
               {home} <span style={{color: 'var(--color-text-muted)', fontFamily: 'var(--font-data)'}}>vs</span> {away}
             </div>
             
-            {isScored && homeScore != null ? (
-              <div className="match-score-display" style={{fontSize: 'var(--text-5xl)', color: 'var(--color-status-success)'}}>{homeScore} – {awayScore}</div>
+            {homeScore != null && awayScore != null ? (
+              <div className="match-score-display" style={{fontSize: 'var(--text-5xl)', color: 'var(--color-status-success)'}}>{homeScore} &ndash; {awayScore}</div>
             ) : (
-              <div className="match-vs-label">TBD</div>
+              <div className="match-score-display" style={{fontSize: 'var(--text-5xl)', color: 'var(--color-text-muted)'}}>? &ndash; ?</div>
             )}
             
             <div style={{marginTop: 'var(--space-sm)'}}>{statusBadge()}</div>
@@ -197,9 +202,31 @@ const MatchDetailModal = ({ match, isOpen, onClose, onMatchUpdated, onEnterResul
             </div>
           )}
 
+          <h4 style={{fontFamily: 'var(--font-display)', fontSize: 'var(--text-base)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 'var(--space-md)', marginTop: 'var(--space-lg)'}}>Predictions Log</h4>
+          <div className="card" style={{ padding: 'var(--space-md)', marginBottom: 'var(--space-lg)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-medium)', background: 'var(--color-surface-secondary)' }}>
+            {predictions.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: 'var(--space-lg)', color: 'var(--color-text-muted)' }}>No prediction changes recorded</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+                {predictions.map((pred, i) => (
+                  <div key={pred.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 'var(--space-sm)', background: 'var(--color-surface-primary)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+                      <span className="badge badge-info" style={{ fontSize: '10px' }}>LOG</span>
+                      <span style={{ fontWeight: 600, fontSize: 'var(--text-sm)' }}>{pred.team_name || pred.team_id || 'System'}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
+                      <span style={{ fontFamily: 'var(--font-data)', fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)' }}>
+                        {pred.submitted_at ? new Date(pred.submitted_at).toLocaleString() : '—'}
+                      </span>
+                      <button className="btn btn-ghost btn-sm" onClick={() => setJsonView(pred)}>View</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div style={{display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)'}}>
-            <button className="btn btn-ghost" style={{flex: '1 1 calc(50% - var(--space-sm))'}} onClick={() => { onClose(); navigate(isOrganizer ? `/predictions?match=${match.id}` : `/my-predictions?match=${match.id}`); }}>📋 Predictions Log</button>
-            
             {isOrganizer && (
               <>
                 <button className="btn btn-secondary" style={{flex: '1 1 calc(50% - var(--space-sm))'}} onClick={() => { setSubmitMode('manual'); setShowSubmitModal(true); }}>➕ Add Prediction</button>

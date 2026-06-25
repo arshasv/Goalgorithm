@@ -18,8 +18,11 @@ const statusBadge = (status) => {
       return <span className="badge badge-error">FROZEN</span>;
     case 'scheduled':
       return <span className="badge badge-warning">SCHEDULED</span>;
+    case 'awaiting_result':
+    case 'awaiting result':
+      return <span className="badge badge-info">AWAITING RESULT</span>;
     default:
-      return <span className="badge badge-info">{s.toUpperCase()}</span>;
+      return <span className="badge badge-info">{s.replace('_', ' ').toUpperCase()}</span>;
   }
 };
 
@@ -44,6 +47,7 @@ const MatchesView = () => {
   const [detailMatch, setDetailMatch] = useState(null);
   const [enterResultMatch, setEnterResultMatch] = useState(null);
   const [predictionMatch, setPredictionMatch] = useState(null);
+  const [viewMode, setViewMode] = useState('table');
 
   const [importDate, setImportDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [importing, setImporting] = useState(false);
@@ -84,7 +88,13 @@ const MatchesView = () => {
     const fd = new FormData();
     fd.append('file', file);
     try {
-      await MatchService.uploadMatchesCsv(fd);
+      const response = await MatchService.uploadMatchesCsv(fd);
+      const data = response.data || response;
+      if (data.errors && data.errors.length > 0) {
+        window.alert(`Import finished with errors:\n\n${data.errors.join('\n')}`);
+      } else {
+        window.alert(`Successfully imported ${data.created || 0} matches.`);
+      }
       loadMatches();
     } catch (err) {
       let errorMsg = err.response?.data?.detail;
@@ -188,11 +198,15 @@ const MatchesView = () => {
             </>
           )}
           <button className="btn btn-ghost" onClick={loadMatches}>🔄 Refresh</button>
+          <div className="btn-group" style={{ display: 'inline-flex', background: 'var(--color-surface-secondary)', padding: '2px', borderRadius: 'var(--radius-medium)', border: '1px solid var(--color-border)', marginLeft: 'var(--space-xs)' }}>
+            <button className={`btn btn-sm ${viewMode === 'table' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setViewMode('table')} style={{ padding: '4px 12px', height: '32px' }}>📊 Table</button>
+            <button className={`btn btn-sm ${viewMode === 'card' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setViewMode('card')} style={{ padding: '4px 12px', height: '32px' }}>🗂️ Cards</button>
+          </div>
         </div>
       </div>
 
       {error && <div className="alert alert-error" style={{marginBottom: 'var(--space-lg)'}}>{error}</div>}
-      {successMsg && <div className="alert alert-success" style={{marginBottom: 'var(--space-lg)', backgroundColor: 'var(--success-color)', color: 'white', padding: '1rem', borderRadius: '8px'}}>{successMsg}</div>}
+      {successMsg && <div className="alert alert-success" style={{marginBottom: 'var(--space-lg)'}}>{successMsg}</div>}
 
       {isOrganizer && (
         <div className="alert alert-info" style={{marginBottom: 'var(--space-lg)'}}>
@@ -202,36 +216,121 @@ const MatchesView = () => {
         </div>
       )}
 
-      <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 'var(--space-lg)'}}>
-        {loading ? (
-          Array(6).fill(null).map((_, i) => (
+      {loading ? (
+        <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 'var(--space-lg)'}}>
+          {Array(6).fill(null).map((_, i) => (
             <div key={i} className="card" style={{animationDelay: `${i * 80}ms`}}>
               <div className="skeleton skeleton-title"></div>
               <div className="skeleton skeleton-text" style={{marginTop: 'var(--space-md)'}}></div>
               <div className="skeleton skeleton-card" style={{marginTop: 'var(--space-md)'}}></div>
             </div>
-          ))
-        ) : matches.length === 0 ? (
-          <div className="empty-state" style={{gridColumn: '1/-1'}}>
-            <div className="empty-icon">⚽</div>
-            <h2 className="empty-title">No Matches Yet</h2>
-            <p className="empty-desc">
-              {isOrganizer
-                ? 'Create your first match or upload a CSV schedule.'
-                : 'Matches will appear here once the organizer adds them.'}
-            </p>
-          </div>
-        ) : (
-          matches.map((m, i) => {
+          ))}
+        </div>
+      ) : matches.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-icon">⚽</div>
+          <h2 className="empty-title">No Matches Yet</h2>
+          <p className="empty-desc">
+            {isOrganizer
+              ? 'Create your first match or upload a CSV schedule.'
+              : 'Matches will appear here once the organizer adds them.'}
+          </p>
+        </div>
+      ) : viewMode === 'table' ? (
+        <div className="table-wrapper card" style={{ padding: '0', overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                <th style={{ padding: '12px var(--space-md)' }}>Match Number</th>
+                <th style={{ padding: '12px var(--space-md)' }}>Teams</th>
+                <th style={{ padding: '12px var(--space-md)' }}>Date</th>
+                <th style={{ padding: '12px var(--space-md)' }}>Score</th>
+                <th style={{ padding: '12px var(--space-md)' }}>Status</th>
+                <th style={{ padding: '12px var(--space-md)' }}>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {matches.map((m, i) => {
+                const home = m.home_team_name || m.home || '?';
+                const away = m.away_team_name || m.away || '?';
+                const status = (m.status || 'scheduled').toLowerCase();
+                const dateStr = formatDate(m.scheduled_at);
+                const timeStr = formatTime(m.scheduled_at);
+                const homeScore = m.home_score ?? m.homeGoals ?? m.home_goals ?? m.actual_home_goals;
+                const awayScore = m.away_score ?? m.awayGoals ?? m.away_goals ?? m.actual_away_goals;
+                
+                const isCompleted = homeScore != null && awayScore != null;
+                const canPredict = status === 'scheduled' || status === 'frozen';
+                
+                return (
+                  <tr key={m.id} style={{ animationDelay: `${i * 30}ms` }}>
+                    <td style={{ padding: '12px var(--space-md)' }}><strong style={{ fontFamily: 'var(--font-data)' }}>M{m.match_number || (i + 1)}</strong></td>
+                    <td style={{ padding: '12px var(--space-md)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+                        <span style={{ fontWeight: 600 }}>{home}</span>
+                        <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.85em' }}>vs</span>
+                        <span style={{ fontWeight: 600 }}>{away}</span>
+                        {m.competition_name && (
+                          <span className="badge badge-info" style={{ fontSize: '0.7em', padding: '2px 6px' }}>{m.competition_name}</span>
+                        )}
+                      </div>
+                    </td>
+                    <td style={{ padding: '12px var(--space-md)' }}>{dateStr} {timeStr}</td>
+                    <td style={{ padding: '12px var(--space-md)' }}>
+                      {isCompleted ? (
+                        <strong style={{ fontFamily: 'var(--font-data)', color: 'var(--color-status-success)', fontSize: '1.1rem' }}>
+                          {homeScore} &ndash; {awayScore}
+                        </strong>
+                      ) : (
+                        <span style={{ color: 'var(--color-text-secondary)' }}>&mdash;</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '12px var(--space-md)' }}>{statusBadge(status)}</td>
+                    <td style={{ padding: '12px var(--space-md)' }}>
+                      <div style={{ display: 'flex', gap: 'var(--space-xs)', alignItems: 'center' }}>
+                        {isOrganizer && (
+                          isCompleted ? (
+                            <button className="btn btn-secondary btn-sm" onClick={() => setEnterResultMatch(m)}>
+                              Edit Result
+                            </button>
+                          ) : (
+                            <button className="btn btn-primary btn-sm" onClick={() => setEnterResultMatch(m)}>
+                              Add Result
+                            </button>
+                          )
+                        )}
+                        {canPredict && (isTeamLeader || isOrganizer) && (
+                          <button className="btn btn-secondary btn-sm" onClick={() => setPredictionMatch(m)}>
+                            {isTeamLeader && m.predictions > 0 ? 'Edit Pred' : 'Predict'}
+                          </button>
+                        )}
+                        <button className="btn btn-ghost btn-sm" onClick={() => setDetailMatch(m)}>
+                          View &rarr;
+                        </button>
+                        {isOrganizer && (
+                          <button className="btn btn-ghost btn-sm" title="Delete" onClick={() => handleDelete(m.id, `${home} vs ${away}`)}>
+                            🗑️
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 'var(--space-lg)'}}>
+          {matches.map((m, i) => {
             const home = m.home_team_name || m.home || '?';
             const away = m.away_team_name || m.away || '?';
             const status = (m.status || 'scheduled').toLowerCase();
-            const isScored = status === 'scored' || status === 'completed' || status === 'result_entered';
             const canPredict = status === 'scheduled' || status === 'frozen';
             const dateStr = formatDate(m.scheduled_at);
             const timeStr = formatTime(m.scheduled_at);
-            const homeScore = m.homeGoals ?? m.home_goals ?? m.actual_home_goals;
-            const awayScore = m.awayGoals ?? m.away_goals ?? m.actual_away_goals;
+            const homeScore = m.home_score ?? m.homeGoals ?? m.home_goals ?? m.actual_home_goals;
+            const awayScore = m.away_score ?? m.awayGoals ?? m.away_goals ?? m.actual_away_goals;
 
             return (
               <div
@@ -251,15 +350,15 @@ const MatchesView = () => {
                 )}
                 <div className="match-vs-area">
                   <div className="match-team">{home}</div>
-                  {isScored ? (
-                    <div className="match-score-display">{homeScore != null ? homeScore : '?'} &ndash; {awayScore != null ? awayScore : '?'}</div>
+                  {homeScore != null && awayScore != null ? (
+                    <div className="match-score-display">{homeScore} &ndash; {awayScore}</div>
                   ) : (
-                    <div className="match-vs-label">vs</div>
+                    <div className="match-score-display">? &ndash; ?</div>
                   )}
                   <div className="match-team">{away}</div>
                   <div className="match-date">{dateStr}{timeStr ? ' ' + timeStr : ''}</div>
                 </div>
-                  <div className="match-footer">
+                <div className="match-footer">
                   {isOrganizer ? (
                     <span className="badge badge-info">📥 {m.predictions || 0}/5 submissions</span>
                   ) : (
@@ -281,9 +380,9 @@ const MatchesView = () => {
                 </div>
               </div>
             );
-          })
-        )}
-      </div>
+          })}
+        </div>
+      )}
 
       <AddMatchModal
         isOpen={addMatchOpen}

@@ -8,15 +8,15 @@ const COLORS = {
   lightBlue: '#38BDF8',
   white: '#FFFFFF',
   gray: '#94A3B8',
-  text: 'var(--text-primary, #FFFFFF)',
-  textMuted: 'var(--text-muted, #94A3B8)',
-  grid: 'rgba(148, 163, 184, 0.2)'
+  text: 'var(--color-text-primary, #FFFFFF)',
+  textMuted: 'var(--color-text-muted, #94A3B8)',
+  grid: 'var(--color-border, rgba(148, 163, 184, 0.2))'
 };
 
-const GroupedBarChart = ({ data, height = 260 }) => {
+const GroupedBarChart = ({ data, height = 260, yLabel }) => {
   if (!data || !data.length) return null;
   const w = 600;
-  const padL = 30, padR = 10, padT = 20, padB = 40;
+  const padL = 40, padR = 10, padT = 20, padB = 45;
   
   const maxVal = Math.max(...data.map(d => Math.max(d.raw, d.weighted)), 1);
   const chartW = w - padL - padR;
@@ -26,15 +26,24 @@ const GroupedBarChart = ({ data, height = 260 }) => {
 
   return (
     <svg viewBox={`0 0 ${w} ${height}`} style={{ width: '100%', height: '100%', maxHeight: '280px', overflow: 'visible' }}>
+      {yLabel && (
+        <text x={12} y={height / 2} transform={`rotate(-90 12,${height/2})`} textAnchor="middle" fill={COLORS.textMuted} fontSize="10" fontWeight="500">
+          {yLabel}
+        </text>
+      )}
       {[0, 0.5, 1].map(f => {
         const y = padT + (1 - f) * chartH;
         return (
           <g key={f}>
             <line x1={padL} y1={y} x2={w - padR} y2={y} stroke={COLORS.grid} strokeDasharray="4 4" />
-            <text x={padL - 8} y={y + 4} textAnchor="end" fill={COLORS.textMuted} fontSize="11">{Math.round(f * maxVal)}</text>
+            <line x1={padL - 4} y1={y} x2={padL} y2={y} stroke={COLORS.textMuted} strokeWidth="1" />
+            <text x={padL - 8} y={y + 4} textAnchor="end" fill={COLORS.textMuted} fontSize="10">{Math.round(f * maxVal)}</text>
           </g>
         );
       })}
+      {/* Axes Lines */}
+      <line x1={padL} y1={padT} x2={padL} y2={height - padB} stroke={COLORS.textMuted} strokeWidth="1" />
+      <line x1={padL} y1={height - padB} x2={w - padR} y2={height - padB} stroke={COLORS.textMuted} strokeWidth="1" />
       {data.map((d, i) => {
         const cx = padL + i * groupW + groupW / 2;
         const hRaw = (d.raw / maxVal) * chartH;
@@ -45,26 +54,28 @@ const GroupedBarChart = ({ data, height = 260 }) => {
           <g key={i}>
             <rect x={cx - barW - 1} y={yRaw} width={barW} height={hRaw} fill={COLORS.blue} rx="2" />
             <rect x={cx + 1} y={yWeighted} width={barW} height={hWeighted} fill={COLORS.mutedGold} rx="2" />
-            <text x={cx} y={height - 20} textAnchor="middle" fill={COLORS.text} fontSize="11" transform={String(d.team).length > 8 ? `rotate(-15, ${cx}, ${height-20})` : ""}>
-              {String(d.team).length > 10 ? String(d.team).substring(0, 8) + '...' : d.team}
+            <line x1={cx} y1={height - padB} x2={cx} y2={height - padB + 4} stroke={COLORS.textMuted} strokeWidth="1" />
+            <text x={cx} y={height - padB + 14} textAnchor="end" fill={COLORS.text} fontSize="9" transform={`rotate(-45, ${cx}, ${height-padB+14})`}>
+              {String(d.team).length > 15 ? String(d.team).substring(0, 13) + '...' : d.team}
+              <title>{d.team}</title>
             </text>
           </g>
         );
       })}
       <g transform={`translate(${w/2 - 60}, 5)`}>
         <rect x={0} y={0} width={10} height={10} fill={COLORS.blue} rx="2"/>
-        <text x={14} y={9} fill={COLORS.textMuted} fontSize="11">Raw Score</text>
+        <text x={14} y={9} fill={COLORS.textMuted} fontSize="10">Raw Score</text>
         <rect x={85} y={0} width={10} height={10} fill={COLORS.mutedGold} rx="2"/>
-        <text x={99} y={9} fill={COLORS.textMuted} fontSize="11">Weighted Score</text>
+        <text x={99} y={9} fill={COLORS.textMuted} fontSize="10">Weighted Score</text>
       </g>
     </svg>
   );
 };
 
-const ImpactBarChart = ({ data, height = 260 }) => {
+const ImpactBarChart = ({ data, height = 260, yLabel }) => {
   if (!data || !data.length) return null;
   const w = 600;
-  const padL = 30, padR = 10, padT = 20, padB = 40;
+  const padL = 40, padR = 10, padT = 20, padB = 45;
   
   const maxVal = Math.max(...data.map(d => d.gain), 1);
   const chartW = w - padL - padR;
@@ -74,15 +85,24 @@ const ImpactBarChart = ({ data, height = 260 }) => {
 
   return (
     <svg viewBox={`0 0 ${w} ${height}`} style={{ width: '100%', height: '100%', maxHeight: '280px', overflow: 'visible' }}>
+      {yLabel && (
+        <text x={12} y={height / 2} transform={`rotate(-90 12,${height/2})`} textAnchor="middle" fill={COLORS.textMuted} fontSize="10" fontWeight="500">
+          {yLabel}
+        </text>
+      )}
       {[0, 0.5, 1].map(f => {
         const y = padT + (1 - f) * chartH;
         return (
           <g key={f}>
             <line x1={padL} y1={y} x2={w - padR} y2={y} stroke={COLORS.grid} strokeDasharray="4 4" />
-            <text x={padL - 8} y={y + 4} textAnchor="end" fill={COLORS.textMuted} fontSize="11">{Math.round(f * maxVal)}</text>
+            <line x1={padL - 4} y1={y} x2={padL} y2={y} stroke={COLORS.textMuted} strokeWidth="1" />
+            <text x={padL - 8} y={y + 4} textAnchor="end" fill={COLORS.textMuted} fontSize="10">{Math.round(f * maxVal)}</text>
           </g>
         );
       })}
+      {/* Axes Lines */}
+      <line x1={padL} y1={padT} x2={padL} y2={height - padB} stroke={COLORS.textMuted} strokeWidth="1" />
+      <line x1={padL} y1={height - padB} x2={w - padR} y2={height - padB} stroke={COLORS.textMuted} strokeWidth="1" />
       {data.map((d, i) => {
         const cx = padL + i * (chartW / data.length) + (chartW / data.length) / 2;
         const h = (d.gain / maxVal) * chartH;
@@ -91,9 +111,11 @@ const ImpactBarChart = ({ data, height = 260 }) => {
         return (
           <g key={i}>
             <rect x={cx - barW/2} y={y} width={barW} height={h} fill={isMax ? COLORS.mutedGold : COLORS.blue} rx="2" />
-            <text x={cx} y={y - 6} textAnchor="middle" fill={isMax ? COLORS.mutedGold : COLORS.text} fontSize="11" fontWeight="bold">+{d.gain.toFixed(1)}</text>
-            <text x={cx} y={height - 20} textAnchor="middle" fill={COLORS.text} fontSize="11" transform={String(d.team).length > 8 ? `rotate(-15, ${cx}, ${height-20})` : ""}>
-              {String(d.team).length > 10 ? String(d.team).substring(0, 8) + '...' : d.team}
+            <text x={cx} y={y - 6} textAnchor="middle" fill={isMax ? COLORS.mutedGold : COLORS.text} fontSize="10" fontWeight="bold">+{d.gain.toFixed(1)}</text>
+            <line x1={cx} y1={height - padB} x2={cx} y2={height - padB + 4} stroke={COLORS.textMuted} strokeWidth="1" />
+            <text x={cx} y={height - padB + 14} textAnchor="end" fill={COLORS.text} fontSize="9" transform={`rotate(-45, ${cx}, ${height-padB+14})`}>
+              {String(d.team).length > 15 ? String(d.team).substring(0, 13) + '...' : d.team}
+              <title>{d.team}</title>
             </text>
           </g>
         );
@@ -102,10 +124,10 @@ const ImpactBarChart = ({ data, height = 260 }) => {
   );
 };
 
-const StackedBarChart = ({ data, height = 260 }) => {
+const StackedBarChart = ({ data, height = 260, yLabel }) => {
   if (!data || !data.length) return null;
   const w = 600;
-  const padL = 30, padR = 10, padT = 20, padB = 40;
+  const padL = 40, padR = 10, padT = 20, padB = 45;
   
   const maxVal = 100;
   const chartW = w - padL - padR;
@@ -114,15 +136,24 @@ const StackedBarChart = ({ data, height = 260 }) => {
 
   return (
     <svg viewBox={`0 0 ${w} ${height}`} style={{ width: '100%', height: '100%', maxHeight: '280px', overflow: 'visible' }}>
+      {yLabel && (
+        <text x={12} y={height / 2} transform={`rotate(-90 12,${height/2})`} textAnchor="middle" fill={COLORS.textMuted} fontSize="10" fontWeight="500">
+          {yLabel}
+        </text>
+      )}
       {[0, 0.25, 0.5, 0.75, 1].map(f => {
         const y = padT + (1 - f) * chartH;
         return (
           <g key={f}>
             <line x1={padL} y1={y} x2={w - padR} y2={y} stroke={COLORS.grid} strokeDasharray="4 4" />
-            <text x={padL - 8} y={y + 4} textAnchor="end" fill={COLORS.textMuted} fontSize="11">{Math.round(f * maxVal)}</text>
+            <line x1={padL - 4} y1={y} x2={padL} y2={y} stroke={COLORS.textMuted} strokeWidth="1" />
+            <text x={padL - 8} y={y + 4} textAnchor="end" fill={COLORS.textMuted} fontSize="10">{Math.round(f * maxVal)}</text>
           </g>
         );
       })}
+      {/* Axes Lines */}
+      <line x1={padL} y1={padT} x2={padL} y2={height - padB} stroke={COLORS.textMuted} strokeWidth="1" />
+      <line x1={padL} y1={height - padB} x2={w - padR} y2={height - padB} stroke={COLORS.textMuted} strokeWidth="1" />
       {data.map((d, i) => {
         const cx = padL + i * (chartW / data.length) + (chartW / data.length) / 2;
         const hPred = (d.pred / maxVal) * chartH;
@@ -138,29 +169,31 @@ const StackedBarChart = ({ data, height = 260 }) => {
             <rect x={cx - barW/2} y={yPred} width={barW} height={hPred} fill={COLORS.blue} />
             <rect x={cx - barW/2} y={yTech} width={barW} height={hTech} fill={COLORS.lightBlue} />
             <rect x={cx - barW/2} y={yPres} width={barW} height={hPres} fill={COLORS.mutedGold} />
-            <text x={cx} y={yPres - 6} textAnchor="middle" fill={COLORS.text} fontSize="11" fontWeight="bold">{d.final.toFixed(1)}</text>
-            <text x={cx} y={height - 20} textAnchor="middle" fill={COLORS.text} fontSize="11" transform={String(d.team).length > 8 ? `rotate(-15, ${cx}, ${height-20})` : ""}>
-              {String(d.team).length > 10 ? String(d.team).substring(0, 8) + '...' : d.team}
+            <text x={cx} y={yPres - 6} textAnchor="middle" fill={COLORS.text} fontSize="10" fontWeight="bold">{d.final.toFixed(1)}</text>
+            <line x1={cx} y1={height - padB} x2={cx} y2={height - padB + 4} stroke={COLORS.textMuted} strokeWidth="1" />
+            <text x={cx} y={height - padB + 14} textAnchor="end" fill={COLORS.text} fontSize="9" transform={`rotate(-45, ${cx}, ${height-padB+14})`}>
+              {String(d.team).length > 15 ? String(d.team).substring(0, 13) + '...' : d.team}
+              <title>{d.team}</title>
             </text>
           </g>
         );
       })}
       <g transform={`translate(${w/2 - 120}, 5)`}>
         <rect x={0} y={0} width={10} height={10} fill={COLORS.blue} rx="2"/>
-        <text x={14} y={9} fill={COLORS.textMuted} fontSize="11">Prediction</text>
+        <text x={14} y={9} fill={COLORS.textMuted} fontSize="10">Prediction</text>
         <rect x={80} y={0} width={10} height={10} fill={COLORS.lightBlue} rx="2"/>
-        <text x={94} y={9} fill={COLORS.textMuted} fontSize="11">Technical</text>
+        <text x={94} y={9} fill={COLORS.textMuted} fontSize="10">Technical</text>
         <rect x={155} y={0} width={10} height={10} fill={COLORS.mutedGold} rx="2"/>
-        <text x={169} y={9} fill={COLORS.textMuted} fontSize="11">Presentation</text>
+        <text x={169} y={9} fill={COLORS.textMuted} fontSize="10">Presentation</text>
       </g>
     </svg>
   );
 };
 
-const RankMovementChart = ({ data, height = 260 }) => {
+const RankMovementChart = ({ data, height = 260, yLabel }) => {
   if (!data || !data.length) return null;
   const w = 600;
-  const padL = 30, padR = 10, padT = 20, padB = 40;
+  const padL = 40, padR = 10, padT = 20, padB = 45;
   
   const maxMovement = Math.max(...data.map(d => Math.abs(d.movement)), 1);
   const chartW = w - padL - padR;
@@ -170,7 +203,15 @@ const RankMovementChart = ({ data, height = 260 }) => {
 
   return (
     <svg viewBox={`0 0 ${w} ${height}`} style={{ width: '100%', height: '100%', maxHeight: '280px', overflow: 'visible' }}>
+      {yLabel && (
+        <text x={12} y={height / 2} transform={`rotate(-90 12,${height/2})`} textAnchor="middle" fill={COLORS.textMuted} fontSize="10" fontWeight="500">
+          {yLabel}
+        </text>
+      )}
       <line x1={padL} y1={midY} x2={w - padR} y2={midY} stroke={COLORS.grid} strokeDasharray="4 4" />
+      {/* Axes Lines */}
+      <line x1={padL} y1={padT} x2={padL} y2={height - padB} stroke={COLORS.textMuted} strokeWidth="1" />
+      <line x1={padL} y1={height - padB} x2={w - padR} y2={height - padB} stroke={COLORS.textMuted} strokeWidth="1" />
       {data.map((d, i) => {
         const cx = padL + i * (chartW / data.length) + (chartW / data.length) / 2;
         const h = (Math.abs(d.movement) / maxMovement) * (chartH / 2);
@@ -182,14 +223,16 @@ const RankMovementChart = ({ data, height = 260 }) => {
         return (
           <g key={i}>
             <rect x={cx - barW/2} y={y} width={barW} height={h || 2} fill={fill} rx="2" />
-            <text x={cx} y={isPos ? y - 6 : midY + h + 14} textAnchor="middle" fill={fill} fontSize="11" fontWeight="bold">
+            <text x={cx} y={isPos ? y - 6 : midY + h + 14} textAnchor="middle" fill={fill} fontSize="10" fontWeight="bold">
               {d.movement > 0 ? '+' : ''}{d.movement}
             </text>
             <text x={cx} y={isPos ? midY + 12 : midY - 6} textAnchor="middle" fill={COLORS.textMuted} fontSize="10">
               {d.before} → {d.after}
             </text>
-            <text x={cx} y={height - 20} textAnchor="middle" fill={COLORS.text} fontSize="11" transform={String(d.team).length > 8 ? `rotate(-15, ${cx}, ${height-20})` : ""}>
-              {String(d.team).length > 10 ? String(d.team).substring(0, 8) + '...' : d.team}
+            <line x1={cx} y1={height - padB} x2={cx} y2={height - padB + 4} stroke={COLORS.textMuted} strokeWidth="1" />
+            <text x={cx} y={height - padB + 14} textAnchor="end" fill={COLORS.text} fontSize="9" transform={`rotate(-45, ${cx}, ${height-padB+14})`}>
+              {String(d.team).length > 15 ? String(d.team).substring(0, 13) + '...' : d.team}
+              <title>{d.team}</title>
             </text>
           </g>
         );
@@ -460,35 +503,47 @@ const ReportsView = () => {
 
       <div className="dashboard-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
         <div className="card">
-          <div className="card-header" style={{ padding: '16px' }}>
-            <h3 className="card-title">Before vs After Scoring</h3>
+          <div className="card-header" style={{ padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+            <h3 className="card-title" style={{ margin: 0 }}>Before vs After Scoring</h3>
+            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: '1.4', fontWeight: 'normal' }}>
+              Compares each team's raw score against their final weighted score after applying scoring rules and multipliers.
+            </p>
           </div>
           <div className="card-body" style={{ padding: '0 16px 16px' }}>
-            <GroupedBarChart data={chart1Data} height={260} />
+            <GroupedBarChart data={chart1Data} height={260} yLabel="Points" />
           </div>
         </div>
         <div className="card">
-          <div className="card-header" style={{ padding: '16px' }}>
-            <h3 className="card-title">Multiplier Impact</h3>
+          <div className="card-header" style={{ padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+            <h3 className="card-title" style={{ margin: 0 }}>Multiplier Impact</h3>
+            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: '1.4', fontWeight: 'normal' }}>
+              Shows how much each team's score changed after applying ranking multipliers and scoring adjustments.
+            </p>
           </div>
           <div className="card-body" style={{ padding: '0 16px 16px' }}>
-            <ImpactBarChart data={chart2Data} height={260} />
+            <ImpactBarChart data={chart2Data} height={260} yLabel="Score Impact" />
           </div>
         </div>
         <div className="card">
-          <div className="card-header" style={{ padding: '16px' }}>
-            <h3 className="card-title">Phase Contribution</h3>
+          <div className="card-header" style={{ padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+            <h3 className="card-title" style={{ margin: 0 }}>Phase Contribution</h3>
+            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: '1.4', fontWeight: 'normal' }}>
+              Displays how prediction, technical evaluation, and presentation scores contribute to each team's final score.
+            </p>
           </div>
           <div className="card-body" style={{ padding: '0 16px 16px' }}>
-            <StackedBarChart data={chart3Data} height={260} />
+            <StackedBarChart data={chart3Data} height={260} yLabel="Score" />
           </div>
         </div>
         <div className="card">
-          <div className="card-header" style={{ padding: '16px' }}>
-            <h3 className="card-title">Rank Movement</h3>
+          <div className="card-header" style={{ padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+            <h3 className="card-title" style={{ margin: 0 }}>Rank Movement</h3>
+            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: '1.4', fontWeight: 'normal' }}>
+              Shows how team positions changed before and after final scoring adjustments.
+            </p>
           </div>
           <div className="card-body" style={{ padding: '0 16px 16px' }}>
-            <RankMovementChart data={chart4Data} height={260} />
+            <RankMovementChart data={chart4Data} height={260} yLabel="Rank Change" />
           </div>
         </div>
       </div>

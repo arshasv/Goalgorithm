@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { MatchService } from '../../api/matchService';
+import { useScrollLock } from '../../hooks/useScrollLock';
 
 const AddMatchModal = ({ isOpen, onClose, onMatchCreated }) => {
+  useScrollLock(isOpen);
   const [matchNumber, setMatchNumber] = useState('');
   const [round, setRound] = useState('');
   const [homeTeam, setHomeTeam] = useState('');

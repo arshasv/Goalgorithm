@@ -2,17 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { PredictionService } from '../../api/predictionService';
 import { useAuth } from '../../contexts/AuthContext';
 import { TeamService } from '../../api/teamService';
+import { useScrollLock } from '../../hooks/useScrollLock';
 
 /**
  * SubmitPredictionModal — handles both new submissions and edits.
- * Produces a payload that satisfies the strict PredictionSubmission Pydantic schema:
- *   - goal_scorers.home.length === predicted_scoreline.home_team_goals
- *   - goal_scorers.away.length === predicted_scoreline.away_team_goals
- *   - player_predictions cannot be empty
+ * Supports two entry modes:
+ *   1. Manual entry → builds prediction payload with both legacy and AI-format fields
+ *   2. JSON upload → accepts the final AI model output JSON directly
+ *
+ * Manual entry maps to the same internal fields as the AI format:
+ *   - both_teams_to_score: { prediction, probability }
+ *   - first_team_to_score: { team, probability }
+ *   - clean_sheet_predictions: [{ goalkeeper, prediction, probability }]
  */
 const SubmitPredictionModal = ({ match, isOpen, onClose, onPredictionSubmitted, existingPrediction, initialMode = 'manual' }) => {
+  useScrollLock(isOpen);
   const { isOrganizer } = useAuth();
-
+  
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [entryMode, setEntryMode] = useState(initialMode);
@@ -20,7 +26,13 @@ const SubmitPredictionModal = ({ match, isOpen, onClose, onPredictionSubmitted, 
   useEffect(() => {
     if (isOpen) {
       setEntryMode(initialMode);
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
     }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
   }, [isOpen, initialMode]);
 
   // Organizer team selection
@@ -40,6 +52,7 @@ const SubmitPredictionModal = ({ match, isOpen, onClose, onPredictionSubmitted, 
   const [awayWinProb, setAwayWinProb] = useState(25);
   const [firstGoalTeam, setFirstGoalTeam] = useState('home');
   const [bttsProb, setBttsProb] = useState(50);
+  const [bttsPrediction, setBttsPrediction] = useState(true);
 
   // Load teams for organizer
   useEffect(() => {
@@ -66,8 +79,21 @@ const SubmitPredictionModal = ({ match, isOpen, onClose, onPredictionSubmitted, 
       setHomeWinProb(prob.home_win_probability ?? 50);
       setDrawProb(prob.draw_probability ?? 25);
       setAwayWinProb(prob.away_win_probability ?? 25);
-      setFirstGoalTeam(mp.first_goal_team || 'home');
-      setBttsProb(mp.both_teams_to_score_probability ?? 50);
+
+      // Resolve first goal team from AI or legacy format
+      const fts = mp.first_team_to_score;
+      setFirstGoalTeam(fts?.team || mp.first_goal_team || 'home');
+
+      // Resolve BTTS from AI or legacy format
+      const btts = mp.both_teams_to_score;
+      if (btts) {
+        setBttsPrediction(btts.prediction ?? true);
+        setBttsProb(btts.probability ?? 50);
+      } else {
+        setBttsProb(mp.both_teams_to_score_probability ?? 50);
+        setBttsPrediction(true);
+      }
+
       if (isOrganizer && existingPrediction.team_id) {
         setOrgTeam(existingPrediction.team_id);
       }
@@ -96,6 +122,7 @@ const SubmitPredictionModal = ({ match, isOpen, onClose, onPredictionSubmitted, 
     setAwayWinProb(25);
     setFirstGoalTeam('home');
     setBttsProb(50);
+    setBttsPrediction(true);
     setOrgTeam('');
     setError('');
   };
@@ -124,24 +151,25 @@ const SubmitPredictionModal = ({ match, isOpen, onClose, onPredictionSubmitted, 
       return;
     }
 
-    // Build player_predictions from scorers (must be non-empty per schema)
+    // Build player_predictions from scorers
     const allScorers = [
       ...homeScorers.map(name => ({ name, side: 'home' })),
       ...awayScorers.map(name => ({ name, side: 'away' })),
     ];
-    // If 0-0, backend needs at least one player_prediction — use a placeholder
+    // If 0-0, allow empty player_predictions (schema no longer requires it)
     const playerPredictions = allScorers.length > 0
       ? allScorers.map((s, i) => ({
           player_id: `P${i + 1}`,
           player_name: s.name.trim(),
+          team: s.side,
           goal_probability: 70,
           predicted_goals: 1,
           assist_probability: 20,
         }))
-      : [{ player_id: 'P0', player_name: 'No Scorers', goal_probability: 0, predicted_goals: 0, assist_probability: 0 }];
+      : [];
 
     const payload = {
-      team_id: isOrganizer ? orgTeam : 'self',  // backend resolves 'self' via user_id for team leaders
+      team_id: isOrganizer ? orgTeam : 'self',
       match_id: match.id,
       submission_id: `sub-${Date.now()}`,
       match_prediction: {
@@ -155,13 +183,23 @@ const SubmitPredictionModal = ({ match, isOpen, onClose, onPredictionSubmitted, 
           draw_probability: parseFloat(drawProb),
           away_win_probability: parseFloat(awayWinProb),
         },
+        total_goals_prediction: homeGoals + awayGoals,
+        // AI-format fields populated from manual entry
+        both_teams_to_score: {
+          prediction: bttsPrediction,
+          probability: parseFloat(bttsProb),
+        },
+        first_team_to_score: {
+          team: predictedWinner === 'draw' ? firstGoalTeam : predictedWinner,
+          probability: 50,
+        },
+        // Legacy fields for backward compat
         clean_sheet_probability: {
           home_team: awayGoals === 0 ? 80 : 10,
           away_team: homeGoals === 0 ? 80 : 10,
         },
         first_goal_team: predictedWinner === 'draw' ? firstGoalTeam : predictedWinner,
         both_teams_to_score_probability: parseFloat(bttsProb),
-        total_goals_prediction: homeGoals + awayGoals,
         goal_scorers: {
           home: homeScorers.map(s => s.trim()),
           away: awayScorers.map(s => s.trim()),
@@ -173,6 +211,9 @@ const SubmitPredictionModal = ({ match, isOpen, onClose, onPredictionSubmitted, 
     setLoading(true);
     try {
       await PredictionService.submitPrediction(payload);
+      import('../../utils/toast').then(({ showToast }) => {
+        showToast('Prediction submitted successfully', 'success');
+      });
       onPredictionSubmitted();
       onClose();
     } catch (err) {
@@ -203,16 +244,29 @@ const SubmitPredictionModal = ({ match, isOpen, onClose, onPredictionSubmitted, 
     reader.onload = async (event) => {
       try {
         const json = JSON.parse(event.target.result);
-        if (!json.match_prediction || !json.player_predictions) {
-          throw new Error('Invalid JSON format: missing match_prediction or player_predictions');
+        if (!json.match_prediction) {
+          throw new Error('Invalid JSON format: missing match_prediction');
         }
 
+        // Validate match_id instead of blindly overwriting
+        if (json.match_id && json.match_id !== match.id) {
+          throw new Error(`JSON match_id (${json.match_id}) does not match current match (${match.id}).`);
+        }
         json.match_id = match.id;
+        
         json.team_id = isOrganizer ? orgTeam : 'self';
-        json.submission_id = `sub-json-${Date.now()}`;
+        json.submission_id = json.submission_id || `sub-json-${Date.now()}`;
+
+        // Ensure player_predictions exists (can be empty in AI format)
+        if (!json.player_predictions) {
+          json.player_predictions = [];
+        }
 
         setLoading(true);
         await PredictionService.submitPrediction(json);
+        import('../../utils/toast').then(({ showToast }) => {
+          showToast('Prediction submitted successfully', 'success');
+        });
         onPredictionSubmitted();
         onClose();
       } catch (err) {
@@ -316,24 +370,33 @@ const SubmitPredictionModal = ({ match, isOpen, onClose, onPredictionSubmitted, 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-sm)' }}>
                 <div className="form-group">
                   <label className="form-label" style={{ fontSize: 'var(--text-xs)' }}>Home Win</label>
-                  <input type="number" className="form-input" min="0" max="100" value={homeWinProb}
+                  <input type="number" step="0.01" className="form-input" min="0" max="100" value={homeWinProb}
                     onChange={e => setHomeWinProb(e.target.value)} required />
                 </div>
                 <div className="form-group">
                   <label className="form-label" style={{ fontSize: 'var(--text-xs)' }}>Draw</label>
-                  <input type="number" className="form-input" min="0" max="100" value={drawProb}
+                  <input type="number" step="0.01" className="form-input" min="0" max="100" value={drawProb}
                     onChange={e => setDrawProb(e.target.value)} required />
                 </div>
                 <div className="form-group">
                   <label className="form-label" style={{ fontSize: 'var(--text-xs)' }}>Away Win</label>
-                  <input type="number" className="form-input" min="0" max="100" value={awayWinProb}
+                  <input type="number" step="0.01" className="form-input" min="0" max="100" value={awayWinProb}
                     onChange={e => setAwayWinProb(e.target.value)} required />
                 </div>
               </div>
-              <div className="form-group">
-                <label className="form-label" style={{ fontSize: 'var(--text-xs)' }}>Both Teams to Score (%)</label>
-                <input type="number" className="form-input" min="0" max="100" value={bttsProb}
-                  onChange={e => setBttsProb(e.target.value)} required />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-sm)' }}>
+                <div className="form-group">
+                  <label className="form-label" style={{ fontSize: 'var(--text-xs)' }}>Both Teams to Score (%)</label>
+                  <input type="number" step="0.01" className="form-input" min="0" max="100" value={bttsProb}
+                    onChange={e => setBttsProb(e.target.value)} required />
+                </div>
+                <div className="form-group">
+                  <label className="form-label" style={{ fontSize: 'var(--text-xs)' }}>BTTS Prediction</label>
+                  <select className="form-select" value={bttsPrediction ? 'yes' : 'no'} onChange={e => setBttsPrediction(e.target.value === 'yes')}>
+                    <option value="yes">Yes</option>
+                    <option value="no">No</option>
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -349,7 +412,8 @@ const SubmitPredictionModal = ({ match, isOpen, onClose, onPredictionSubmitted, 
               <div style={{ fontSize: 'var(--text-3xl)', marginBottom: 'var(--space-sm)' }}>📄</div>
               <h3 style={{ marginBottom: 'var(--space-sm)' }}>Upload Prediction JSON</h3>
               <p style={{ color: 'var(--color-text-secondary)', marginBottom: 'var(--space-lg)', fontSize: 'var(--text-sm)' }}>
-                Please ensure the file matches the required JSON schema format.
+                Upload the AI model output JSON file. The system accepts the final prediction format with
+                win probabilities, score predictions, goal insights, player predictions, and clean sheet predictions.
               </p>
               <div style={{ display: 'flex', justifyContent: 'center' }}>
                 <input 

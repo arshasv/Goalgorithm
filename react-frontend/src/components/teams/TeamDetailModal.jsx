@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { TeamService } from '../../api/teamService';
+import { useScrollLock } from '../../hooks/useScrollLock';
 
 const TeamDetailModal = ({ team, isOpen, onClose, onTeamUpdated }) => {
+  useScrollLock(isOpen);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -79,11 +81,10 @@ const TeamDetailModal = ({ team, isOpen, onClose, onTeamUpdated }) => {
               <p style={{fontSize: 'var(--text-base)', margin: 0}}>{leader}</p>
             </div>
 
-            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-sm)'}}>
+            <div style={{marginBottom: 'var(--space-sm)'}}>
               <h4 style={{fontFamily: 'var(--font-display)', fontSize: 'var(--text-base)', textTransform: 'uppercase', color: 'var(--color-text-muted)', margin: 0}}>
                 {'\uD83D\uDC65'} Members ({(team.members || []).length})
               </h4>
-              <button className="btn btn-primary btn-sm" onClick={() => { setMemberForm({id:null, name:'', employee_id:''}); }}>+ Add Member</button>
             </div>
 
             <div className="table-wrapper">

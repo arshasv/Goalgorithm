@@ -235,7 +235,7 @@ const FinalScoresView = () => {
           </div>
           <div className="table-wrapper">
             <table>
-              <thead><tr><th>Team</th><th>Prediction</th><th>Winner</th><th>Scoreline</th><th>Probability</th><th>Player</th><th>Base Score</th></tr></thead>
+              <thead><tr><th>Team</th><th>Prediction</th><th>Winner</th><th>Scoreline</th><th>Prob.</th><th>Player</th><th>Tot Goals</th><th>BTTS</th><th>First Team</th><th>Clean Sheet</th><th>Base Score</th></tr></thead>
               <tbody>
                 {(match.teams || []).map(t => {
                   const sc = t.score_breakdown || {};
@@ -249,7 +249,11 @@ const FinalScoresView = () => {
                       <td><span className={sc.scoreline_points === 10 ? 'badge badge-success' : sc.scoreline_points === 5 ? 'badge badge-warning' : 'badge badge-error'}>{sc.scoreline_points ?? '—'}/10</span></td>
                       <td><span className={sc.probability_points === 5 ? 'badge badge-success' : 'badge badge-error'}>{sc.probability_points ?? '—'}/5</span></td>
                       <td><span className={sc.player_points === 5 ? 'badge badge-success' : sc.player_points >= 2 ? 'badge badge-warning' : 'badge badge-error'}>{sc.player_points ?? '—'}/5</span></td>
-                      <td><strong className={`score-num ${scoreColor(sc.base_score, 25)}`}>{fmt1(sc.base_score)}</strong></td>
+                      <td><span className={sc.total_goals_points === 5 ? 'badge badge-success' : 'badge badge-error'}>{sc.total_goals_points ?? '—'}/5</span></td>
+                      <td><span className={sc.btts_points === 5 ? 'badge badge-success' : 'badge badge-error'}>{sc.btts_points ?? '—'}/5</span></td>
+                      <td><span className={sc.first_team_to_score_points === 5 ? 'badge badge-success' : 'badge badge-error'}>{sc.first_team_to_score_points ?? '—'}/5</span></td>
+                      <td><span className={sc.clean_sheet_points === 5 ? 'badge badge-success' : 'badge badge-error'}>{sc.clean_sheet_points ?? '—'}/5</span></td>
+                      <td><strong className={`score-num ${scoreColor(sc.base_score, 45)}`}>{fmt1(sc.base_score)}</strong></td>
                     </tr>
                   );
                 })}

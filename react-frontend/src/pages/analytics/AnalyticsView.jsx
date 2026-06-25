@@ -27,16 +27,16 @@ const useTheme = () => {
   return isDark;
 };
 
-const SVG_BAR = ({ data, labelKey, valKey, maxVal, height = 240, barColor }) => {
+const SVG_BAR = ({ data, labelKey, valKey, maxVal, height = 240, barColor, bottomPad = 45, labelFontSize = 9 }) => {
   const isDark = useTheme();
   const themeColors = {
-    grid: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-    text: isDark ? '#FFFFFF' : '#0F172A',
-    textMuted: isDark ? '#94A3B8' : '#475569'
+    grid: 'var(--color-border, rgba(148, 163, 184, 0.2))',
+    text: 'var(--color-text-primary, #FFFFFF)',
+    textMuted: 'var(--color-text-muted, #94A3B8)'
   };
 
   if (!data || data.length === 0) return null;
-  const pad = 30, rightPad = 10, topPad = 15, bottomPad = 35;
+  const pad = 35, rightPad = 10, topPad = 15;
   const w = 600;
   const mx = maxVal || Math.max(...data.map(d => d[valKey] || 0), 1);
   const barW = Math.max(15, Math.min(30, (w - pad - rightPad - (data.length * 4)) / data.length));
@@ -65,10 +65,14 @@ const SVG_BAR = ({ data, labelKey, valKey, maxVal, height = 240, barColor }) => 
         return (
           <g key={f}>
             <line x1={pad} y1={y} x2={Math.max(totalW + rightPad, w) - rightPad} y2={y} stroke={themeColors.grid} strokeDasharray="4 4" />
-            <text x={pad - 8} y={y + 4} textAnchor="end" fill={themeColors.textMuted} fontSize="11" fontFamily="var(--font-data)">{Math.round(f * mx)}</text>
+            <line x1={pad - 4} y1={y} x2={pad} y2={y} stroke={themeColors.textMuted} strokeWidth="1" />
+            <text x={pad - 8} y={y + 4} textAnchor="end" fill={themeColors.textMuted} fontSize="10" fontFamily="var(--font-data)">{Math.round(f * mx)}</text>
           </g>
         );
       })}
+      {/* Axes Lines */}
+      <line x1={pad} y1={topPad} x2={pad} y2={height - bottomPad} stroke={themeColors.textMuted} strokeWidth="1" />
+      <line x1={pad} y1={height - bottomPad} x2={Math.max(totalW + rightPad, w) - rightPad} y2={height - bottomPad} stroke={themeColors.textMuted} strokeWidth="1" />
       {data.map((d, i) => {
         const x = pad + i * (barW + 4);
         const val = d[valKey] || 0;
@@ -85,8 +89,10 @@ const SVG_BAR = ({ data, labelKey, valKey, maxVal, height = 240, barColor }) => 
               <animate attributeName="height" from="0" to={barH} dur="0.8s" fill="freeze" calcMode="spline" keySplines="0.4 0 0.2 1" keyTimes="0;1" />
               <animate attributeName="y" from={height - bottomPad} to={y} dur="0.8s" fill="freeze" calcMode="spline" keySplines="0.4 0 0.2 1" keyTimes="0;1" />
             </rect>
-            <text x={x + barW / 2} y={height - 5} textAnchor="middle" fill={themeColors.text} fontSize="11" fontWeight="500" transform={String(d[labelKey]).length > 6 ? `rotate(-15, ${x + barW / 2}, ${height - 5})` : ""}>
-              {String(d[labelKey]).length > 10 ? String(d[labelKey]).slice(0, 8) + '…' : d[labelKey]}
+            <line x1={x + barW / 2} y1={height - bottomPad} x2={x + barW / 2} y2={height - bottomPad + 4} stroke={themeColors.textMuted} strokeWidth="1" />
+            <text x={x + barW / 2} y={height - bottomPad + 14} textAnchor="end" fill={themeColors.text} fontSize={labelFontSize} fontWeight="500" transform={`rotate(-45, ${x + barW / 2}, ${height - bottomPad + 14})`}>
+              {String(d[labelKey]).length > 15 ? String(d[labelKey]).slice(0, 13) + '…' : d[labelKey]}
+              <title>{d[labelKey]}</title>
             </text>
           </g>
         );
@@ -98,13 +104,13 @@ const SVG_BAR = ({ data, labelKey, valKey, maxVal, height = 240, barColor }) => 
 const SVG_LINE = ({ points, labels, tooltips, height = 240, maxVal, yLabel }) => {
   const isDark = useTheme();
   const themeColors = {
-    grid: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-    text: isDark ? '#FFFFFF' : '#0F172A',
-    textMuted: isDark ? '#94A3B8' : '#475569'
+    grid: 'var(--color-border, rgba(148, 163, 184, 0.2))',
+    text: 'var(--color-text-primary, #FFFFFF)',
+    textMuted: 'var(--color-text-muted, #94A3B8)'
   };
 
   if (!points || points.length === 0) return null;
-  const pad = 40, rightPad = 20, topPad = 15, bottomPad = 35;
+  const pad = 40, rightPad = 20, topPad = 15, bottomPad = 45;
   const w = 600;
   const mx = maxVal || Math.max(...points, 1);
   const xStep = (w - pad - rightPad) / Math.max(points.length - 1, 1);
@@ -136,13 +142,18 @@ const SVG_LINE = ({ points, labels, tooltips, height = 240, maxVal, yLabel }) =>
         return (
           <g key={f}>
             <line x1={pad} y1={y} x2={w - rightPad} y2={y} stroke={themeColors.grid} strokeDasharray="4 4" />
-            <text x={pad - 8} y={y + 4} textAnchor="end" fill={themeColors.textMuted} fontSize="11" fontFamily="var(--font-data)">{Math.round(f * mx)}</text>
+            <line x1={pad - 4} y1={y} x2={pad} y2={y} stroke={themeColors.textMuted} strokeWidth="1" />
+            <text x={pad - 8} y={y + 4} textAnchor="end" fill={themeColors.textMuted} fontSize="10" fontFamily="var(--font-data)">{Math.round(f * mx)}</text>
           </g>
         );
       })}
       
+      {/* Axes Lines */}
+      <line x1={pad} y1={topPad} x2={pad} y2={height - bottomPad} stroke={themeColors.textMuted} strokeWidth="1" />
+      <line x1={pad} y1={height - bottomPad} x2={w - rightPad} y2={height - bottomPad} stroke={themeColors.textMuted} strokeWidth="1" />
+      
       {yLabel && (
-        <text x={10} y={height / 2} transform={`rotate(-90 10,${height/2})`} textAnchor="middle" fill={themeColors.textMuted} fontSize="11" fontWeight="500">
+        <text x={10} y={height / 2} transform={`rotate(-90 10,${height/2})`} textAnchor="middle" fill={themeColors.textMuted} fontSize="10" fontWeight="500">
           {yLabel}
         </text>
       )}
@@ -168,9 +179,15 @@ const SVG_LINE = ({ points, labels, tooltips, height = 240, maxVal, yLabel }) =>
       ))}
       
       {labels && labels.map((label, i) => (
-        <text key={i} x={px(i)} y={height - 5} textAnchor="middle" fill={themeColors.text} fontSize="11" fontWeight="500"
-          transform={String(label).length > 6 ? `rotate(-15, ${px(i)}, ${height - 5})` : ""}
-        >{String(label).length > 10 ? String(label).slice(0, 8) + '…' : label}</text>
+        <g key={`l-${i}`}>
+          <line x1={px(i)} y1={height - bottomPad} x2={px(i)} y2={height - bottomPad + 4} stroke={themeColors.textMuted} strokeWidth="1" />
+          <text x={px(i)} y={height - bottomPad + 14} textAnchor="end" fill={themeColors.text} fontSize="9" fontWeight="500"
+            transform={`rotate(-45, ${px(i)}, ${height - bottomPad + 14})`}
+          >
+            {String(label).length > 15 ? String(label).slice(0, 13) + '…' : label}
+            <title>{label}</title>
+          </text>
+        </g>
       ))}
     </svg>
   );
@@ -429,20 +446,27 @@ const JUDGE_ANALYTICS = ({ judgeData }) => {
       </div>
 
       <div className="card section">
-        <div className="card-header"><span className="card-title">🧩 Judge Criteria Patterns</span></div>
-        <div style={{ padding: 'var(--space-md)' }}>
+        <div className="card-header" style={{ padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+          <span className="card-title" style={{ margin: 0 }}>🧩 Judge Criteria Patterns</span>
+          <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: '1.4', fontWeight: 'normal' }}>
+            Highlights scoring patterns across judging criteria to compare team strengths and weaknesses.
+          </p>
+        </div>
+        <div className="grid-2" style={{ padding: 'var(--space-md)', gap: 'var(--space-xl)' }}>
           {criteria_patterns.map((cp, i) => {
             const highestVal = cp.criteria_averages.find(c => c.criterion === cp.strongest_scoring_category)?.average_score;
             const lowestVal = cp.criteria_averages.find(c => c.criterion === cp.lowest_scoring_category)?.average_score;
             return (
-              <div key={cp.judge_id} style={{ marginBottom: i < criteria_patterns.length - 1 ? 'var(--space-xl)' : 0 }}>
-                <h4 style={{ fontFamily: 'var(--font-display)', color: ANALYTICS_COLORS.softGold, marginBottom: 'var(--space-sm)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>{cp.judge_name}</h4>
-                <div style={{ display: 'flex', gap: 'var(--space-lg)', marginBottom: 'var(--space-sm)', fontSize: 'var(--text-xs)' }}>
+              <div key={cp.judge_id} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+                <h4 style={{ fontFamily: 'var(--font-display)', color: ANALYTICS_COLORS.softGold, margin: 0, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{cp.judge_name}</h4>
+                <div style={{ display: 'flex', gap: 'var(--space-md)', fontSize: 'var(--text-xs)', flexWrap: 'wrap' }}>
                   <span style={{ color: ANALYTICS_COLORS.gray }}>Highest: {cp.strongest_scoring_category ? `${cp.strongest_scoring_category} (${fmt1(highestVal)}%)` : 'N/A'}</span>
                   <span style={{ color: ANALYTICS_COLORS.gray }}>Lowest: {cp.lowest_scoring_category ? `${cp.lowest_scoring_category} (${fmt1(lowestVal)}%)` : 'N/A'}</span>
                 </div>
-                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 'var(--space-sm)' }}>Average Criteria Score (%)</div>
-                <SVG_BAR data={cp.criteria_averages} labelKey="criterion" valKey="average_score" maxVal={100} barColor={ANALYTICS_COLORS.lightBlue} height={140} />
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>Average Criteria Score (%)</div>
+                <div style={{ marginTop: 'auto' }}>
+                  <SVG_BAR data={cp.criteria_averages} labelKey="criterion" valKey="average_score" maxVal={100} barColor={ANALYTICS_COLORS.lightBlue} height={240} bottomPad={85} labelFontSize={10} />
+                </div>
               </div>
             );
           })}

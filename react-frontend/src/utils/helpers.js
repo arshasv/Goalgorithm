@@ -35,8 +35,11 @@ export const matchStatusBadge = (status) => {
       return React.createElement('span', { className: 'badge badge-error', key: 'status' }, 'FROZEN');
     case 'scheduled':
       return React.createElement('span', { className: 'badge badge-warning', key: 'status' }, 'SCHEDULED');
+    case 'awaiting_result':
+    case 'awaiting result':
+      return React.createElement('span', { className: 'badge badge-info', key: 'status' }, 'AWAITING RESULT');
     default:
-      return React.createElement('span', { className: 'badge badge-info', key: 'status' }, s.toUpperCase());
+      return React.createElement('span', { className: 'badge badge-info', key: 'status' }, s.replace('_', ' ').toUpperCase());
   }
 };
 

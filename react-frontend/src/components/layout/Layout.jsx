@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Outlet, Navigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
@@ -10,6 +10,11 @@ const ToastContainer = () => (
 
 const Layout = () => {
   const { isAuthenticated, loading } = useAuth();
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed(prev => !prev);
+  };
 
   if (loading) {
     return (
@@ -32,8 +37,8 @@ const Layout = () => {
 
   return (
     <div className="app-layout">
-      <Sidebar />
-      <div className="main-content" id="main-content">
+      <Sidebar collapsed={sidebarCollapsed} toggleSidebar={toggleSidebar} />
+      <div className={`main-content ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`} id="main-content">
         <Navbar />
         <main className="page-content" id="page-content">
           <Outlet />

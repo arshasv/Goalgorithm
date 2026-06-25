@@ -333,6 +333,7 @@ a { color: var(--color-text-link); text-decoration: none; }
 @keyframes slideUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes slideDown { from { opacity: 0; transform: translateY(-16px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes slideInRight { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes slideOutRight { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(30px); } }
 @keyframes slideInLeft { from { opacity: 0; transform: translateX(-30px); } to { opacity: 1; transform: translateX(0); } }
 @keyframes scaleIn { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
 @keyframes scaleOut { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.92); } }
@@ -1364,15 +1365,20 @@ th.score-header {
   background: rgba(15, 23, 42, 0.4);
 }
 
-.modal {
+body.modal-open {
+  overflow: hidden !important;
+}
+
+.modal, .modal-container {
   background: var(--color-surface-elevated);
   border-radius: var(--radius-xl);
   padding: var(--space-xl);
   box-shadow: var(--shadow-xl);
-  max-width: 560px;
+  max-width: 800px;
   width: 90%;
   max-height: 90vh;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
   animation: scaleIn var(--duration-normal) var(--ease-out);
   border: 1px solid var(--color-border-light);
 }
@@ -1412,7 +1418,12 @@ th.score-header {
   color: var(--color-text-primary);
 }
 
-.modal-body { margin-bottom: var(--space-lg); }
+.modal-body { 
+  overflow-y: auto; 
+  flex-grow: 1; 
+  padding-right: 8px; 
+  margin-bottom: var(--space-lg); 
+}
 .modal-footer { display: flex; gap: var(--space-sm); justify-content: flex-end; }
 
 /* ===== TOASTS ===== */
@@ -1573,7 +1584,7 @@ th.score-header {
 
 [data-theme="light"] .alert-success { background: rgba(22, 163, 74, 0.06); }
 [data-theme="light"] .alert-error { background: rgba(220, 38, 38, 0.06); }
-[data-theme="light"] .alert-warning { background: rgba(245, 158, 11, 0.06); }
+[data-theme="light"] .alert-warning { background: rgba(245, 158, 11, 0.06); color: #B45309; }
 [data-theme="light"] .alert-info { background: rgba(56, 189, 248, 0.06); }
 
 /* ===== PROGRESS BAR ===== */

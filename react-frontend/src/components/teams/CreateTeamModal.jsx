@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { TeamService } from '../../api/teamService';
+import { useScrollLock } from '../../hooks/useScrollLock';
 
 const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
+  useScrollLock(isOpen);
   const [teamCode, setTeamCode] = useState('');
   const [teamName, setTeamName] = useState('');
   const [teamLeader, setTeamLeader] = useState('');
