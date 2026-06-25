@@ -141,7 +141,7 @@ const App = () => {
             />
             <Route 
               path="/model-execution" 
-              element={<PrivateRoute element={<ModelExecutionView />} roleRequired="TEAM_LEADER" />} 
+              element={<PrivateRoute element={<ModelExecutionView />} roleRequired="ORGANIZER" />} 
             />
           </Route>
         </Routes>

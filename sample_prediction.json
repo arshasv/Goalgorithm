@@ -1,25 +1,37 @@
 {
   "team_id": "A",
   "match_id": "123e4567-e89b-12d3-a456-426614174000",
-  "submission_id": "sub-9876",
+  "submission_id": "sub-ai-9876",
   "match_prediction": {
-    "predicted_winner": "home",
     "predicted_scoreline": {
       "home_team_goals": 2,
       "away_team_goals": 1
     },
     "probabilities": {
-      "home_win_probability": 60.5,
-      "draw_probability": 25.0,
-      "away_win_probability": 14.5
+      "home_win_probability": 48,
+      "draw_probability": 25,
+      "away_win_probability": 27
     },
-    "clean_sheet_probability": {
-      "home_team": 30.0,
-      "away_team": 15.5
+    "both_teams_to_score": {
+      "prediction": true,
+      "probability": 62.5
     },
-    "first_goal_team": "home",
-    "both_teams_to_score_probability": 55.0,
-    "total_goals_prediction": 3,
+    "first_team_to_score": {
+      "team": "home",
+      "probability": 55.0
+    },
+    "clean_sheet_predictions": [
+      {
+        "goalkeeper": "Emiliano Martinez",
+        "prediction": false,
+        "probability": 28.5
+      },
+      {
+        "goalkeeper": "Alisson Becker",
+        "prediction": false,
+        "probability": 18.0
+      }
+    ],
     "goal_scorers": {
       "home": [
         "Lionel Messi",
@@ -32,25 +44,22 @@
   },
   "player_predictions": [
     {
-      "player_id": "p123",
       "player_name": "Lionel Messi",
-      "goal_probability": 45.5,
+      "team": "Argentina",
       "predicted_goals": 1,
-      "assist_probability": 30.0
+      "probability": 45.5
     },
     {
-      "player_id": "p456",
       "player_name": "Kylian Mbappe",
-      "goal_probability": 40.0,
+      "team": "Argentina",
       "predicted_goals": 1,
-      "assist_probability": 25.0
+      "probability": 40.0
     },
     {
-      "player_id": "p789",
       "player_name": "Cristiano Ronaldo",
-      "goal_probability": 35.0,
+      "team": "Brazil",
       "predicted_goals": 1,
-      "assist_probability": 15.0
+      "probability": 35.0
     }
   ]
 }

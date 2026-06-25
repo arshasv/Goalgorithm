@@ -65,6 +65,9 @@ const Sidebar = ({ collapsed, toggleSidebar }) => {
               <a className={isActive('model-evaluation')} data-page="model-evaluation" onClick={() => nav('model-evaluation')}>
                 <span className="nav-icon">🤖</span><span className="nav-label">Model Evaluation</span>
               </a>
+              <a className={isActive('model-execution')} data-page="model-execution" onClick={() => nav('model-execution')}>
+                <span className="nav-icon">⚡</span><span className="nav-label">Model Execution</span>
+              </a>
               <a className={isActive('technical')} data-page="technical" onClick={() => nav('technical')}>
                 <span className="nav-icon">💻</span><span className="nav-label">Technical Eval</span>
               </a>
@@ -98,9 +101,6 @@ const Sidebar = ({ collapsed, toggleSidebar }) => {
               </a>
               <a className={isActive('submit-predictions')} data-page="submit-predictions" onClick={() => nav('submit-predictions')}>
                 <span className="nav-icon">🤖</span><span className="nav-label">Model Submission</span>
-              </a>
-              <a className={isActive('model-execution')} data-page="model-execution" onClick={() => nav('model-execution')}>
-                <span className="nav-icon">⚡</span><span className="nav-label">Model Execution</span>
               </a>
             </div>
             <div className="nav-section" id="tl-nav-matches">

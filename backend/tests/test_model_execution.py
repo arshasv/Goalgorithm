@@ -1,24 +1,22 @@
 import uuid
 from io import BytesIO
 
-def test_upload_non_pkl_rejected(client, db_session, team_leader_headers, sample_match):
-    file_content = b"fake model content"
+def test_upload_non_pkl_rejected(client, db_session, organizer_headers, sample_match, team_a):
     response = client.post(
         "/api/v1/model-execution/upload",
-        headers=team_leader_headers,
-        data={"match_id": str(sample_match.id)},
-        files={"file": ("model.txt", BytesIO(file_content), "text/plain")}
+        headers=organizer_headers,
+        data={"match_id": str(sample_match.id), "team_id": str(team_a.id)},
+        files={"file": ("model.txt", BytesIO(b"dummy data"), "text/plain")}
     )
     assert response.status_code == 400
     assert "Only .pkl files are allowed" in response.json()["detail"]
 
-def test_upload_pkl_success(client, db_session, team_leader_headers, sample_match):
-    file_content = b"fake pkl content"
+def test_upload_pkl_success(client, db_session, organizer_headers, sample_match, team_a):
     response = client.post(
         "/api/v1/model-execution/upload",
-        headers=team_leader_headers,
-        data={"match_id": str(sample_match.id)},
-        files={"file": ("model.pkl", BytesIO(file_content), "application/octet-stream")}
+        headers=organizer_headers,
+        data={"match_id": str(sample_match.id), "team_id": str(team_a.id)},
+        files={"file": ("model.pkl", BytesIO(b"dummy pkl data"), "application/octet-stream")}
     )
     assert response.status_code == 200
     data = response.json()
@@ -28,7 +26,7 @@ def test_upload_pkl_success(client, db_session, team_leader_headers, sample_matc
     # Now get status
     status_resp = client.get(
         f"/api/v1/model-execution/{data['model_id']}/status",
-        headers=team_leader_headers
+        headers=organizer_headers
     )
     assert status_resp.status_code == 200
     status_data = status_resp.json()
@@ -50,21 +48,21 @@ class DummyModelFailure:
     def predict(self):
         raise ValueError("Simulated crash")
 
-def test_execute_model_success(client, db_session, team_leader_headers, sample_match):
+def test_execute_model_success(client, db_session, organizer_headers, sample_match, team_a):
     model = DummyModelSuccess()
     model_bytes = pickle.dumps(model)
 
     response = client.post(
         "/api/v1/model-execution/upload",
-        headers=team_leader_headers,
-        data={"match_id": str(sample_match.id)},
+        headers=organizer_headers,
+        data={"match_id": str(sample_match.id), "team_id": str(team_a.id)},
         files={"file": ("model.pkl", BytesIO(model_bytes), "application/octet-stream")}
     )
     model_id = response.json()["model_id"]
 
     exec_response = client.post(
         f"/api/v1/model-execution/{model_id}/execute",
-        headers=team_leader_headers
+        headers=organizer_headers
     )
     assert exec_response.status_code == 200
     exec_data = exec_response.json()
@@ -76,27 +74,27 @@ def test_execute_model_success(client, db_session, team_leader_headers, sample_m
 
     status_resp = client.get(
         f"/api/v1/model-execution/{execution_id}/status",
-        headers=team_leader_headers
+        headers=organizer_headers
     )
     status_data = status_resp.json()
     assert status_data["status"] == "SUCCESS"
     assert status_data["prediction_id"] is not None
 
-def test_execute_model_failure(client, db_session, team_leader_headers, sample_match):
+def test_execute_model_failure(client, db_session, organizer_headers, sample_match, team_a):
     model = DummyModelFailure()
     model_bytes = pickle.dumps(model)
 
     response = client.post(
         "/api/v1/model-execution/upload",
-        headers=team_leader_headers,
-        data={"match_id": str(sample_match.id)},
+        headers=organizer_headers,
+        data={"match_id": str(sample_match.id), "team_id": str(team_a.id)},
         files={"file": ("model.pkl", BytesIO(model_bytes), "application/octet-stream")}
     )
     model_id = response.json()["model_id"]
 
     exec_response = client.post(
         f"/api/v1/model-execution/{model_id}/execute",
-        headers=team_leader_headers
+        headers=organizer_headers
     )
     execution_id = exec_response.json()["execution_id"]
 
@@ -104,7 +102,7 @@ def test_execute_model_failure(client, db_session, team_leader_headers, sample_m
 
     status_resp = client.get(
         f"/api/v1/model-execution/{execution_id}/status",
-        headers=team_leader_headers
+        headers=organizer_headers
     )
     status_data = status_resp.json()
     assert status_data["status"] == "FAILED"

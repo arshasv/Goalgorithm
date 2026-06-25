@@ -1,0 +1,19 @@
+TRUNCATE TABLE 
+    scores,
+    model_evaluations,
+    predictions,
+    player_predictions,
+    actual_results,
+    player_actuals,
+    matches,
+    model_submissions,
+    team_members,
+    teams,
+    leaderboard,
+    leaderboard_visibility,
+    presentation_evaluations,
+    technical_evaluations,
+    upload_window_config,
+    scoring_configs,
+    cumulative_phase_scores
+CASCADE;

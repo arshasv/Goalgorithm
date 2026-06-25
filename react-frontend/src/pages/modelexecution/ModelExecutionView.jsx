@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ModelExecutionService } from '../../api/modelExecutionService';
 import { MatchService } from '../../api/matchService';
+import { TeamService } from '../../api/teamService';
 
 const ModelExecutionView = () => {
   const [matches, setMatches] = useState([]);
+  const [teams, setTeams] = useState([]);
   const [selectedMatch, setSelectedMatch] = useState('');
+  const [selectedTeam, setSelectedTeam] = useState('');
   const [file, setFile] = useState(null);
   
   const [modelId, setModelId] = useState(null);
@@ -19,15 +22,19 @@ const ModelExecutionView = () => {
   const pollingInterval = useRef(null);
 
   useEffect(() => {
-    const fetchMatches = async () => {
+    const fetchData = async () => {
       try {
-        const matchesData = await MatchService.listMatches();
+        const [matchesData, teamsData] = await Promise.all([
+          MatchService.listMatches(),
+          TeamService.getAllTeams()
+        ]);
         setMatches(matchesData);
+        setTeams(teamsData);
       } catch (err) {
-        console.error('Failed to load matches:', err);
+        console.error('Failed to load data:', err);
       }
     };
-    fetchMatches();
+    fetchData();
     
     return () => stopPolling();
   }, []);
@@ -47,15 +54,15 @@ const ModelExecutionView = () => {
 
   const handleUpload = async (e) => {
     e.preventDefault();
-    if (!selectedMatch || !file) {
-      setUploadError('Please select a match and upload a .pkl file.');
+    if (!selectedTeam || !selectedMatch || !file) {
+      setUploadError('Please select a team, a match, and upload a .pkl file.');
       return;
     }
     
     setLoading(true);
     setUploadError('');
     try {
-      const result = await ModelExecutionService.uploadModel(selectedMatch, file);
+      const result = await ModelExecutionService.uploadModel(selectedTeam, selectedMatch, file);
       setModelId(result.model_id);
       setStatus('IDLE');
       setExecutionId(null);
@@ -135,6 +142,23 @@ const ModelExecutionView = () => {
           {uploadError && <div className="alert alert-danger">{uploadError}</div>}
           <form onSubmit={handleUpload}>
             <div className="mb-3">
+              <label className="form-label">Select Team</label>
+              <select 
+                className="form-select" 
+                value={selectedTeam} 
+                onChange={(e) => setSelectedTeam(e.target.value)}
+                required
+              >
+                <option value="">-- Select Team --</option>
+                {teams.map(t => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} ({t.code})
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="mb-3">
               <label className="form-label">Select Match</label>
               <select 
                 className="form-select" 
@@ -165,7 +189,7 @@ const ModelExecutionView = () => {
             <button 
               type="submit" 
               className="btn btn-primary" 
-              disabled={loading || !selectedMatch || !file}
+              disabled={loading || !selectedTeam || !selectedMatch || !file}
             >
               Upload Model
             </button>
