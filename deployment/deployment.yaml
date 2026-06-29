@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+
+kind: Deployment
+
+metadata:
+  name: goalgorithm
+
+spec:
+
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: goalgorithm
+
+  template:
+
+    metadata:
+
+      labels:
+        app: goalgorithm
+
+    spec:
+
+      containers:
+
+      - name: goalgorithm
+
+        image: 192.168.21.116:8081/goalgorithm:latest
+
+        imagePullPolicy: Always
+
+        ports:
+
+        - containerPort: 8000
+
+      imagePullSecrets:
+
+      - name: nexus-secret
