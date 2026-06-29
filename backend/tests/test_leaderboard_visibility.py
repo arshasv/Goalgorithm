@@ -6,8 +6,10 @@ from app.models.team import TeamModel
 
 
 def _create_leaderboard_entry(db_session, team_id, rank, phase1, tech, pres):
+    import uuid
+    uid = uuid.UUID(team_id) if isinstance(team_id, str) else team_id
     entry = LeaderboardModel(
-        team_id=team_id,
+        team_id=uid,
         rank=rank,
         phase1_score=phase1,
         technical_score=tech,

@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { PredictionService } from '../../api/predictionService';
 import { useAuth } from '../../contexts/AuthContext';
 import { TeamService } from '../../api/teamService';
 import { useScrollLock } from '../../hooks/useScrollLock';
+import { showToast } from '../../utils/toast';
 
 /**
  * SubmitPredictionModal — handles both new submissions and edits.
@@ -20,8 +21,62 @@ const SubmitPredictionModal = ({ match, isOpen, onClose, onPredictionSubmitted, 
   const { isOrganizer } = useAuth();
   
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState({ message: '', list: [] });
   const [entryMode, setEntryMode] = useState(initialMode);
+
+  const getErrorDisplay = useCallback((err) => {
+    const fallback = 'An unexpected error occurred.';
+    if (!err) return { message: fallback, list: [fallback] };
+
+    if (err.response?.data?.detail) {
+      const detail = err.response.data.detail;
+      if (Array.isArray(detail)) {
+        const errors = detail.map(d => {
+          const loc = d.loc ? d.loc.filter(l => l !== 'body').join(' \u2192 ') : '';
+          return loc ? `${loc}: ${d.msg}` : d.msg;
+        });
+        return {
+          message: errors.length === 1 ? errors[0] : 'Multiple validation errors:',
+          list: errors,
+        };
+      }
+      if (typeof detail === 'string') {
+        return { message: detail, list: [detail] };
+      }
+      const str = JSON.stringify(detail);
+      return { message: str, list: [str] };
+    }
+
+    const status = err.response?.status;
+    if (status === 400) {
+      const msg = 'Bad request. Please check your input.';
+      return { message: msg, list: [msg] };
+    }
+    if (status === 401) {
+      const msg = 'You are not authenticated. Please log in again.';
+      return { message: msg, list: [msg] };
+    }
+    if (status === 403) {
+      const msg = 'You do not have permission to perform this action.';
+      return { message: msg, list: [msg] };
+    }
+    if (status === 404) {
+      const msg = 'Resource not found.';
+      return { message: msg, list: [msg] };
+    }
+    if (status && status >= 500) {
+      const msg = 'Server error. Please try again later.';
+      return { message: msg, list: [msg] };
+    }
+
+    if (err.code === 'ERR_NETWORK' || err.message === 'Network Error') {
+      const msg = 'Network error. Please check your connection.';
+      return { message: msg, list: [msg] };
+    }
+
+    const msg = err.message || fallback;
+    return { message: msg, list: [msg] };
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -124,7 +179,7 @@ const SubmitPredictionModal = ({ match, isOpen, onClose, onPredictionSubmitted, 
     setBttsProb(50);
     setBttsPrediction(true);
     setOrgTeam('');
-    setError('');
+    setError({ message: '', list: [] });
   };
 
   if (!isOpen || !match) return null;
@@ -134,20 +189,20 @@ const SubmitPredictionModal = ({ match, isOpen, onClose, onPredictionSubmitted, 
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setError({ message: '', list: [] });
 
     if (isOrganizer && !orgTeam) {
-      setError('Please select a team for this prediction.');
+      setError({ message: 'Please select a team for this prediction.', list: ['Please select a team for this prediction.'] });
       return;
     }
 
     // Validate scorer names filled in
     if (homeScorers.some(s => !s.trim())) {
-      setError(`Please enter all ${homeGoals} ${homeName} scorer name(s).`);
+      setError({ message: `Please enter all ${homeGoals} ${homeName} scorer name(s).`, list: [`Please enter all ${homeGoals} ${homeName} scorer name(s).`] });
       return;
     }
     if (awayScorers.some(s => !s.trim())) {
-      setError(`Please enter all ${awayGoals} ${awayName} scorer name(s).`);
+      setError({ message: `Please enter all ${awayGoals} ${awayName} scorer name(s).`, list: [`Please enter all ${awayGoals} ${awayName} scorer name(s).`] });
       return;
     }
 
@@ -211,13 +266,13 @@ const SubmitPredictionModal = ({ match, isOpen, onClose, onPredictionSubmitted, 
     setLoading(true);
     try {
       await PredictionService.submitPrediction(payload);
-      import('../../utils/toast').then(({ showToast }) => {
-        showToast('Prediction submitted successfully', 'success');
-      });
+      showToast('Prediction submitted successfully', 'success');
       onPredictionSubmitted();
       onClose();
     } catch (err) {
-      setError(err.response?.data?.detail || err.message || 'Failed to submit prediction');
+      const display = getErrorDisplay(err);
+      setError(display);
+      showToast(display.message, 'error');
     } finally {
       setLoading(false);
     }
@@ -235,7 +290,7 @@ const SubmitPredictionModal = ({ match, isOpen, onClose, onPredictionSubmitted, 
     if (!file) return;
 
     if (isOrganizer && !orgTeam) {
-      setError('Please select a team before uploading JSON.');
+      setError({ message: 'Please select a team before uploading JSON.', list: ['Please select a team before uploading JSON.'] });
       e.target.value = '';
       return;
     }
@@ -284,13 +339,14 @@ const SubmitPredictionModal = ({ match, isOpen, onClose, onPredictionSubmitted, 
 
         setLoading(true);
         await PredictionService.submitPrediction(json);
-        import('../../utils/toast').then(({ showToast }) => {
-          showToast('Prediction submitted successfully', 'success');
-        });
+        showToast('Prediction submitted successfully', 'success');
         onPredictionSubmitted();
         onClose();
       } catch (err) {
-        setError(err.response?.data?.detail || err.message || 'Failed to process JSON file');
+        const display = getErrorDisplay(err);
+        setError(display);
+        showToast(display.message, 'error');
+      } finally {
         setLoading(false);
       }
     };
@@ -306,7 +362,22 @@ const SubmitPredictionModal = ({ match, isOpen, onClose, onPredictionSubmitted, 
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
         <div className="modal-body">
-          {error && <div className="alert alert-error" style={{ marginBottom: 'var(--space-md)' }}>{error}</div>}
+          {error.message && (
+            <div className="alert alert-error" style={{ marginBottom: 'var(--space-md)' }}>
+              {error.list.length > 1 ? (
+                <>
+                  <p style={{ marginBottom: 'var(--space-sm)' }}>{error.message}</p>
+                  <ul style={{ margin: 0, paddingLeft: 'var(--space-lg)' }}>
+                    {error.list.map((e, i) => (
+                      <li key={i} style={{ marginBottom: '2px' }}>{e}</li>
+                    ))}
+                  </ul>
+                </>
+              ) : (
+                <p>{error.message}</p>
+              )}
+            </div>
+          )}
 
           <div style={{ textAlign: 'center', marginBottom: 'var(--space-md)', padding: 'var(--space-md)', background: 'var(--color-surface-secondary)', borderRadius: 'var(--radius-medium)' }}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-xl)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>

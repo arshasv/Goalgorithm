@@ -18,63 +18,44 @@ class PredictionRepository(BaseRepository[PredictionModel]):
         team_id: str | uuid.UUID,
         match_id: str | uuid.UUID
     ) -> PredictionModel | None:
-
-        return self.db.execute(
-
+        t_id = uuid.UUID(team_id) if isinstance(team_id, str) else team_id
+        m_id = uuid.UUID(match_id) if isinstance(match_id, str) else match_id
+        res = self.db.execute(
             select(PredictionModel).where(
-
-                PredictionModel.team_id == str(team_id),
-
-                PredictionModel.match_id == str(match_id)
-
+                PredictionModel.team_id == t_id,
+                PredictionModel.match_id == m_id
             )
-
         ).scalar_one_or_none()
-
-
+        return res
 
     def get_by_match(
         self,
         match_id: str | uuid.UUID
     ) -> list[PredictionModel]:
-
+        m_id = uuid.UUID(match_id) if isinstance(match_id, str) else match_id
         return list(
-
             self.db.execute(
-
                 select(PredictionModel).where(
-
-                    PredictionModel.match_id == str(match_id)
-
+                    PredictionModel.match_id == m_id
                 )
-
             )
             .scalars()
             .all()
-
         )
-
-
 
     def get_by_team(
         self,
         team_id: str | uuid.UUID
     ) -> list[PredictionModel]:
-
+        t_id = uuid.UUID(team_id) if isinstance(team_id, str) else team_id
         return list(
-
             self.db.execute(
-
                 select(PredictionModel).where(
-
-                    PredictionModel.team_id == str(team_id)
-
+                    PredictionModel.team_id == t_id
                 )
-
             )
             .scalars()
             .all()
-
         )
 
 

@@ -7,7 +7,15 @@ from app.database import session
 from app.model_execution.models.model_execution import ModelExecutionModel
 from app.model_execution.services.model_serializer import ModelSerializer
 from app.services.prediction_service import PredictionService
-
+import pandas as pd
+import numpy as np
+import scipy
+from scipy import stats
+import xgboost as xgb
+import lightgbm as lgb
+import sklearn
+import math
+import os
 
 class ModelExecutor:
     def __init__(self, execution_id: uuid.UUID):
@@ -137,10 +145,10 @@ class ModelExecutor:
             ).filter(
 
                 PredictionModel.team_id
-                == str(model_upload.team_id),
+                == model_upload.team_id,
 
                 PredictionModel.match_id
-                == str(model_upload.match_id)
+                == model_upload.match_id
 
             ).first()
 

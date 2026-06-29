@@ -77,17 +77,17 @@ class ScoresService:
 
         daily: dict[date, dict[str, dict]] = {}
         for s in scores:
-            match = matches.get(s.match_id)
+            match = matches.get(str(s.match_id))
             if not match:
                 continue
-            if not is_organizer and s.team_id != user_team_id:
+            if not is_organizer and str(s.team_id) != user_team_id:
                 continue
 
             d = match.scheduled_at.date()
             if d not in daily:
                 daily[d] = {}
-            team_name = team_names.get(s.team_id, "Unknown Team")
-            team_code = team_codes.get(s.team_id, "")
+            team_name = team_names.get(str(s.team_id), "Unknown Team")
+            team_code = team_codes.get(str(s.team_id), "")
             if team_name not in daily[d]:
                 daily[d][team_name] = {"total_score": 0, "team_code": team_code}
             daily[d][team_name]["total_score"] += s.base_score or 0
@@ -116,11 +116,11 @@ class ScoresService:
         actuals = {str(a.match_id): a for a in self.actual_repo.get_all()}
         scores_by_match: dict[str, list] = {}
         for s in self.score_repo.get_all():
-            scores_by_match.setdefault(s.match_id, []).append(s)
+            scores_by_match.setdefault(str(s.match_id), []).append(s)
 
         predictions_by_key = {}
         for p in self.pred_repo.get_all():
-            predictions_by_key[(p.team_id, p.match_id)] = p
+            predictions_by_key[(str(p.team_id), str(p.match_id))] = p
 
         result = []
         for m in matches:
@@ -130,11 +130,11 @@ class ScoresService:
 
             teams = []
             for s in match_scores:
-                if not is_organizer and s.team_id != user_team_id:
+                if not is_organizer and str(s.team_id) != user_team_id:
                     continue
 
-                team_name = team_names.get(s.team_id, "Unknown Team")
-                pred = predictions_by_key.get((s.team_id, mid))
+                team_name = team_names.get(str(s.team_id), "Unknown Team")
+                pred = predictions_by_key.get((str(s.team_id), mid))
                 prediction_detail = None
                 if pred:
                     prediction_detail = {
@@ -145,8 +145,8 @@ class ScoresService:
                     }
 
                 teams.append({
-                    "team_id": s.team_id,
-                    "team_code": team_codes.get(s.team_id, ""),
+                    "team_id": str(s.team_id),
+                    "team_code": team_codes.get(str(s.team_id), ""),
                     "team_name": team_name,
                     "prediction": prediction_detail,
                     "score_breakdown": {
@@ -154,6 +154,10 @@ class ScoresService:
                         "scoreline_points": s.scoreline_points,
                         "probability_points": s.probability_points,
                         "player_points": s.player_points,
+                        "total_goals_points": s.total_goals_points,
+                        "btts_points": s.btts_points,
+                        "first_team_to_score_points": s.first_team_to_score_points,
+                        "clean_sheet_points": s.clean_sheet_points,
                         "base_score": s.base_score,
                         "earned_points": s.earned_points,
                         "match_rank": s.match_rank,

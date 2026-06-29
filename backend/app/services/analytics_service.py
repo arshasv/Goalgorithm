@@ -49,7 +49,7 @@ class AnalyticsService:
 
         best = max(lb_entries, key=lambda e: (e.final_score or 0))
         top_team = {
-            "team_name": names.get(best.team_id, "Unknown"),
+            "team_name": names.get(str(best.team_id), "Unknown"),
             "final_score": best.final_score,
         }
 

@@ -36,7 +36,7 @@ def list_predictions(
         if team:
             predictions = (
                 db.query(PredictionModel)
-                .filter(PredictionModel.team_id == str(team.id))
+                .filter(PredictionModel.team_id == team.id)
                 .all()
             )
         else:

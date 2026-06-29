@@ -3,6 +3,12 @@ from datetime import datetime, timezone
 from sqlalchemy import Column, String, DateTime, ForeignKey, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database.base import Base
+import pandas as pd
+import numpy as np
+import joblib
+import cloudpickle
+import lightgbm as lgb
+import xgboost as xgb
 
 class ModelExecutionModel(Base):
     __tablename__ = "model_executions"

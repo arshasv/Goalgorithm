@@ -234,115 +234,184 @@ def calculate_all_scores_for_match(
     from app.models.prediction import PredictionModel
     from app.models.actual_result import ActualResultModel
     from app.models.score import ScoreModel
+    from app.models.enums import Grade
     from fastapi import HTTPException
-    
-    actual = db.query(ActualResultModel).filter(ActualResultModel.match_id == match_id).first()
-    if not actual:
-        raise HTTPException(status_code=400, detail="Actual result not found for this match.")
-        
-    predictions = db.query(PredictionModel).filter(PredictionModel.match_id == match_id).all()
-    if not predictions:
-        return {"status": "no_predictions", "calculated_count": 0}
-        
-    # Build ActualResultSubmission equivalent payload
-    actual_payload = {
-        "match_id": actual.match_id,
-        "actual_winner": actual.actual_winner.value if actual.actual_winner else "draw",
-        "final_score": {
-            "home_team_goals": actual.actual_home_goals or 0,
-            "away_team_goals": actual.actual_away_goals or 0
-        },
-        "goal_scorers": actual.goal_scorers or {"home": [], "away": []},
-        "player_results": [
-            {
-                "player_id": pa.player_id,
-                "player_name": pa.player_name,
-                "actual_goals": pa.actual_goals or 0
-            } for pa in actual.player_actuals
-        ]
-    }
-    if not actual_payload["player_results"]:
-        actual_payload["player_results"] = [{"player_id": "NONE", "player_name": "No Scorers", "actual_goals": 0}]
+    import traceback
+    import logging
+    import uuid
 
-    service = ScoringService(db)
-    count = 0
-    for p in predictions:
-        # Build PredictionSubmission payload
-        pred_payload = {
-            "team_id": p.team_id,
-            "match_id": p.match_id,
-            "submission_id": p.id,
-            "idempotency_key": p.id,
-            "match_prediction": {
-                "predicted_winner": p.predicted_winner.value if p.predicted_winner else "draw",
-                "predicted_scoreline": {
-                    "home_team_goals": p.predicted_home_goals or 0,
-                    "away_team_goals": p.predicted_away_goals or 0
-                },
-                "probabilities": {
-                    "home_win_probability": p.home_win_probability or 0.0,
-                    "draw_probability": p.draw_probability or 0.0,
-                    "away_win_probability": p.away_win_probability or 0.0
-                },
-                "clean_sheet_probability": {
-                    "home_team": p.home_clean_sheet_probability or 0.0,
-                    "away_team": p.away_clean_sheet_probability or 0.0
-                },
-                "first_goal_team": p.first_goal_team.value if p.first_goal_team else "none",
-                "both_teams_to_score_probability": p.both_teams_to_score_probability or 0.0,
-                "total_goals_prediction": p.total_goals_prediction or 0,
-                "goal_scorers": p.goal_scorers or {"home": [], "away": []}
+    logger = logging.getLogger(__name__)
+    match_uuid = uuid.UUID(match_id)
+
+    try:
+        logger.info("=== DIAGNOSTICS: calculate_all_scores_for_match START ===")
+        logger.info("Requested match_id: %s", match_id)
+        
+        from app.models.match import MatchModel
+        match_exists = db.query(MatchModel).filter(MatchModel.id == match_uuid).first() is not None
+        logger.info("Does match exist in matches table?: %s", "YES" if match_exists else "NO")
+
+        existing_count = db.query(ScoreModel).filter(ScoreModel.match_id == match_uuid).count()
+        logger.info("Number of existing score rows: %s", existing_count)
+
+        actual = db.query(ActualResultModel).filter(ActualResultModel.match_id == match_uuid).first()
+        logger.info("Number of actual results found: %s", 1 if actual else 0)
+        
+        if not actual:
+            logger.info("=== DIAGNOSTICS END: Missing Actual Result ===")
+            raise HTTPException(status_code=400, detail="Actual result not found for this match.")
+
+        predictions = db.query(PredictionModel).filter(PredictionModel.match_id == match_uuid).all()
+        logger.info("Number of predictions found: %s", len(predictions))
+        
+        if not predictions:
+            logger.info("=== DIAGNOSTICS END: No Predictions ===")
+            return {"status": "no_predictions", "calculated_count": 0}
+
+        # Pre-build actual result payload to avoid session expiration issues later
+        actual_payload = {
+            "match_id": actual.match_id,
+            "actual_winner": actual.actual_winner.value if actual.actual_winner else "draw",
+            "final_score": {
+                "home_team_goals": actual.actual_home_goals or 0,
+                "away_team_goals": actual.actual_away_goals or 0
             },
-            "player_predictions": [
+            "goal_scorers": actual.goal_scorers or {"home": [], "away": []},
+            "player_results": [
                 {
-                    "player_id": pp.player_id or f"pp-{pp.player_name}",
-                    "player_name": pp.player_name,
-                    "goal_probability": pp.goal_probability or 0.0,
-                    "predicted_goals": pp.predicted_goals or 0,
-                    "assist_probability": pp.assist_probability or 0.0
-                } for pp in p.player_predictions
+                    "player_id": pa.player_id,
+                    "player_name": pa.player_name,
+                    "actual_goals": pa.actual_goals or 0
+                } for pa in actual.player_actuals
             ]
         }
-        
-        # Check if score already exists
-        existing = db.query(ScoreModel).filter(ScoreModel.match_id == match_id, ScoreModel.team_id == p.team_id).first()
-        if existing:
-            # delete old score to recalculate
-            db.delete(existing)
-            db.commit()
-            
-        service.calculate_and_save_match_score(pred_payload, actual_payload)
-        count += 1
-        
-    # --- RELATIVE RANK MULTIPLIER ---
-    from app.models.enums import Grade
-    scores = db.query(ScoreModel).filter(ScoreModel.match_id == match_id).order_by(ScoreModel.base_score.desc()).all()
-    
-    current_rank = 1
-    for i, s in enumerate(scores):
-        if i > 0 and s.base_score == scores[i-1].base_score:
-            pass # keep current_rank
-        else:
-            current_rank = i + 1
-            
-        s.match_rank = current_rank
-        
-        if current_rank == 1:
-            s.grade = Grade.A
-            s.multiplier = 3
-        elif current_rank in [2, 3, 4]:
-            s.grade = Grade.B
-            s.multiplier = 2
-        else:
-            s.grade = Grade.C
-            s.multiplier = 1
-            
-        s.earned_points = s.base_score * s.multiplier
-        
-    db.commit()
-        
-    service.compute_and_save_leaderboard(None)
-    return {"status": "success", "calculated_count": count}
+        if not actual_payload["player_results"]:
+            actual_payload["player_results"] = [{"player_id": "NONE", "player_name": "No Scorers", "actual_goals": 0}]
+
+        # Pre-build prediction payloads
+        pred_payloads = []
+        for p in predictions:
+            pred_payloads.append({
+                "team_id": p.team_id,
+                "match_id": p.match_id,
+                "submission_id": p.id,
+                "idempotency_key": p.id,
+                "match_prediction": {
+                    "predicted_winner": p.predicted_winner.value if p.predicted_winner else "draw",
+                    "predicted_scoreline": {
+                        "home_team_goals": p.predicted_home_goals or 0,
+                        "away_team_goals": p.predicted_away_goals or 0
+                    },
+                    "probabilities": {
+                        "home_win_probability": p.home_win_probability or 0.0,
+                        "draw_probability": p.draw_probability or 0.0,
+                        "away_win_probability": p.away_win_probability or 0.0
+                    },
+                    "clean_sheet_probability": {
+                        "home_team": p.home_clean_sheet_probability or 0.0,
+                        "away_team": p.away_clean_sheet_probability or 0.0
+                    },
+                    "first_goal_team": p.first_goal_team.value if p.first_goal_team else "none",
+                    "both_teams_to_score": {
+                        "prediction": p.both_teams_to_score_prediction if p.both_teams_to_score_prediction is not None else False,
+                        "probability": p.both_teams_to_score_probability or 0.0
+                    },
+                    "total_goals_prediction": p.total_goals_prediction or 0,
+                    "goal_scorers": p.goal_scorers or {"home": [], "away": []}
+                },
+                "player_predictions": [
+                    {
+                        "player_id": pp.player_id or f"pp-{pp.player_name}",
+                        "player_name": pp.player_name,
+                        "goal_probability": pp.goal_probability or 0.0,
+                        "predicted_goals": pp.predicted_goals or 0,
+                        "assist_probability": pp.assist_probability or 0.0
+                    } for pp in p.player_predictions
+                ]
+            })
+
+        # Purge ALL existing scores for this match completely before recalculating
+        # Use synchronize_session='fetch' to properly sync the session identity map
+        delete_count = db.query(ScoreModel).filter(
+            ScoreModel.match_id == match_uuid
+        ).delete(synchronize_session='fetch')
+        logger.info("Number deleted: %s", delete_count)
+        db.commit()
+        # Expire all session objects so no stale references remain
+        db.expire_all()
+
+        service = ScoringService(db)
+        count = 0
+        for pred_payload in pred_payloads:
+            try:
+                service.calculate_and_save_match_score(pred_payload, actual_payload)
+                count += 1
+            except Exception as e:
+                logger.error(
+                    "Unexpected error calculating score for match_id=%s, "
+                    "team_id=%s, prediction_id=%s. "
+                    "Exception: %s - %s\n%s",
+                    match_id, pred_payload['team_id'], pred_payload['submission_id'],
+                    type(e).__name__, str(e), traceback.format_exc()
+                )
+                raise HTTPException(status_code=500, detail="An internal server error occurred while calculating the score for a prediction.")
+
+        # --- RELATIVE RANK MULTIPLIER ---
+        scores = db.query(ScoreModel).filter(
+            ScoreModel.match_id == match_uuid
+        ).order_by(ScoreModel.base_score.desc()).all()
+
+        logger.info(
+            "match_id=%s | scores after recalculation=%s", match_id, len(scores)
+        )
+
+        current_rank = 1
+        for i, s in enumerate(scores):
+            if i > 0 and s.base_score == scores[i-1].base_score:
+                pass
+            else:
+                current_rank = i + 1
+
+            s.match_rank = current_rank
+
+            if current_rank == 1:
+                s.grade = Grade.A
+                s.multiplier = 3
+            elif current_rank in [2, 3, 4]:
+                s.grade = Grade.B
+                s.multiplier = 2
+            else:
+                s.grade = Grade.C
+                s.multiplier = 1
+
+            s.earned_points = s.base_score * s.multiplier
+
+        db.commit()
+
+        logger.info(
+            "match_id=%s | before leaderboard recalculation", match_id
+        )
+        service.compute_and_save_leaderboard(None)
+        logger.info("Number inserted: %s", count)
+        logger.info("=== DIAGNOSTICS END: SUCCESS ===")
+        return {"status": "success", "calculated_count": count}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "=== DIAGNOSTICS: CRASH DETECTED ===\n"
+            "filename: %s\n"
+            "function: calculate_all_scores_for_match\n"
+            "line number: %s\n"
+            "exception type: %s\n"
+            "exception message: %s\n"
+            "complete traceback:\n%s",
+            __file__, e.__traceback__.tb_lineno if e.__traceback__ else "unknown",
+            type(e).__name__, str(e), traceback.format_exc()
+        )
+        db.rollback()
+        raise HTTPException(status_code=500, detail="An internal server error occurred while calculating scores.")
+
 @router.post("/reset-predictions")
 def reset_predictions(
     db: Session = Depends(get_db),

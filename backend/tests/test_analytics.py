@@ -20,7 +20,7 @@ class TestAnalyticsOverview:
         self, client, organizer_headers, db_session, team_a
     ):
         lb = LeaderboardModel(
-            team_id=str(team_a.id),
+            team_id=team_a.id,
             rank=1,
             phase1_score=50.0,
             technical_score=15.0,
@@ -60,7 +60,7 @@ class TestAnalyticsOverview:
         teams = db_session.query(TeamModel).all()
         for t in teams:
             lb = LeaderboardModel(
-                team_id=str(t.id),
+                team_id=t.id,
                 rank=1,
                 phase1_score=50.0,
                 technical_score=15.0,
@@ -163,7 +163,7 @@ class TestAnalyticsPresentation:
     def test_presentation_with_evaluations(
         self, client, organizer_headers, db_session, team_a
     ):
-        tid = str(team_a.id)
+        tid = team_a.id
         criteria = [
             {"name": "Problem Understanding", "max_score": 10},
             {"name": "Feature Engineering", "max_score": 15},
@@ -253,7 +253,7 @@ class TestAnalyticsTeam:
             db_session.add(s)
 
         lb = LeaderboardModel(
-            team_id=str(team_a.id), rank=1, phase1_score=55.0, technical_score=18.0,
+            team_id=team_a.id, rank=1, phase1_score=55.0, technical_score=18.0,
             presentation_score=16.0, final_score=89.0,
         )
         db_session.add(lb)
@@ -263,7 +263,7 @@ class TestAnalyticsTeam:
             {"judge_id": str(uuid.uuid4()), "scores": {"Q&A": 4.0}},
         ]
         ev = PresentationEvaluationModel(
-            team_id=str(team_a.id),
+            team_id=team_a.id,
             raw_total=4.0,
             grade=Grade.A,
             multiplier=3,

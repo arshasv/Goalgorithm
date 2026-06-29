@@ -163,8 +163,98 @@ def delete_match(
     match = db.query(MatchModel).filter(MatchModel.id == match_id).first()
     if not match:
         raise HTTPException(status_code=404, detail="Match not found")
-    db.delete(match)
-    db.commit()
+
+    from app.models.score import ScoreModel
+    from app.models.actual_result import ActualResultModel, PlayerActualModel
+    from app.models.prediction import PredictionModel, PlayerPredictionModel
+    from app.model_execution.models.model_upload import ModelUploadModel
+    from app.model_execution.models.model_execution import ModelExecutionModel
+    from app.services.scoring_service import ScoringService
+
+    logger.warning(f"Deleting match {match_id} (match_number={match.match_number})")
+
+    try:
+        # 1. Delete scores
+        n = db.query(ScoreModel).filter(ScoreModel.match_id == match_id).delete(synchronize_session='fetch')
+        if n:
+            logger.warning(f"  Deleted {n} score(s)")
+
+        # 2. Delete player actuals (children of actual_results)
+        actual_ids = [
+            r[0] for r in
+            db.query(ActualResultModel.id).filter(ActualResultModel.match_id == match_id).all()
+        ]
+        if actual_ids:
+            n = db.query(PlayerActualModel).filter(
+                PlayerActualModel.actual_result_id.in_(actual_ids)
+            ).delete(synchronize_session='fetch')
+            logger.warning(f"  Deleted {n} player actual(s)")
+
+        # 3. Delete player predictions & model executions tied to predictions
+        pred_ids = [
+            r[0] for r in
+            db.query(PredictionModel.id).filter(PredictionModel.match_id == match_id).all()
+        ]
+        if pred_ids:
+            n = db.query(PlayerPredictionModel).filter(
+                PlayerPredictionModel.prediction_id.in_(pred_ids)
+            ).delete(synchronize_session='fetch')
+            logger.warning(f"  Deleted {n} player prediction(s)")
+
+            n = db.query(ModelExecutionModel).filter(
+                ModelExecutionModel.prediction_id.in_(pred_ids)
+            ).delete(synchronize_session='fetch')
+            logger.warning(f"  Deleted {n} model execution(s) (by prediction_id)")
+
+        # 4. Delete model executions tied to model uploads & model uploads
+        upload_ids = [
+            r[0] for r in
+            db.query(ModelUploadModel.id).filter(ModelUploadModel.match_id == match_id).all()
+        ]
+        if upload_ids:
+            n = db.query(ModelExecutionModel).filter(
+                ModelExecutionModel.model_upload_id.in_(upload_ids)
+            ).delete(synchronize_session='fetch')
+            if n:
+                logger.warning(f"  Deleted {n} model execution(s) (by model_upload_id)")
+
+            n = db.query(ModelUploadModel).filter(
+                ModelUploadModel.match_id == match_id
+            ).delete(synchronize_session='fetch')
+            logger.warning(f"  Deleted {n} model upload(s)")
+
+        # 5. Delete actual results and predictions (parents of children above)
+        n = db.query(ActualResultModel).filter(
+            ActualResultModel.match_id == match_id
+        ).delete(synchronize_session='fetch')
+        if n:
+            logger.warning(f"  Deleted {n} actual result(s)")
+
+        n = db.query(PredictionModel).filter(
+            PredictionModel.match_id == match_id
+        ).delete(synchronize_session='fetch')
+        if n:
+            logger.warning(f"  Deleted {n} prediction(s)")
+
+        # 6. Delete the match itself
+        db.delete(match)
+        db.flush()
+        db.expire_all()
+        db.commit()
+        logger.warning(f"Match {match_id} deleted successfully")
+
+        try:
+            service = ScoringService(db)
+            service.compute_and_save_leaderboard(None)
+        except Exception as e:
+            logger.error(f"Failed to recalculate leaderboard after deleting match {match_id}: {e}")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to delete match {match_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An error occurred while deleting the match")
 
 
 # ── CSV upload (organizer only) ────────────────────────────────────────────

@@ -121,27 +121,55 @@ class MatchService:
         from app.models.prediction import PredictionModel, PlayerPredictionModel
         from app.models.score import ScoreModel
         from app.models.actual_result import ActualResultModel, PlayerActualModel
-        
-        # Cascade delete related data manually since relations are string-based
-        db.query(ScoreModel).filter(ScoreModel.match_id == str(match_id)).delete(synchronize_session=False)
-        
+        from app.model_execution.models.model_upload import ModelUploadModel
+        from app.model_execution.models.model_execution import ModelExecutionModel
+
+        sync = 'fetch'
+
+        # Cascade delete related data — match_id is UUID, columns are Uuid(as_uuid=True)
+        db.query(ScoreModel).filter(ScoreModel.match_id == match_id).delete(synchronize_session=sync)
+
+        # Model uploads and their execution children (delete BEFORE predictions/actuals)
+        uploads = db.query(ModelUploadModel.id).filter(ModelUploadModel.match_id == match_id).all()
+        if uploads:
+            upload_ids = [r[0] for r in uploads]
+            db.query(ModelExecutionModel).filter(
+                ModelExecutionModel.model_upload_id.in_(upload_ids)
+            ).delete(synchronize_session=sync)
+            db.query(ModelUploadModel).filter(
+                ModelUploadModel.match_id == match_id
+            ).delete(synchronize_session=sync)
+
         # Predictions and their children
-        preds = db.query(PredictionModel.id).filter(PredictionModel.match_id == str(match_id)).all()
+        preds = db.query(PredictionModel.id).filter(PredictionModel.match_id == match_id).all()
         if preds:
-            pred_ids = [p[0] for p in preds]
-            db.query(PlayerPredictionModel).filter(PlayerPredictionModel.prediction_id.in_(pred_ids)).delete(synchronize_session=False)
-            db.query(PredictionModel).filter(PredictionModel.id.in_(pred_ids)).delete(synchronize_session=False)
-            
+            pred_ids = [r[0] for r in preds]
+            db.query(ModelExecutionModel).filter(
+                ModelExecutionModel.prediction_id.in_(pred_ids)
+            ).delete(synchronize_session=sync)
+            db.query(PlayerPredictionModel).filter(
+                PlayerPredictionModel.prediction_id.in_(pred_ids)
+            ).delete(synchronize_session=sync)
+            db.query(PredictionModel).filter(
+                PredictionModel.id.in_(pred_ids)
+            ).delete(synchronize_session=sync)
+
         # Actual results and their children
-        results = db.query(ActualResultModel.id).filter(ActualResultModel.match_id == str(match_id)).all()
+        results = db.query(ActualResultModel.id).filter(ActualResultModel.match_id == match_id).all()
         if results:
             res_ids = [r[0] for r in results]
-            db.query(PlayerActualModel).filter(PlayerActualModel.actual_result_id.in_(res_ids)).delete(synchronize_session=False)
-            db.query(ActualResultModel).filter(ActualResultModel.id.in_(res_ids)).delete(synchronize_session=False)
-            
-        db.commit()
+            db.query(PlayerActualModel).filter(
+                PlayerActualModel.actual_result_id.in_(res_ids)
+            ).delete(synchronize_session=sync)
+            db.query(ActualResultModel).filter(
+                ActualResultModel.id.in_(res_ids)
+            ).delete(synchronize_session=sync)
 
-        self.match_repo.delete(match)
+        # Mark match for deletion
+        db.delete(match)
+        db.flush()
+        db.expire_all()
+        db.commit()
 
     def upload_match_csv(self, content: str) -> dict:
         reader = csv.DictReader(io.StringIO(content))

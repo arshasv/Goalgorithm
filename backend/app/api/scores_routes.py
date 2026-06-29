@@ -24,6 +24,7 @@ router = APIRouter(tags=["scores"])
 def _get_team_name_map(db: Session) -> dict[str, str]:
     return {str(t.id): t.name for t in db.query(TeamModel).all()}
 
+
 def _get_team_id_map(db: Session) -> dict[str, str]:
     return {str(t.id): t.team_id for t in db.query(TeamModel).all()}
 
@@ -47,20 +48,17 @@ def get_daily_scores(
 
     daily: dict[date, dict[str, dict]] = {}
     for s in scores:
-        match = matches.get(s.match_id)
+        match = matches.get(str(s.match_id))
         if not match:
             continue
-        # Restrict daily scores completely if Team Leader? Or allow viewing overall trend?
-        # Typically analytics is overall, but if we need to restrict, we do.
-        # But AnalyticsDashboard is organizer only anyway. Let's just return all for organizer and filter for TL.
-        if not is_organizer and s.team_id != user_team_id:
+        if not is_organizer and str(s.team_id) != user_team_id:
             continue
 
         d = match.scheduled_at.date()
         if d not in daily:
             daily[d] = {}
-        team_name = team_names.get(s.team_id, "Unknown Team")
-        team_code = team_codes.get(s.team_id, "")
+        team_name = team_names.get(str(s.team_id), "Unknown Team")
+        team_code = team_codes.get(str(s.team_id), "")
         if team_name not in daily[d]:
             daily[d][team_name] = {"total_score": 0, "team_code": team_code}
         daily[d][team_name]["total_score"] += s.base_score or 0
@@ -97,7 +95,7 @@ def get_match_breakdown(
     scores_by_match: dict[str, list[ScoreModel]] = {}
     all_scores = db.query(ScoreModel).all()
     for s in all_scores:
-        scores_by_match.setdefault(s.match_id, []).append(s)
+        scores_by_match.setdefault(str(s.match_id), []).append(s)
 
     predictions_by_key: dict[tuple[str, str], PredictionModel] = {}
     for p in db.query(PredictionModel).all():
@@ -128,8 +126,8 @@ def get_match_breakdown(
                 }
 
             teams.append({
-                "team_id": s.team_id,
-                "team_code": team_codes.get(s.team_id, ""),
+                "team_id": str(s.team_id),
+                "team_code": team_codes.get(str(s.team_id), ""),
                 "team_name": team_name,
                 "prediction": prediction_detail,
                 "score_breakdown": {
@@ -137,6 +135,10 @@ def get_match_breakdown(
                     "scoreline_points": s.scoreline_points,
                     "probability_points": s.probability_points,
                     "player_points": s.player_points,
+                    "total_goals_points": s.total_goals_points,
+                    "btts_points": s.btts_points,
+                    "first_team_to_score_points": s.first_team_to_score_points,
+                    "clean_sheet_points": s.clean_sheet_points,
                     "base_score": s.base_score,
                     "earned_points": s.earned_points,
                     "match_rank": s.match_rank,
@@ -192,9 +194,9 @@ def get_technical_evaluations(
 
     return [
         {
-            "team_id": e.team_id,
-            "team_code": team_codes.get(e.team_id, ""),
-            "team_name": team_names.get(e.team_id, "Unknown Team"),
+            "team_id": str(e.team_id),
+            "team_code": team_codes.get(str(e.team_id), ""),
+            "team_name": team_names.get(str(e.team_id), "Unknown Team"),
             "code_quality": e.code_quality,
             "backend_quality": e.backend_quality,
             "teamwork": e.teamwork,
@@ -225,9 +227,9 @@ def get_presentation_evaluations(
 
     return [
         {
-            "team_id": e.team_id,
-            "team_code": team_codes.get(e.team_id, ""),
-            "team_name": team_names.get(e.team_id, "Unknown Team"),
+            "team_id": str(e.team_id),
+            "team_code": team_codes.get(str(e.team_id), ""),
+            "team_name": team_names.get(str(e.team_id), "Unknown Team"),
             "ai_explanation_score": e.ai_explanation_score,
             "qa_score": e.qa_score,
             "delivery_score": e.delivery_score,

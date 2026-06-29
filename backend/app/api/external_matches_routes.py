@@ -137,7 +137,7 @@ async def sync_results(
         match_record = api_id_to_match[api_id]
         
         # Check if actual result already exists
-        existing_result = db.query(ActualResultModel).filter(ActualResultModel.match_id == str(match_record.id)).first()
+        existing_result = db.query(ActualResultModel).filter(ActualResultModel.match_id == match_record.id).first()
         if existing_result:
             continue
             

@@ -1,3 +1,4 @@
+import uuid
 from sqlalchemy.orm import Session
 
 from app.models.score import ScoreModel
@@ -33,6 +34,67 @@ class ScoringService:
         self.score_repo = ScoreRepository(db)
         self.cumulative_repo = CumulativePhaseScoreRepository(db)
 
+    def _resolve_team_uuid(self, team_id: str | uuid.UUID) -> uuid.UUID:
+        import uuid
+        if isinstance(team_id, uuid.UUID):
+            return team_id
+        # Try parsing as UUID
+        try:
+            return uuid.UUID(team_id)
+        except ValueError:
+            pass
+        
+        # If it's not a UUID, let's lookup by TeamModel
+        from app.models.team import TeamModel
+        clean_id = str(team_id).strip()
+        if clean_id.lower().startswith("team "):
+            clean_id = clean_id[5:].strip()
+            
+        # Try to find by TeamModel.team_id (e.g., 'A', 'B')
+        team = self.db.query(TeamModel).filter(TeamModel.team_id == clean_id).first()
+        if team:
+            return team.id
+            
+        # Try to find by name or normalized name
+        from app.utils.team_name_utils import normalize_team_name
+        norm_name = normalize_team_name(str(team_id))
+        team = self.db.query(TeamModel).filter(TeamModel.name_normalized == norm_name).first()
+        if team:
+            return team.id
+            
+        # Try fuzzy match by name
+        team = self.db.query(TeamModel).filter(TeamModel.name.ilike(f"%{clean_id}%")).first()
+        if team:
+            return team.id
+            
+        # Fallback to converting as UUID (it will fail/raise)
+        return uuid.UUID(str(team_id))
+
+    def _resolve_match_uuid(self, match_id: str | uuid.UUID) -> uuid.UUID:
+        import uuid
+        if isinstance(match_id, uuid.UUID):
+            return match_id
+        try:
+            return uuid.UUID(match_id)
+        except ValueError:
+            pass
+            
+        # Look up match by match_number or name
+        from app.models.match import MatchModel
+        clean_id = str(match_id).strip()
+        
+        # If it's like "M1" or "M01", extract number
+        import re
+        m = re.match(r'^M?(\d+)$', clean_id, re.IGNORECASE)
+        if m:
+            num = int(m.group(1))
+            match_obj = self.db.query(MatchModel).filter(MatchModel.match_number == num).first()
+            if match_obj:
+                return match_obj.id
+                
+        # Try querying by ID string directly or fallback
+        return uuid.UUID(str(match_id))
+
     def calculate_and_save_match_score(
         self, prediction: dict, actual_result: dict, actual_probabilities: dict | None = None
     ) -> dict:
@@ -40,24 +102,37 @@ class ScoringService:
         result = calculate_base_score(prediction, actual_result, actual_probabilities, config_dict)
 
         import uuid
-        score = ScoreModel(
-            team_id=uuid.UUID(prediction["team_id"]) if isinstance(prediction["team_id"], str) else prediction["team_id"],
-            match_id=uuid.UUID(prediction["match_id"]) if isinstance(prediction["match_id"], str) else prediction["match_id"],
-            winner_points=result["breakdown"].get("winner_score"),
-            scoreline_points=result["breakdown"].get("scoreline_score"),
-            probability_points=result["breakdown"].get("probability_score"),
-            player_points=result["breakdown"].get("player_score"),
-            total_goals_points=result["breakdown"].get("total_goals_score"),
-            btts_points=result["breakdown"].get("btts_score"),
-            first_team_to_score_points=result["breakdown"].get("first_team_to_score_score"),
-            clean_sheet_points=result["breakdown"].get("clean_sheet_score"),
+        from sqlalchemy.dialects.postgresql import insert
 
+        team_uuid = self._resolve_team_uuid(prediction["team_id"])
+        match_uuid = self._resolve_match_uuid(prediction["match_id"])
+
+        stmt = insert(ScoreModel).values(
+            team_id=team_uuid,
+            match_id=match_uuid,
+            winner_points=result["breakdown"].get("winner_score", 0.0),
+            scoreline_points=result["breakdown"].get("scoreline_score", 0.0),
+            probability_points=result["breakdown"].get("probability_score", 0.0),
+            player_points=result["breakdown"].get("player_score", 0.0),
+            total_goals_points=result["breakdown"].get("total_goals_score", 0.0),
+            btts_points=result["breakdown"].get("btts_score", 0.0),
+            first_team_to_score_points=result["breakdown"].get("first_team_to_score_score", 0.0),
+            clean_sheet_points=result["breakdown"].get("clean_sheet_score", 0.0),
             base_score=result["base_score"],
             config_id=config_id,
         )
-        self.db.add(score)
+
+        update_dict = {
+            c.name: c for c in stmt.excluded if c.name not in ["id", "team_id", "match_id", "computed_at"]
+        }
+
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["team_id", "match_id"],
+            set_=update_dict
+        ).returning(ScoreModel.id)
+
+        self.db.execute(stmt)
         self.db.commit()
-        self.db.refresh(score)
 
         return result
 
@@ -67,7 +142,7 @@ class ScoringService:
 
         from app.models.evaluation import TechnicalEvaluationModel
 
-        team_id = evaluation["team_id"]
+        team_id = self._resolve_team_uuid(evaluation["team_id"])
         existing = self.db.query(TechnicalEvaluationModel).filter(
             TechnicalEvaluationModel.team_id == team_id
         ).first()
@@ -104,7 +179,10 @@ class ScoringService:
         from app.models.evaluation import PresentationEvaluationModel
 
         for ev in result:
-            team_id = ev["team_id"]
+            try:
+                team_id = self._resolve_team_uuid(ev["team_id"])
+            except ValueError:
+                continue
             query = self.db.query(PresentationEvaluationModel).filter(
                 PresentationEvaluationModel.team_id == team_id
             )
@@ -151,6 +229,11 @@ class ScoringService:
     def compute_and_save_leaderboard(
         self, scores_input: list[dict] = None
     ) -> list[dict]:
+        import uuid
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info("=== compute_and_save_leaderboard START ===")
+
         from app.models.team import TeamModel
         from app.models.evaluation import TechnicalEvaluationModel, PresentationEvaluationModel
         
@@ -158,6 +241,9 @@ class ScoringService:
         all_scores = self.db.query(ScoreModel).all()
         tech_evals = self.db.query(TechnicalEvaluationModel).all()
         pres_evals = self.db.query(PresentationEvaluationModel).all()
+
+        logger.info("Teams=%s, total scores=%s, tech evals=%s, pres evals=%s",
+                     len(teams), len(all_scores), len(tech_evals), len(pres_evals))
         
         config_dict, _ = _load_active_config(self.db)
         phase1_max = config_dict.get("phase1_max_marks", 60) if config_dict else 60
@@ -170,6 +256,7 @@ class ScoringService:
                     team_earned_points[tid] += s.earned_points
                 
         max_earned_points = max(team_earned_points.values()) if team_earned_points else 0.0
+        logger.info("Max earned points across all teams: %s", max_earned_points)
         
         tech_map = {str(e.team_id): e.total_score for e in tech_evals}
         # Aggregate presentation rounds (multiple rounds per team)
@@ -216,11 +303,14 @@ class ScoringService:
         ranked = calculate_leaderboard(computed_input)
 
         from app.models.leaderboard import LeaderboardModel
+        from app.models.score import CumulativePhaseScoreModel
 
         for entry in ranked:
-            team_id = entry["team_id"]
+            team_id_str = entry["team_id"]
+            team_id_uuid = uuid.UUID(team_id_str)
+            # Query with explicit UUID object to avoid type coercion issues
             existing = self.db.query(LeaderboardModel).filter(
-                LeaderboardModel.team_id == team_id
+                LeaderboardModel.team_id == team_id_uuid
             ).first()
 
             scores = entry.get("scores", {})
@@ -234,7 +324,7 @@ class ScoringService:
                 existing.is_final = True
             else:
                 leaderboard_entry = LeaderboardModel(
-                    team_id=team_id,
+                    team_id=team_id_uuid,
                     rank=entry["rank"],
                     phase1_score=scores.get("ai_accuracy"),
                     technical_score=scores.get("technical"),
@@ -243,6 +333,31 @@ class ScoringService:
                     is_final=True,
                 )
                 self.db.add(leaderboard_entry)
+                
+            # Update cumulative phase scores to match leaderboard recalculations
+            cum_existing = self.db.query(CumulativePhaseScoreModel).filter(
+                CumulativePhaseScoreModel.team_id == team_id_uuid
+            ).first()
+            
+            matches_played = len([s for s in all_scores if str(s.team_id) == team_id_str])
+            if cum_existing:
+                cum_existing.phase1_score = scores.get("ai_accuracy")
+                cum_existing.technical_score = scores.get("technical")
+                cum_existing.presentation_score = scores.get("presentation")
+                cum_existing.total_earned_points = team_earned_points.get(team_id_str, 0.0)
+                cum_existing.matches_played = matches_played
+            else:
+                cum_entry = CumulativePhaseScoreModel(
+                    team_id=team_id_uuid,
+                    phase1_score=scores.get("ai_accuracy"),
+                    technical_score=scores.get("technical"),
+                    presentation_score=scores.get("presentation"),
+                    total_earned_points=team_earned_points.get(team_id_str, 0.0),
+                    matches_played=matches_played
+                )
+                self.db.add(cum_entry)
+                
         self.db.commit()
 
+        logger.info("=== compute_and_save_leaderboard END ===")
         return ranked

@@ -30,14 +30,14 @@ class PredictionModel(Base):
 
     # FIX:
     # Database columns are VARCHAR, not UUID
-    team_id: Mapped[str] = mapped_column(
-        String,
+    team_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
         ForeignKey("teams.id", ondelete="RESTRICT"),
         nullable=False
     )
 
-    match_id: Mapped[str] = mapped_column(
-        String,
+    match_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
         ForeignKey("matches.id", ondelete="RESTRICT"),
         nullable=False
     )

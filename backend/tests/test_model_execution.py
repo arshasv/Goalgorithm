@@ -37,7 +37,7 @@ import pickle
 import time
 
 class DummyModelSuccess:
-    def predict(self):
+    def predict(self, model_input=None):
         return {
             "predicted_winner": "home",
             "score": {"teamA": 2, "teamB": 1},
@@ -45,7 +45,7 @@ class DummyModelSuccess:
         }
 
 class DummyModelFailure:
-    def predict(self):
+    def predict(self, model_input=None):
         raise ValueError("Simulated crash")
 
 def test_execute_model_success(client, db_session, organizer_headers, sample_match, team_a):
@@ -77,7 +77,7 @@ def test_execute_model_success(client, db_session, organizer_headers, sample_mat
         headers=organizer_headers
     )
     status_data = status_resp.json()
-    assert status_data["status"] == "SUCCESS"
+    assert status_data["status"] == "SUCCESS", f"Execution failed: {status_data}"
     assert status_data["prediction_id"] is not None
 
 def test_execute_model_failure(client, db_session, organizer_headers, sample_match, team_a):
