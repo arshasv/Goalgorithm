@@ -6,7 +6,7 @@ pipeline {
 
         APP_NAME="goalgorithm"
 
-        REGISTRY="192.168.21.116:8081"
+        REGISTRY="192.168.21.116:8083"
 
         IMAGE="${REGISTRY}/${APP_NAME}"
 
