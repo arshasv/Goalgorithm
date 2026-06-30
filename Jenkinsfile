@@ -6,7 +6,7 @@ pipeline {
 
         APP_NAME="goalgorithm"
 
-        IMAGE_NAME="nexus.company.com:8082/goalgorithm"
+        IMAGE_NAME="192.168.21.116:8081/goalgorithm"
 
         TAG="${BUILD_NUMBER}"
 
@@ -46,7 +46,7 @@ pipeline {
 
                     sh """
 
-                    docker login nexus.company.com:8082 \
+                    docker login 192.168.21.116:8081 \
                     -u $USER \
                     -p $PASS
 
