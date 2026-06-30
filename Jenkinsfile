@@ -6,20 +6,17 @@ pipeline {
 
         APP_NAME="goalgorithm"
 
-        REGISTRY="192.168.21.116:8083"
-
-        IMAGE="${REGISTRY}/${APP_NAME}"
+        IMAGE_NAME="nexus.company.com:8082/goalgorithm"
 
         TAG="${BUILD_NUMBER}"
 
-        NEXUS_CREDS="nexus-creds"
+        NEXUS_CREDENTIALS="nexus-creds"
 
         OKD_PROJECT="goalgorithm"
 
         OKD_TOKEN=credentials('okd-token')
 
-        OKD_API="https://api.lab.okd.local:6443"
-
+        OKD_SERVER="https://api.lab.okd.local:6443"
     }
 
     stages {
@@ -30,31 +27,30 @@ pipeline {
             }
         }
 
-        stage('Build Image') {
+        stage('Build Docker Image') {
             steps {
+
                 sh """
-                docker build -t ${IMAGE}:${TAG} .
+                docker build -t ${IMAGE_NAME}:${TAG} .
                 """
             }
         }
 
         stage('Login Nexus') {
+
             steps {
 
-                withCredentials([
-                    usernamePassword(
-                        credentialsId:'nexus-creds',
-                        usernameVariable:'USERNAME',
-                        passwordVariable:'PASSWORD'
-                    )
-                ]) {
+                withCredentials([usernamePassword(credentialsId: "${NEXUS_CREDENTIALS}",
+                        usernameVariable: 'USER',
+                        passwordVariable: 'PASS')]) {
 
                     sh """
-                    docker login ${REGISTRY} \
-                    -u $USERNAME \
-                    -p $PASSWORD
-                    """
 
+                    docker login nexus.company.com:8082 \
+                    -u $USER \
+                    -p $PASS
+
+                    """
                 }
 
             }
@@ -65,47 +61,43 @@ pipeline {
             steps {
 
                 sh """
-                docker push ${IMAGE}:${TAG}
-                docker tag ${IMAGE}:${TAG} ${IMAGE}:latest
-                docker push ${IMAGE}:latest
+
+                docker push ${IMAGE_NAME}:${TAG}
+
+                docker tag ${IMAGE_NAME}:${TAG} ${IMAGE_NAME}:latest
+
+                docker push ${IMAGE_NAME}:latest
+
                 """
 
             }
 
         }
 
-        stage('Login OKD') {
+        stage('Deploy OKD') {
 
             steps {
 
                 sh """
-                oc login ${OKD_API} \
-                --token=$OKD_TOKEN \
+
+                oc login ${OKD_SERVER} \
+                --token=${OKD_TOKEN} \
                 --insecure-skip-tls-verify=true
 
                 oc project ${OKD_PROJECT}
-                """
 
-            }
-
-        }
-
-        stage('Deploy') {
-
-            steps {
-
-                sh """
                 oc set image deployment/goalgorithm \
-                goalgorithm=${IMAGE}:${TAG}
+                goalgorithm=${IMAGE_NAME}:${TAG}
 
                 oc rollout restart deployment/goalgorithm
+
                 """
 
             }
 
         }
 
-        stage('Verify') {
+        stage('Verify Rollout') {
 
             steps {
 
@@ -114,10 +106,6 @@ pipeline {
                 oc rollout status deployment/goalgorithm
 
                 oc get pods
-
-                oc get svc
-
-                oc get routes
 
                 """
 
