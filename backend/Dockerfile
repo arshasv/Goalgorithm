@@ -6,17 +6,6 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends libgomp1 && \
     rm -rf /var/lib/apt/lists/*
 
-<<<<<<< HEAD:Dockerfile
-COPY backend/requirements.txt .
-
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY backend/ .
-
-EXPOSE 8000
-
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
-=======
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
@@ -58,4 +47,3 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
 
 # Launch the FastAPI app with Uvicorn
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
->>>>>>> 88db1a0 (refactor: reorganize project structure by moving Dockerfiles to respective directories and updating build configurations):backend/Dockerfile
