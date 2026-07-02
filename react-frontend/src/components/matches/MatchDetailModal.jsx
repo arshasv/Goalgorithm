@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { MatchService } from '../../api/matchService';
 import { PredictionService } from '../../api/predictionService';
 import { TeamService } from '../../api/teamService';
+import { ScoresService } from '../../api/scoresService';
+import { ScoringConfigService } from '../../api/scoringConfigService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import SubmitPredictionModal from '../predictions/SubmitPredictionModal';
@@ -18,6 +20,8 @@ const MatchDetailModal = ({ match, isOpen, onClose, onMatchUpdated, onEnterResul
   const { isOrganizer, isTeamLeader } = useAuth();
   const [predictions, setPredictions] = useState([]);
   const [teams, setTeams] = useState([]);
+  const [matchScores, setMatchScores] = useState(null);
+  const [config, setConfig] = useState(null);
   const [jsonView, setJsonView] = useState(null);
   
   const [showSubmitModal, setShowSubmitModal] = useState(false);
@@ -30,6 +34,13 @@ const MatchDetailModal = ({ match, isOpen, onClose, onMatchUpdated, onEnterResul
       }).catch(() => {});
       TeamService.listTeams().then(res => {
         setTeams(res);
+      }).catch(() => {});
+      ScoresService.getMatchBreakdown().then(res => {
+        const found = res.find(m => m.match_id === match.id);
+        if (found) setMatchScores(found);
+      }).catch(() => {});
+      ScoringConfigService.getActiveConfig().then(res => {
+        setConfig(res);
       }).catch(() => {});
     }
   }, [isOpen, match]);
@@ -225,6 +236,118 @@ const MatchDetailModal = ({ match, isOpen, onClose, onMatchUpdated, onEnterResul
               </div>
             )}
           </div>
+
+          {matchScores && matchScores.teams && matchScores.teams.length > 0 && (
+            <>
+              <h4 style={{fontFamily: 'var(--font-display)', fontSize: 'var(--text-base)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 'var(--space-md)', marginTop: 'var(--space-lg)'}}>Detailed Score Calculation</h4>
+              <div style={{display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)', marginBottom: 'var(--space-xl)'}}>
+                {matchScores.teams.map((t, i) => {
+                  const br = t.score_breakdown || {};
+                  const pred = t.prediction || {};
+                  const act = matchScores.actual_result || {};
+                  return (
+                    <div key={t.team_id} className="card" style={{padding: 'var(--space-md)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)'}}>
+                      <div style={{display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', marginBottom: 'var(--space-md)'}}>
+                        {teamBadge(t.team_name || t.team_code, 28)}
+                        <strong style={{fontSize: 'var(--text-base)'}}>{t.team_code ? `${t.team_code} – ${t.team_name}` : t.team_name}</strong>
+                      </div>
+                      <div className="table-wrapper">
+                        <table style={{width: '100%', fontSize: 'var(--text-xs)'}}>
+                          <thead>
+                            <tr>
+                              <th style={{textAlign: 'left'}}>Category</th>
+                              <th style={{textAlign: 'center'}}>Predicted</th>
+                              <th style={{textAlign: 'center'}}>Actual</th>
+                              <th style={{textAlign: 'center'}}>Points</th>
+                              <th style={{textAlign: 'center'}}>Max</th>
+                              <th style={{textAlign: 'left'}}>Explanation</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td>Winner</td>
+                              <td style={{textAlign: 'center', textTransform: 'capitalize'}}>{pred.predicted_winner || '—'}</td>
+                              <td style={{textAlign: 'center', textTransform: 'capitalize'}}>{act.actual_winner || '—'}</td>
+                              <td style={{textAlign: 'center'}}><strong>{br.winner_points ?? 0}</strong></td>
+                              <td style={{textAlign: 'center'}}>{config?.winner_points_correct || 2.5}</td>
+                              <td style={{color: 'var(--color-text-secondary)'}}>Predicted winner vs actual match result.</td>
+                            </tr>
+                            <tr>
+                              <td>Scoreline</td>
+                              <td style={{textAlign: 'center'}}>{pred.predicted_home_goals ?? '?'} - {pred.predicted_away_goals ?? '?'}</td>
+                              <td style={{textAlign: 'center'}}>{act.actual_home_goals ?? '?'} - {act.actual_away_goals ?? '?'}</td>
+                              <td style={{textAlign: 'center'}}><strong>{br.scoreline_points ?? 0}</strong></td>
+                              <td style={{textAlign: 'center'}}>{config?.scoreline_points_exact || 7.5}</td>
+                              <td style={{color: 'var(--color-text-secondary)'}}>Exact match, margin, or one team correct.</td>
+                            </tr>
+                            <tr>
+                              <td>Probability</td>
+                              <td style={{textAlign: 'center'}}>—</td>
+                              <td style={{textAlign: 'center'}}>—</td>
+                              <td style={{textAlign: 'center'}}><strong>{br.probability_points ?? 0}</strong></td>
+                              <td style={{textAlign: 'center'}}>{config?.probability_points_pass || 5.0}</td>
+                              <td style={{color: 'var(--color-text-secondary)'}}>Confidence matrix threshold scoring.</td>
+                            </tr>
+                            <tr>
+                              <td>Player</td>
+                              <td style={{textAlign: 'center'}}>—</td>
+                              <td style={{textAlign: 'center'}}>—</td>
+                              <td style={{textAlign: 'center'}}><strong>{br.player_points ?? 0}</strong></td>
+                              <td style={{textAlign: 'center'}}>{config?.player_points_exact || 2.5}</td>
+                              <td style={{color: 'var(--color-text-secondary)'}}>Goal scorer prediction accuracy.</td>
+                            </tr>
+                            <tr>
+                              <td>Total Goals</td>
+                              <td style={{textAlign: 'center'}}>—</td>
+                              <td style={{textAlign: 'center'}}>—</td>
+                              <td style={{textAlign: 'center'}}><strong>{br.total_goals_points ?? 0}</strong></td>
+                              <td style={{textAlign: 'center'}}>{config?.total_goals_points_exact ?? 0.0}</td>
+                              <td style={{color: 'var(--color-text-secondary)'}}>Not evaluated in current matrix.</td>
+                            </tr>
+                            <tr>
+                              <td>BTTS</td>
+                              <td style={{textAlign: 'center'}}>—</td>
+                              <td style={{textAlign: 'center'}}>—</td>
+                              <td style={{textAlign: 'center'}}><strong>{br.btts_points ?? 0}</strong></td>
+                              <td style={{textAlign: 'center'}}>{config?.btts_points_correct || 2.5}</td>
+                              <td style={{color: 'var(--color-text-secondary)'}}>Both Teams To Score correctly predicted.</td>
+                            </tr>
+                            <tr>
+                              <td>First Team</td>
+                              <td style={{textAlign: 'center'}}>—</td>
+                              <td style={{textAlign: 'center'}}>—</td>
+                              <td style={{textAlign: 'center'}}><strong>{br.first_team_to_score_points ?? 0}</strong></td>
+                              <td style={{textAlign: 'center'}}>{config?.first_team_to_score_points_correct || 2.5}</td>
+                              <td style={{color: 'var(--color-text-secondary)'}}>First team to score correctly predicted.</td>
+                            </tr>
+                            <tr>
+                              <td>Clean Sheet</td>
+                              <td style={{textAlign: 'center'}}>—</td>
+                              <td style={{textAlign: 'center'}}>—</td>
+                              <td style={{textAlign: 'center'}}><strong>{br.clean_sheet_points ?? 0}</strong></td>
+                              <td style={{textAlign: 'center'}}>{config?.clean_sheet_points_correct || 2.5}</td>
+                              <td style={{color: 'var(--color-text-secondary)'}}>Clean sheet properly predicted.</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                      
+                      <div className="score-total-row" style={{display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)', marginTop: 'var(--space-md)'}}>
+                        <div style={{flex: '1 1 45%'}}>
+                          <div className="base-score-label" style={{fontSize: 'var(--text-xs)'}}>Base Score</div>
+                          <div className="base-score-value" style={{fontSize: 'var(--text-xl)'}}>{br.base_score}<span style={{color:'var(--color-text-secondary)',fontSize:'var(--text-sm)'}}>/{config?.max_base_score?.toFixed(1) || '25.0'}</span></div>
+                        </div>
+                        <div style={{flex: '1 1 45%', textAlign:'right'}}>
+                          <div style={{fontSize:'var(--text-xs)',color:'var(--color-text-secondary)',textTransform:'uppercase',letterSpacing:'0.04em'}}>Earned Points</div>
+                          <div className="earned-score score-digit" style={{fontSize: 'var(--text-xl)'}}>{br.earned_points} pts</div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
 
           <div style={{display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)'}}>
             {isOrganizer && (

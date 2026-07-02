@@ -119,43 +119,54 @@ class MatchService:
 
         db = self.match_repo.db
         from app.models.prediction import PredictionModel, PlayerPredictionModel
-        from app.models.score import ScoreModel
+        from app.models.score import ScoreModel, CumulativePhaseScoreModel
         from app.models.actual_result import ActualResultModel, PlayerActualModel
         from app.model_execution.models.model_upload import ModelUploadModel
         from app.model_execution.models.model_execution import ModelExecutionModel
+        from app.models.batch_execution import BatchExecutionJobModel
+        from app.models.leaderboard import LeaderboardModel
 
         sync = 'fetch'
 
-        # Cascade delete related data — match_id is UUID, columns are Uuid(as_uuid=True)
-        db.query(ScoreModel).filter(ScoreModel.match_id == match_id).delete(synchronize_session=sync)
-
-        # Model uploads and their execution children (delete BEFORE predictions/actuals)
+        # Phase 1: Find every model_upload belonging to that match
         uploads = db.query(ModelUploadModel.id).filter(ModelUploadModel.match_id == match_id).all()
-        if uploads:
-            upload_ids = [r[0] for r in uploads]
+        upload_ids = [r[0] for r in uploads]
+
+        # Phase 2: Delete every dependent batch execution job first
+        if upload_ids:
+            db.query(BatchExecutionJobModel).filter(
+                BatchExecutionJobModel.model_upload_id.in_(upload_ids)
+            ).delete(synchronize_session=sync)
+            
+        # Also clean up any other batch execution jobs directly linked to the match
+        db.query(BatchExecutionJobModel).filter(
+            BatchExecutionJobModel.match_id == match_id
+        ).delete(synchronize_session=sync)
+
+        # Phase 3: Delete every remaining dependent record for the match in the correct order
+
+        # Model Executions associated with uploads
+        if upload_ids:
             db.query(ModelExecutionModel).filter(
                 ModelExecutionModel.model_upload_id.in_(upload_ids)
             ).delete(synchronize_session=sync)
-            db.query(ModelUploadModel).filter(
-                ModelUploadModel.match_id == match_id
-            ).delete(synchronize_session=sync)
 
         # Predictions and their children
-        preds = db.query(PredictionModel.id).filter(PredictionModel.match_id == match_id).all()
+        preds = db.query(PredictionModel.id).filter(PredictionModel.match_id == str(match_id)).all()
         if preds:
             pred_ids = [r[0] for r in preds]
-            db.query(ModelExecutionModel).filter(
-                ModelExecutionModel.prediction_id.in_(pred_ids)
-            ).delete(synchronize_session=sync)
             db.query(PlayerPredictionModel).filter(
                 PlayerPredictionModel.prediction_id.in_(pred_ids)
+            ).delete(synchronize_session=sync)
+            db.query(ModelExecutionModel).filter(
+                ModelExecutionModel.prediction_id.in_(pred_ids)
             ).delete(synchronize_session=sync)
             db.query(PredictionModel).filter(
                 PredictionModel.id.in_(pred_ids)
             ).delete(synchronize_session=sync)
 
         # Actual results and their children
-        results = db.query(ActualResultModel.id).filter(ActualResultModel.match_id == match_id).all()
+        results = db.query(ActualResultModel.id).filter(ActualResultModel.match_id == str(match_id)).all()
         if results:
             res_ids = [r[0] for r in results]
             db.query(PlayerActualModel).filter(
@@ -165,7 +176,20 @@ class MatchService:
                 ActualResultModel.id.in_(res_ids)
             ).delete(synchronize_session=sync)
 
-        # Mark match for deletion
+        # Scores
+        db.query(ScoreModel).filter(ScoreModel.match_id == str(match_id)).delete(synchronize_session=sync)
+
+        # Leaderboard and cumulative phase scores (must clear out since match data is invalid)
+        db.query(LeaderboardModel).delete(synchronize_session=sync)
+        db.query(CumulativePhaseScoreModel).delete(synchronize_session=sync)
+
+        # Finally, delete model_uploads now that children are gone
+        if upload_ids:
+            db.query(ModelUploadModel).filter(
+                ModelUploadModel.id.in_(upload_ids)
+            ).delete(synchronize_session=sync)
+
+        # Phase 4: Delete the match itself
         db.delete(match)
         db.flush()
         db.expire_all()
@@ -242,14 +266,14 @@ class MatchService:
         try:
             return await service.fetch_fixtures_by_date(target_date)
         except FootballAPIError as e:
-            raise HTTPException(status_code=502, detail=str(e))
+            raise HTTPException(status_code=400, detail=str(e))
 
     async def import_fixtures(self, target_date: date) -> dict:
         service = FootballAPIService()
         try:
             fixtures = await service.fetch_fixtures_by_date(target_date)
         except FootballAPIError as e:
-            raise HTTPException(status_code=502, detail=str(e))
+            raise HTTPException(status_code=400, detail=str(e))
 
         created_count = 0
         updated_count = 0
@@ -310,7 +334,7 @@ class MatchService:
         try:
             results = await service.fetch_fixtures_by_ids(list(api_id_to_match.keys()))
         except FootballAPIError as e:
-            raise HTTPException(status_code=502, detail=str(e))
+            raise HTTPException(status_code=400, detail=str(e))
 
         completed_matches = 0
         skipped_matches = 0

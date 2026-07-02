@@ -1,9 +1,3 @@
-SCORELINE_POINTS_EXACT = 10.0
-SCORELINE_POINTS_MARGIN = 5.0
-SCORELINE_POINTS_PARTIAL = 2.5
-SCORELINE_POINTS_INCORRECT = 0.0
-
-
 def calculate_scoreline_score(
     prediction: dict,
     actual_result: dict,
@@ -17,28 +11,25 @@ def calculate_scoreline_score(
     actual_home = actual_scoreline["home_team_goals"]
     actual_away = actual_scoreline["away_team_goals"]
 
-    points_exact = config.get("scoreline_points_exact", SCORELINE_POINTS_EXACT) if config else SCORELINE_POINTS_EXACT
-    points_margin = config.get("scoreline_points_margin", SCORELINE_POINTS_MARGIN) if config else SCORELINE_POINTS_MARGIN
-    points_partial = config.get("scoreline_points_partial", SCORELINE_POINTS_PARTIAL) if config else SCORELINE_POINTS_PARTIAL
-    points_incorrect = config.get("scoreline_points_incorrect", SCORELINE_POINTS_INCORRECT) if config else SCORELINE_POINTS_INCORRECT
-
-    # Priority 1: EXACT SCORE
     if (pred_home, pred_away) == (actual_home, actual_away):
-        return float(points_exact)
+        return float(config.get("scoreline_points_exact", 7.5)) if config else 7.5
+
+    one_team_correct = (pred_home == actual_home) or (pred_away == actual_away)
+    if one_team_correct:
+        # Note: The system doesn't have a distinct "one_team_correct" field in the matrix
+        # Let's use a generic middle fallback or explicit logic if defined. We'll fallback to 4.0 if no config.
+        # But wait, matrix has "Margin Only". 
+        pass
 
     pred_margin = pred_home - pred_away
     actual_margin = actual_home - actual_away
-
-    # Priority 2: Correct goal difference
+    
     if pred_margin == actual_margin:
-        return float(points_margin)
+        return float(config.get("scoreline_points_margin", 3.0)) if config else 3.0
+        
+    if one_team_correct:
+        # Fallback for one team correct if they missed the margin
+        return float(config.get("scoreline_points_one_team", 4.0)) if config else 4.0
 
-    # Priority 3: Individual team goal accuracy
-    score = 0.0
-    if pred_home == actual_home:
-        score += float(points_partial)
-    if pred_away == actual_away:
-        score += float(points_partial)
-
-    return score if score > 0 else float(points_incorrect)
+    return float(config.get("scoreline_points_incorrect", 0.0)) if config else 0.0
 

@@ -18,8 +18,8 @@ class PredictionRepository(BaseRepository[PredictionModel]):
         team_id: str | uuid.UUID,
         match_id: str | uuid.UUID
     ) -> PredictionModel | None:
-        t_id = uuid.UUID(team_id) if isinstance(team_id, str) else team_id
-        m_id = uuid.UUID(match_id) if isinstance(match_id, str) else match_id
+        t_id = str(team_id)
+        m_id = str(match_id)
         res = self.db.execute(
             select(PredictionModel).where(
                 PredictionModel.team_id == t_id,
@@ -32,7 +32,7 @@ class PredictionRepository(BaseRepository[PredictionModel]):
         self,
         match_id: str | uuid.UUID
     ) -> list[PredictionModel]:
-        m_id = uuid.UUID(match_id) if isinstance(match_id, str) else match_id
+        m_id = str(match_id)
         return list(
             self.db.execute(
                 select(PredictionModel).where(
@@ -47,7 +47,7 @@ class PredictionRepository(BaseRepository[PredictionModel]):
         self,
         team_id: str | uuid.UUID
     ) -> list[PredictionModel]:
-        t_id = uuid.UUID(team_id) if isinstance(team_id, str) else team_id
+        t_id = str(team_id)
         return list(
             self.db.execute(
                 select(PredictionModel).where(
@@ -57,7 +57,6 @@ class PredictionRepository(BaseRepository[PredictionModel]):
             .scalars()
             .all()
         )
-
 
 
     def get_by_idempotency_key(

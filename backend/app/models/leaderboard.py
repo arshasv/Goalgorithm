@@ -14,8 +14,8 @@ class LeaderboardModel(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    team_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("teams.id", ondelete="RESTRICT"), unique=True, nullable=False
+    team_id: Mapped[str] = mapped_column(
+        String(255), unique=True, nullable=False
     )
     rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
     phase1_score: Mapped[float | None] = mapped_column(Float, nullable=True)

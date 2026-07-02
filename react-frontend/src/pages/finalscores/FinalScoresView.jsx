@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { ScoresService } from '../../api/scoresService';
 import { LeaderboardService } from '../../api/leaderboardService';
 import { TeamService } from '../../api/teamService';
+import { ScoringConfigService } from '../../api/scoringConfigService';
 
 const formatTeamDisplay = (e) => {
   const code = e.team_code || e.code || '';
@@ -136,6 +137,7 @@ const FinalScoresView = () => {
   const [leaderboard, setLeaderboard] = useState([]);
   const [techEvals, setTechEvals] = useState([]);
   const [presEvals, setPresEvals] = useState([]);
+  const [config, setConfig] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -143,12 +145,13 @@ const FinalScoresView = () => {
     setLoading(true);
     setError('');
     try {
-      const [daily, matches, lb, tech, pres] = await Promise.all([
+      const [daily, matches, lb, tech, pres, activeConfig] = await Promise.all([
         ScoresService.getDailyScores().catch(() => []),
         ScoresService.getMatchBreakdown().catch(() => []),
         LeaderboardService.getLeaderboard().catch(() => []),
         ScoresService.getTechnicalEvaluations().catch(() => []),
         ScoresService.getPresentationEvaluations().catch(() => []),
+        ScoringConfigService.getActiveConfig().catch(() => null),
       ]);
 
       setDailyScores(daily);
@@ -156,6 +159,7 @@ const FinalScoresView = () => {
       setLeaderboard(lb);
       setTechEvals(tech);
       setPresEvals(pres);
+      setConfig(activeConfig);
     } catch (err) {
       setError('Failed to load: ' + (err.response?.data?.detail || err.message || ''));
     } finally {
@@ -235,25 +239,39 @@ const FinalScoresView = () => {
           </div>
           <div className="table-wrapper">
             <table>
-              <thead><tr><th>Team</th><th>Prediction</th><th>Winner</th><th>Scoreline</th><th>Prob.</th><th>Player</th><th>Tot Goals</th><th>BTTS</th><th>First Team</th><th>Clean Sheet</th><th>Base Score</th></tr></thead>
+              <thead><tr><th>Team</th><th>Prediction</th><th>Winner</th><th>Scoreline</th><th>Prob.</th><th>Player</th><th>Tot Goals</th><th>BTTS</th><th>First Team</th><th>Clean Sheet</th><th>Base Score</th><th>Grade</th><th>Mult</th><th>Earned Pts</th></tr></thead>
               <tbody>
                 {(match.teams || []).map(t => {
                   const sc = t.score_breakdown || {};
                   const pred = t.prediction || {};
                   const predStr = pred.predicted_home_goals != null ? `${pred.predicted_home_goals}–${pred.predicted_away_goals}` : '—';
+                  
+                  const maxWinner = config?.winner_points_correct || 2.5;
+                  const maxScoreline = config?.scoreline_points_exact || 7.5;
+                  const maxProbability = config?.probability_points_pass || 5.0;
+                  const maxPlayer = config?.player_points_exact || 2.5;
+                  const maxTotalGoals = config?.total_goals_points_exact || 0.0;
+                  const maxBtts = config?.btts_points_correct || 2.5;
+                  const maxFtts = config?.first_team_to_score_points_correct || 2.5;
+                  const maxCleanSheet = config?.clean_sheet_points_correct || 2.5;
+                  const maxBase = config?.max_base_score || 25.0;
+
                   return (
                     <tr key={t.team_id}>
                       <td><strong>{formatTeamDisplay({ team_code: t.team_code, name: t.team_name })}</strong></td>
                       <td>{predStr}</td>
-                      <td><span className={sc.winner_points === 5 ? 'badge badge-success' : 'badge badge-error'}>{sc.winner_points ?? '—'}/5</span></td>
-                      <td><span className={sc.scoreline_points === 10 ? 'badge badge-success' : sc.scoreline_points === 5 ? 'badge badge-warning' : 'badge badge-error'}>{sc.scoreline_points ?? '—'}/10</span></td>
-                      <td><span className={sc.probability_points === 5 ? 'badge badge-success' : 'badge badge-error'}>{sc.probability_points ?? '—'}/5</span></td>
-                      <td><span className={sc.player_points === 5 ? 'badge badge-success' : sc.player_points >= 2 ? 'badge badge-warning' : 'badge badge-error'}>{sc.player_points ?? '—'}/5</span></td>
-                      <td><span className={sc.total_goals_points === 5 ? 'badge badge-success' : 'badge badge-error'}>{sc.total_goals_points ?? '—'}/5</span></td>
-                      <td><span className={sc.btts_points === 5 ? 'badge badge-success' : 'badge badge-error'}>{sc.btts_points ?? '—'}/5</span></td>
-                      <td><span className={sc.first_team_to_score_points === 5 ? 'badge badge-success' : 'badge badge-error'}>{sc.first_team_to_score_points ?? '—'}/5</span></td>
-                      <td><span className={sc.clean_sheet_points === 5 ? 'badge badge-success' : 'badge badge-error'}>{sc.clean_sheet_points ?? '—'}/5</span></td>
-                      <td><strong className={`score-num ${scoreColor(sc.base_score, 45)}`}>{fmt1(sc.base_score)}</strong></td>
+                      <td><span className={sc.winner_points >= maxWinner ? 'badge badge-success' : sc.winner_points > 0 ? 'badge badge-warning' : 'badge badge-error'}>{sc.winner_points ?? '—'}/{maxWinner}</span></td>
+                      <td><span className={sc.scoreline_points >= maxScoreline ? 'badge badge-success' : sc.scoreline_points > 0 ? 'badge badge-warning' : 'badge badge-error'}>{sc.scoreline_points ?? '—'}/{maxScoreline}</span></td>
+                      <td><span className={sc.probability_points >= maxProbability ? 'badge badge-success' : sc.probability_points > 0 ? 'badge badge-warning' : 'badge badge-error'}>{sc.probability_points ?? '—'}/{maxProbability}</span></td>
+                      <td><span className={sc.player_points >= maxPlayer ? 'badge badge-success' : sc.player_points > 0 ? 'badge badge-warning' : 'badge badge-error'}>{sc.player_points ?? '—'}/{maxPlayer}</span></td>
+                      <td><span className={sc.total_goals_points > 0 ? 'badge badge-success' : 'badge badge-error'}>{sc.total_goals_points ?? '—'}/{maxTotalGoals.toFixed(1)}</span></td>
+                      <td><span className={sc.btts_points >= maxBtts ? 'badge badge-success' : 'badge badge-error'}>{sc.btts_points ?? '—'}/{maxBtts}</span></td>
+                      <td><span className={sc.first_team_to_score_points >= maxFtts ? 'badge badge-success' : 'badge badge-error'}>{sc.first_team_to_score_points ?? '—'}/{maxFtts}</span></td>
+                      <td><span className={sc.clean_sheet_points >= maxCleanSheet ? 'badge badge-success' : sc.clean_sheet_points > 0 ? 'badge badge-warning' : 'badge badge-error'}>{sc.clean_sheet_points ?? '—'}/{maxCleanSheet}</span></td>
+                      <td><strong className={`score-num ${scoreColor(sc.base_score, maxBase)}`}>{fmt1(sc.base_score)}</strong></td>
+                      <td><span className="badge">{sc.grade || '—'}</span></td>
+                      <td>{sc.multiplier != null ? `x${sc.multiplier}` : '—'}</td>
+                      <td><strong className="score-num">{fmt1(sc.earned_points)}</strong></td>
                     </tr>
                   );
                 })}
@@ -304,13 +322,17 @@ const FinalScoresView = () => {
                 {leaderboard.map(e => {
                   const r = Number(e.rank);
                   const rankClass = r <= 3 ? `rank-${r}` : '';
+                  const phase1Max = config?.phase1_max_marks || 60;
+                  const techMax = config?.technical_max_total || 20;
+                  const presMax = config?.presentation_max_marks || 20;
+
                   return (
                     <tr key={e.team_id} className={rankClass}>
                       <td>{e.rank}</td>
                       <td><strong>{formatTeamDisplay(e)}</strong></td>
-                      <td><span className={`score-num ${scoreColor(e.phase1_score, 60)}`}>{fmt1(e.phase1_score)}</span></td>
-                      <td><span className={`score-num ${scoreColor(e.technical_score, 20)}`}>{fmt1(e.technical_score)}</span></td>
-                      <td><span className={`score-num ${scoreColor(e.presentation_score, 20)}`}>{fmt1(e.presentation_score)}</span></td>
+                      <td><span className={`score-num ${scoreColor(e.phase1_score, phase1Max)}`}>{fmt1(e.phase1_score)}</span></td>
+                      <td><span className={`score-num ${scoreColor(e.technical_score, techMax)}`}>{fmt1(e.technical_score)}</span></td>
+                      <td><span className={`score-num ${scoreColor(e.presentation_score, presMax)}`}>{fmt1(e.presentation_score)}</span></td>
                       <td><strong className="score-num" style={{ fontSize: 'var(--text-lg)' }}>{fmt1(e.final_score)}</strong></td>
                       <td>{rankBadge(e.rank)}</td>
                     </tr>

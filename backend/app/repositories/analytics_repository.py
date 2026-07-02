@@ -33,16 +33,13 @@ class AnalyticsRepository:
         return self.db.query(LeaderboardModel).all()
 
     def get_leaderboard_entry_for_team(self, team_id_str: str | uuid.UUID) -> Optional[LeaderboardModel]:
-        uid = uuid.UUID(str(team_id_str)) if not isinstance(team_id_str, uuid.UUID) else team_id_str
-        return self.db.query(LeaderboardModel).filter(LeaderboardModel.team_id == uid).first()
+        return self.db.query(LeaderboardModel).filter(LeaderboardModel.team_id == str(team_id_str)).first()
 
     def get_all_calculated_scores(self) -> List[ScoreModel]:
         return self.db.query(ScoreModel).filter(ScoreModel.base_score.isnot(None)).order_by(ScoreModel.computed_at.asc()).all()
 
     def get_scores_for_team(self, team_id_str: str) -> List[ScoreModel]:
-        import uuid
-        uid = uuid.UUID(team_id_str)
-        return self.db.query(ScoreModel).filter(ScoreModel.team_id == uid, ScoreModel.base_score.isnot(None)).all()
+        return self.db.query(ScoreModel).filter(ScoreModel.team_id == str(team_id_str), ScoreModel.base_score.isnot(None)).all()
 
     def get_all_matches(self) -> List[MatchModel]:
         return self.db.query(MatchModel).all()

@@ -1,7 +1,4 @@
 def calculate_btts_score(prediction: dict, actual_result: dict, config: dict | None = None) -> float:
-    points_correct = config.get("btts_points_correct", 5.0) if config else 5.0
-    points_incorrect = config.get("btts_points_incorrect", 0.0) if config else 0.0
-    
     match_pred = prediction["match_prediction"]
     pred_btts = None
     
@@ -12,11 +9,11 @@ def calculate_btts_score(prediction: dict, actual_result: dict, config: dict | N
         pred_btts = match_pred["both_teams_to_score_probability"] > 50.0
     
     if pred_btts is None:
-        return float(points_incorrect)
+        return 0.0
         
     actual_scoreline = actual_result["final_score"]
     actual_btts = actual_scoreline["home_team_goals"] > 0 and actual_scoreline["away_team_goals"] > 0
     
     if pred_btts == actual_btts:
-        return float(points_correct)
-    return float(points_incorrect)
+        return float(config.get("btts_points_correct", 2.5)) if config else 2.5
+    return float(config.get("btts_points_incorrect", 0.0)) if config else 0.0

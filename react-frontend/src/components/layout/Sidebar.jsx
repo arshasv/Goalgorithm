@@ -68,6 +68,9 @@ const Sidebar = ({ collapsed, toggleSidebar }) => {
               <a className={isActive('model-execution')} data-page="model-execution" onClick={() => nav('model-execution')}>
                 <span className="nav-icon">⚡</span><span className="nav-label">Model Execution</span>
               </a>
+              <a className={isActive('batch-execution')} data-page="batch-execution" onClick={() => nav('batch-execution')}>
+                <span className="nav-icon">⛓️</span><span className="nav-label">Batch Model Execution</span>
+              </a>
               <a className={isActive('technical')} data-page="technical" onClick={() => nav('technical')}>
                 <span className="nav-icon">💻</span><span className="nav-label">Technical Eval</span>
               </a>

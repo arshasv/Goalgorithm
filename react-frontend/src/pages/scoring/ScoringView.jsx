@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ScoringService } from '../../api/scoringService';
+import { ScoringConfigService } from '../../api/scoringConfigService';
 
 const scoreColor = (val, max) => {
   if (val === 0) return {color:'var(--color-status-error)'};
@@ -8,23 +9,16 @@ const scoreColor = (val, max) => {
   return {};
 };
 
-
 const formatTeamDisplay = (e) => {
   const code = e.team_id || e.code || '';
   const name = e.name || '';
   return code ? `${code} – ${name}` : name;
 };
 
-
-const dimensionIcon = (val, max) => {
-  if (val >= max) return '✅';
-  if (val === 0) return '❌';
-  return '〜';
-};
-
 const ScoringView = () => {
   const [searchParams] = useSearchParams();
   const [matches, setMatches] = useState([]);
+  const [config, setConfig] = useState(null);
   const [selectedMatchId, setSelectedMatchId] = useState(searchParams.get('match') || '');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -33,8 +27,12 @@ const ScoringView = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const data = await ScoringService.getMatchBreakdown();
+      const [activeConfig, data] = await Promise.all([
+        ScoringConfigService.getActiveConfig(),
+        ScoringService.getMatchBreakdown()
+      ]);
       setMatches(data);
+      setConfig(activeConfig);
       if (data.length > 0 && !selectedMatchId) {
         setSelectedMatchId(data[data.length - 1].match_id); // Default to last match
       }
@@ -68,6 +66,8 @@ const ScoringView = () => {
 
   if (loading) return <div className="loading-spinner"></div>;
   if (error) return <div className="alert alert-error">{error}</div>;
+  if (!config) return <div className="alert alert-error">Missing scoring configuration</div>;
+
   if (matches.length === 0) {
     return (
       <div className="empty-state">
@@ -89,13 +89,10 @@ const ScoringView = () => {
   let currentRank = 1;
   sortedTeams.forEach((t, index) => {
     const breakdown = t.score_breakdown || {};
-    
-    // If not scored, do not assign a rank
     if (breakdown.base_score == null) {
       t.displayRank = null;
       return;
     }
-
     if (index > 0) {
       const prev = sortedTeams[index - 1].score_breakdown || {};
       if (breakdown.earned_points !== prev.earned_points) {
@@ -103,9 +100,17 @@ const ScoringView = () => {
       }
     }
     t.displayRank = currentRank;
-
-
   });
+
+  const maxWinner = config.winner_points_correct || 2.5;
+  const maxScoreline = config.scoreline_points_exact || 7.5;
+  const maxProbability = config.probability_points_pass || 5.0;
+  const maxPlayer = config.player_points_exact || 2.5;
+  const maxTotalGoals = config.total_goals_points_exact || 0.0;
+  const maxBtts = config.btts_points_correct || 2.5;
+  const maxFtts = config.first_team_to_score_points_correct || 2.5;
+  const maxCleanSheet = config.clean_sheet_points_correct || 2.5;
+  const maxBase = config.max_base_score || 25.0;
 
   return (
     <div>
@@ -133,7 +138,7 @@ const ScoringView = () => {
         </div>
       ) : (
         <>
-          <div className="alert alert-success">✅ Scores calculated for Match #{selectedMatch?.match_number} · Base Score = Σ(Winner+Scoreline+Probability+Player) · Max 25</div>
+          <div className="alert alert-success">✅ Scores calculated for Match #{selectedMatch?.match_number} · Base Score = Σ(Winner+Scoreline+Probability+Player) · Max {maxBase}</div>
 
           <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:'var(--space-lg)'}}>
             {sortedTeams.map((s, i) => {
@@ -149,36 +154,146 @@ const ScoringView = () => {
                   </div>
                   <div className="dimension-row">
                     <span className="dimension-label">Winner Prediction</span>
-                    <div className="dimension-bar-wrap"><div className="dimension-bar-fill" style={{width:`${(breakdown.winner_points / 5) * 100}%`}}></div></div>
-                    <span className="dimension-score" style={scoreColor(breakdown.winner_points, 5)}>{breakdown.winner_points}/5</span>
-                    <span className="dimension-icon">{dimensionIcon(breakdown.winner_points, 5)}</span>
+                    <div className="dimension-bar-wrap"><div className="dimension-bar-fill" style={{width:`${maxWinner ? (breakdown.winner_points / maxWinner) * 100 : 0}%`}}></div></div>
+                    <span className="dimension-score" style={scoreColor(breakdown.winner_points, maxWinner)}>{breakdown.winner_points}/{maxWinner}</span>
                   </div>
                   <div className="dimension-row">
-                    <span className="dimension-label">Scoreline Exactness</span>
-                    <div className="dimension-bar-wrap"><div className="dimension-bar-fill" style={{width:`${(breakdown.scoreline_points / 10) * 100}%`}}></div></div>
-                    <span className="dimension-score" style={scoreColor(breakdown.scoreline_points, 10)}>{breakdown.scoreline_points}/10</span>
-                    <span className="dimension-icon">{dimensionIcon(breakdown.scoreline_points, 10)}</span>
+                    <span className="dimension-label">Scoreline Accuracy</span>
+                    <div className="dimension-bar-wrap"><div className="dimension-bar-fill" style={{width:`${maxScoreline ? (breakdown.scoreline_points / maxScoreline) * 100 : 0}%`}}></div></div>
+                    <span className="dimension-score" style={scoreColor(breakdown.scoreline_points, maxScoreline)}>{breakdown.scoreline_points}/{maxScoreline}</span>
                   </div>
                   <div className="dimension-row">
                     <span className="dimension-label">Probability Accuracy</span>
-                    <div className="dimension-bar-wrap"><div className="dimension-bar-fill" style={{width:`${(breakdown.probability_points / 5) * 100}%`}}></div></div>
-                    <span className="dimension-score" style={scoreColor(breakdown.probability_points, 5)}>{breakdown.probability_points}/5</span>
-                    <span className="dimension-icon">{dimensionIcon(breakdown.probability_points, 5)}</span>
+                    <div className="dimension-bar-wrap"><div className="dimension-bar-fill" style={{width:`${maxProbability ? (breakdown.probability_points / maxProbability) * 100 : 0}%`}}></div></div>
+                    <span className="dimension-score" style={scoreColor(breakdown.probability_points, maxProbability)}>{breakdown.probability_points}/{maxProbability}</span>
                   </div>
                   <div className="dimension-row">
                     <span className="dimension-label">Player Performance</span>
-                    <div className="dimension-bar-wrap"><div className="dimension-bar-fill" style={{width:`${(breakdown.player_points / 5) * 100}%`}}></div></div>
-                    <span className="dimension-score" style={scoreColor(breakdown.player_points, 5)}>{breakdown.player_points}/5</span>
-                    <span className="dimension-icon">{dimensionIcon(breakdown.player_points, 5)}</span>
+                    <div className="dimension-bar-wrap"><div className="dimension-bar-fill" style={{width:`${maxPlayer ? (breakdown.player_points / maxPlayer) * 100 : 0}%`}}></div></div>
+                    <span className="dimension-score" style={scoreColor(breakdown.player_points, maxPlayer)}>{breakdown.player_points}/{maxPlayer}</span>
                   </div>
-                  <div className="score-total-row">
-                    <div>
+                  <div className="dimension-row">
+                    <span className="dimension-label">Total Goals</span>
+                    <div className="dimension-bar-wrap"><div className="dimension-bar-fill" style={{width:`${maxTotalGoals ? (breakdown.total_goals_points / maxTotalGoals) * 100 : 0}%`}}></div></div>
+                    <span className="dimension-score" style={scoreColor(breakdown.total_goals_points, maxTotalGoals)}>{breakdown.total_goals_points}/{maxTotalGoals.toFixed(1)}</span>
+                  </div>
+                  <div className="dimension-row">
+                    <span className="dimension-label">Both Teams To Score (BTTS)</span>
+                    <div className="dimension-bar-wrap"><div className="dimension-bar-fill" style={{width:`${maxBtts ? (breakdown.btts_points / maxBtts) * 100 : 0}%`}}></div></div>
+                    <span className="dimension-score" style={scoreColor(breakdown.btts_points, maxBtts)}>{breakdown.btts_points}/{maxBtts}</span>
+                  </div>
+                  <div className="dimension-row">
+                    <span className="dimension-label">First Team To Score</span>
+                    <div className="dimension-bar-wrap"><div className="dimension-bar-fill" style={{width:`${maxFtts ? (breakdown.first_team_to_score_points / maxFtts) * 100 : 0}%`}}></div></div>
+                    <span className="dimension-score" style={scoreColor(breakdown.first_team_to_score_points, maxFtts)}>{breakdown.first_team_to_score_points}/{maxFtts}</span>
+                  </div>
+                  <div className="dimension-row">
+                    <span className="dimension-label">Clean Sheet</span>
+                    <div className="dimension-bar-wrap"><div className="dimension-bar-fill" style={{width:`${maxCleanSheet ? (breakdown.clean_sheet_points / maxCleanSheet) * 100 : 0}%`}}></div></div>
+                    <span className="dimension-score" style={scoreColor(breakdown.clean_sheet_points, maxCleanSheet)}>{breakdown.clean_sheet_points}/{maxCleanSheet}</span>
+                  </div>
+                  
+                  <div className="score-total-row" style={{display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)', marginTop: 'var(--space-md)'}}>
+                    <div style={{flex: '1 1 45%'}}>
                       <div className="base-score-label">Base Score</div>
-                      <div className="base-score-value">{breakdown.base_score}<span style={{color:'var(--color-text-secondary)',fontSize:'var(--text-lg)'}}>/25</span></div>
+                      <div className="base-score-value">{breakdown.base_score}<span style={{color:'var(--color-text-secondary)',fontSize:'var(--text-lg)'}}>/{maxBase.toFixed(1)}</span></div>
                     </div>
-                    <div style={{textAlign:'right'}}>
+                    <div style={{flex: '1 1 45%', textAlign:'right'}}>
+                      <div className="base-score-label">Grade</div>
+                      <div className="base-score-value">{breakdown.grade || '—'}</div>
+                    </div>
+                    <div style={{flex: '1 1 45%'}}>
+                      <div className="base-score-label">Multiplier</div>
+                      <div className="base-score-value">x{breakdown.multiplier || 0}</div>
+                    </div>
+                    <div style={{flex: '1 1 45%', textAlign:'right'}}>
                       <div style={{fontSize:'var(--text-xs)',color:'var(--color-text-secondary)',textTransform:'uppercase',letterSpacing:'0.04em'}}>Earned Points</div>
                       <div className="earned-score score-digit">{breakdown.earned_points} pts</div>
+                    </div>
+                  </div>
+
+                  {/* Detailed Score Calculation Section */}
+                  <div style={{marginTop: 'var(--space-md)', paddingTop: 'var(--space-sm)', borderTop: '1px dashed var(--color-border)'}}>
+                    <div style={{fontSize: 'var(--text-sm)', fontWeight: 600, marginBottom: 'var(--space-xs)'}}>Detailed Score Calculation</div>
+                    <div className="table-wrapper">
+                      <table style={{width: '100%', fontSize: 'var(--text-xs)'}}>
+                        <thead>
+                          <tr>
+                            <th style={{textAlign: 'left'}}>Category</th>
+                            <th style={{textAlign: 'center'}}>Predicted</th>
+                            <th style={{textAlign: 'center'}}>Actual</th>
+                            <th style={{textAlign: 'center'}}>Points</th>
+                            <th style={{textAlign: 'center'}}>Max</th>
+                            <th style={{textAlign: 'left'}}>Explanation</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td>Winner Prediction</td>
+                            <td style={{textAlign: 'center', textTransform: 'capitalize'}}>{s.prediction?.predicted_winner || '—'}</td>
+                            <td style={{textAlign: 'center', textTransform: 'capitalize'}}>{selectedMatch.actual_result?.actual_winner || '—'}</td>
+                            <td style={{textAlign: 'center'}}><strong>{breakdown.winner_points ?? 0}</strong></td>
+                            <td style={{textAlign: 'center'}}>{maxWinner}</td>
+                            <td style={{color: 'var(--color-text-secondary)'}}>Predicted winner vs actual match result.</td>
+                          </tr>
+                          <tr>
+                            <td>Scoreline Accuracy</td>
+                            <td style={{textAlign: 'center'}}>{s.prediction?.predicted_home_goals ?? '?'} - {s.prediction?.predicted_away_goals ?? '?'}</td>
+                            <td style={{textAlign: 'center'}}>{selectedMatch.actual_result?.actual_home_goals ?? '?'} - {selectedMatch.actual_result?.actual_away_goals ?? '?'}</td>
+                            <td style={{textAlign: 'center'}}><strong>{breakdown.scoreline_points ?? 0}</strong></td>
+                            <td style={{textAlign: 'center'}}>{maxScoreline}</td>
+                            <td style={{color: 'var(--color-text-secondary)'}}>Exact match, margin, or one team correct.</td>
+                          </tr>
+                          <tr>
+                            <td>Probability Accuracy</td>
+                            <td style={{textAlign: 'center'}}>—</td>
+                            <td style={{textAlign: 'center'}}>—</td>
+                            <td style={{textAlign: 'center'}}><strong>{breakdown.probability_points ?? 0}</strong></td>
+                            <td style={{textAlign: 'center'}}>{maxProbability}</td>
+                            <td style={{color: 'var(--color-text-secondary)'}}>Confidence matrix threshold scoring.</td>
+                          </tr>
+                          <tr>
+                            <td>Player Performance</td>
+                            <td style={{textAlign: 'center'}}>—</td>
+                            <td style={{textAlign: 'center'}}>—</td>
+                            <td style={{textAlign: 'center'}}><strong>{breakdown.player_points ?? 0}</strong></td>
+                            <td style={{textAlign: 'center'}}>{maxPlayer}</td>
+                            <td style={{color: 'var(--color-text-secondary)'}}>Goal scorer prediction accuracy.</td>
+                          </tr>
+                          <tr>
+                            <td>Total Goals</td>
+                            <td style={{textAlign: 'center'}}>—</td>
+                            <td style={{textAlign: 'center'}}>—</td>
+                            <td style={{textAlign: 'center'}}><strong>{breakdown.total_goals_points ?? 0}</strong></td>
+                            <td style={{textAlign: 'center'}}>{maxTotalGoals}</td>
+                            <td style={{color: 'var(--color-text-secondary)'}}>Not evaluated in current matrix.</td>
+                          </tr>
+                          <tr>
+                            <td>BTTS</td>
+                            <td style={{textAlign: 'center'}}>—</td>
+                            <td style={{textAlign: 'center'}}>—</td>
+                            <td style={{textAlign: 'center'}}><strong>{breakdown.btts_points ?? 0}</strong></td>
+                            <td style={{textAlign: 'center'}}>{maxBtts}</td>
+                            <td style={{color: 'var(--color-text-secondary)'}}>Both Teams To Score correctly predicted.</td>
+                          </tr>
+                          <tr>
+                            <td>First Team</td>
+                            <td style={{textAlign: 'center'}}>—</td>
+                            <td style={{textAlign: 'center'}}>—</td>
+                            <td style={{textAlign: 'center'}}><strong>{breakdown.first_team_to_score_points ?? 0}</strong></td>
+                            <td style={{textAlign: 'center'}}>{maxFtts}</td>
+                            <td style={{color: 'var(--color-text-secondary)'}}>First team to score correctly predicted.</td>
+                          </tr>
+                          <tr>
+                            <td>Clean Sheet</td>
+                            <td style={{textAlign: 'center'}}>—</td>
+                            <td style={{textAlign: 'center'}}>—</td>
+                            <td style={{textAlign: 'center'}}><strong>{breakdown.clean_sheet_points ?? 0}</strong></td>
+                            <td style={{textAlign: 'center'}}>{maxCleanSheet}</td>
+                            <td style={{color: 'var(--color-text-secondary)'}}>Clean sheet properly predicted.</td>
+                          </tr>
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 </div>

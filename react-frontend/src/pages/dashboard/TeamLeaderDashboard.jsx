@@ -4,6 +4,7 @@ import { LeaderboardService } from '../../api/leaderboardService';
 import { PredictionService } from '../../api/predictionService';
 import { ScoresService } from '../../api/scoresService';
 import { MatchService } from '../../api/matchService';
+import { ScoringConfigService } from '../../api/scoringConfigService';
 import { useAuth } from '../../contexts/AuthContext';
 
 const formatTeamDisplay = (e) => {
@@ -47,6 +48,7 @@ const TeamLeaderDashboard = () => {
   const [predictions, setPredictions] = useState([]);
   const [matches, setMatches] = useState([]);
   const [scores, setScores] = useState([]);
+  const [config, setConfig] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('profile');
@@ -65,14 +67,16 @@ const TeamLeaderDashboard = () => {
       const myTeam = await TeamService.getMyTeam();
       setTeam(myTeam);
 
-      const [lbData, predsData, scoresData, matchesData] = await Promise.all([
+      const [lbData, predsData, scoresData, matchesData, configData] = await Promise.all([
         LeaderboardService.getLeaderboard().catch(() => []),
         PredictionService.listPredictions().catch(() => []),
         ScoresService.getMatchBreakdown().catch(() => []),
-        MatchService.listMatches().catch(() => [])
+        MatchService.listMatches().catch(() => []),
+        ScoringConfigService.getActiveConfig().catch(() => null)
       ]);
       setLeaderboardData(lbData);
       setMatches(Array.isArray(matchesData) ? matchesData : []);
+      setConfig(configData);
 
       const myEntry = lbData.find(e => e.team_id === myTeam.id);
       const myPreds = predsData.filter(p => p.team_id === myTeam.id);
@@ -330,9 +334,9 @@ const TeamLeaderDashboard = () => {
                 <tbody>
                   <tr className={myEntry.rank <= 3 ? `rank-${myEntry.rank}` : ''}>
                     <td>{rankBadge(myEntry.rank)}</td>
-                    <td><span className="score-num">{fmt1(myEntry.phase1_score)}/60</span></td>
-                    <td><span className="score-num">{fmt1(myEntry.technical_score)}/20</span></td>
-                    <td><span className="score-num">{fmt1(myEntry.presentation_score)}/20</span></td>
+                    <td><span className="score-num">{fmt1(myEntry.phase1_score)}/{config?.phase1_max_marks || 60}</span></td>
+                    <td><span className="score-num">{fmt1(myEntry.technical_score)}/{config?.technical_max_total || 20}</span></td>
+                    <td><span className="score-num">{fmt1(myEntry.presentation_score)}/{config?.presentation_max_marks || 20}</span></td>
                     <td><strong className="score-num" style={{fontSize:'var(--text-lg)'}}>{fmt1(myEntry.final_score)}</strong></td>
                   </tr>
                 </tbody>
@@ -346,22 +350,35 @@ const TeamLeaderDashboard = () => {
             <div style={{padding:'var(--space-md)'}}>
               {scores.map(({ match, score }) => {
                 const sc = score.score_breakdown || {};
+                const maxWinner = config?.winner_points_correct || 2.5;
+                const maxScoreline = config?.scoreline_points_exact || 7.5;
+                const maxProbability = config?.probability_points_pass || 5.0;
+                const maxPlayer = config?.player_points_exact || 2.5;
+                const maxTotalGoals = config?.total_goals_points_exact || 0.0;
+                const maxBtts = config?.btts_points_correct || 2.5;
+                const maxFtts = config?.first_team_to_score_points_correct || 2.5;
+                const maxCleanSheet = config?.clean_sheet_points_correct || 2.5;
+                const maxBase = config?.max_base_score || 25.0;
+
                 return (
                   <div key={match.match_id} className="card" style={{marginBottom:'var(--space-sm)',padding:'var(--space-md)',background:'var(--color-surface-secondary)'}}>
                     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'var(--space-sm)'}}>
                       <span style={{fontWeight:600}}>Match {match.match_number}</span>
                       <span className="badge badge-info">{match.home_team_name} vs {match.away_team_name}</span>
                     </div>
-                    <div style={{display:'grid',gridTemplateColumns:'repeat(9,1fr)',gap:'var(--space-sm)',textAlign:'center'}}>
-                      <div><div style={{fontSize:'var(--text-xs)',color:'var(--color-text-muted)'}}>Winner</div><div className="score-digit">{sc.winner_points ?? '—'}/5</div></div>
-                      <div><div style={{fontSize:'var(--text-xs)',color:'var(--color-text-muted)'}}>Scoreline</div><div className="score-digit">{sc.scoreline_points ?? '—'}/10</div></div>
-                      <div><div style={{fontSize:'var(--text-xs)',color:'var(--color-text-muted)'}}>Prob</div><div className="score-digit">{sc.probability_points ?? '—'}/5</div></div>
-                      <div><div style={{fontSize:'var(--text-xs)',color:'var(--color-text-muted)'}}>Player</div><div className="score-digit">{sc.player_points ?? '—'}/5</div></div>
-                      <div><div style={{fontSize:'var(--text-xs)',color:'var(--color-text-muted)'}}>Tot Goals</div><div className="score-digit">{sc.total_goals_points ?? '—'}/5</div></div>
-                      <div><div style={{fontSize:'var(--text-xs)',color:'var(--color-text-muted)'}}>BTTS</div><div className="score-digit">{sc.btts_points ?? '—'}/5</div></div>
-                      <div><div style={{fontSize:'var(--text-xs)',color:'var(--color-text-muted)'}}>1st Team</div><div className="score-digit">{sc.first_team_to_score_points ?? '—'}/5</div></div>
-                      <div><div style={{fontSize:'var(--text-xs)',color:'var(--color-text-muted)'}}>Clean Sht</div><div className="score-digit">{sc.clean_sheet_points ?? '—'}/5</div></div>
-                      <div><div style={{fontSize:'var(--text-xs)',color:'var(--color-text-muted)'}}>Base Score</div><div className="score-digit" style={{fontWeight:700}}>{sc.base_score ?? '—'}/45</div></div>
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(12,1fr)',gap:'var(--space-sm)',textAlign:'center'}}>
+                      <div><div style={{fontSize:'var(--text-xs)',color:'var(--color-text-muted)'}}>Winner</div><div className="score-digit">{sc.winner_points ?? '—'}/{maxWinner}</div></div>
+                      <div><div style={{fontSize:'var(--text-xs)',color:'var(--color-text-muted)'}}>Scoreline</div><div className="score-digit">{sc.scoreline_points ?? '—'}/{maxScoreline}</div></div>
+                      <div><div style={{fontSize:'var(--text-xs)',color:'var(--color-text-muted)'}}>Prob</div><div className="score-digit">{sc.probability_points ?? '—'}/{maxProbability}</div></div>
+                      <div><div style={{fontSize:'var(--text-xs)',color:'var(--color-text-muted)'}}>Player</div><div className="score-digit">{sc.player_points ?? '—'}/{maxPlayer}</div></div>
+                      <div><div style={{fontSize:'var(--text-xs)',color:'var(--color-text-muted)'}}>Tot Goals</div><div className="score-digit">{sc.total_goals_points ?? '—'}/{maxTotalGoals.toFixed(1)}</div></div>
+                      <div><div style={{fontSize:'var(--text-xs)',color:'var(--color-text-muted)'}}>BTTS</div><div className="score-digit">{sc.btts_points ?? '—'}/{maxBtts}</div></div>
+                      <div><div style={{fontSize:'var(--text-xs)',color:'var(--color-text-muted)'}}>1st Team</div><div className="score-digit">{sc.first_team_to_score_points ?? '—'}/{maxFtts}</div></div>
+                      <div><div style={{fontSize:'var(--text-xs)',color:'var(--color-text-muted)'}}>Clean Sht</div><div className="score-digit">{sc.clean_sheet_points ?? '—'}/{maxCleanSheet}</div></div>
+                      <div><div style={{fontSize:'var(--text-xs)',color:'var(--color-text-muted)'}}>Base Score</div><div className="score-digit" style={{fontWeight:700}}>{sc.base_score ?? '—'}/{maxBase.toFixed(1)}</div></div>
+                      <div><div style={{fontSize:'var(--text-xs)',color:'var(--color-text-muted)'}}>Grade</div><div className="score-digit">{sc.grade ?? '—'}</div></div>
+                      <div><div style={{fontSize:'var(--text-xs)',color:'var(--color-text-muted)'}}>Mult</div><div className="score-digit">{sc.multiplier != null ? `x${sc.multiplier}` : '—'}</div></div>
+                      <div><div style={{fontSize:'var(--text-xs)',color:'var(--color-text-muted)'}}>Earned</div><div className="score-digit" style={{fontWeight:700,color:'var(--color-accent)'}}>{sc.earned_points ?? '—'}</div></div>
                     </div>
                   </div>
                 );

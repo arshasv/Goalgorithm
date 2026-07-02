@@ -14,11 +14,18 @@ python-multipart>=0.0.9
 openpyxl>=3.1.0
 xlrd>=2.0.1
 
+# Google Drive / File Manager dependencies
+google-api-python-client>=2.130.0
+google-auth>=2.29.0
+google-auth-httplib2>=0.2.0
+google-auth-oauthlib>=1.2.0
+
 # ML model execution dependencies
-cloudpickle>=3.0.0
+cloudpickle>=3.1.2
 joblib>=1.4.0
-scikit-learn>=1.4.0
-numpy>=1.26.0
+scikit-learn==1.6.1
+numpy>=2.0.2
 pandas>=2.2.0
-xgboost>=2.0.0
+xgboost>=3.3.0
 lightgbm==4.6.0
+catboost>=1.2.0

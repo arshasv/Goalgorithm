@@ -20,44 +20,44 @@ class ScoringConfigModel(Base):
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
 
-    winner_points_correct: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
-    winner_points_incorrect: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    winner_points_correct: Mapped[float] = mapped_column(Float, default=2.5, nullable=False)
+    winner_points_incorrect: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
 
-    scoreline_points_exact: Mapped[int] = mapped_column(Integer, default=10, nullable=False)
-    scoreline_points_margin: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
-    scoreline_points_incorrect: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    scoreline_points_exact: Mapped[float] = mapped_column(Float, default=7.5, nullable=False)
+    scoreline_points_margin: Mapped[float] = mapped_column(Float, default=3.0, nullable=False)
+    scoreline_points_incorrect: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
 
     probability_threshold: Mapped[float] = mapped_column(Float, default=15.0, nullable=False)
-    probability_points_pass: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
-    probability_points_fail: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    probability_points_pass: Mapped[float] = mapped_column(Float, default=5.0, nullable=False)
+    probability_points_fail: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
 
     probability_high_threshold: Mapped[float] = mapped_column(Float, default=15.0, nullable=False)
-    probability_high_points: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
+    probability_high_points: Mapped[float] = mapped_column(Float, default=5.0, nullable=False)
     probability_medium_threshold: Mapped[float] = mapped_column(Float, default=30.0, nullable=False)
-    probability_medium_points: Mapped[int] = mapped_column(Integer, default=2, nullable=False)
+    probability_medium_points: Mapped[float] = mapped_column(Float, default=2.0, nullable=False)
 
-    player_points_exact: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
-    player_points_close: Mapped[int] = mapped_column(Integer, default=2, nullable=False)
-    player_points_wrong: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    player_points_exact: Mapped[float] = mapped_column(Float, default=2.5, nullable=False)
+    player_points_close: Mapped[float] = mapped_column(Float, default=1.5, nullable=False)
+    player_points_wrong: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     player_avg_threshold_exact: Mapped[float] = mapped_column(Float, default=4.0, nullable=False)
     player_avg_threshold_close: Mapped[float] = mapped_column(Float, default=2.0, nullable=False)
 
-    total_goals_points_exact: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
-    total_goals_points_wrong: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    total_goals_points_exact: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    total_goals_points_wrong: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
 
-    btts_points_correct: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
-    btts_points_incorrect: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    btts_points_correct: Mapped[float] = mapped_column(Float, default=2.5, nullable=False)
+    btts_points_incorrect: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
 
-    first_team_to_score_points_correct: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
-    first_team_to_score_points_incorrect: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    first_team_to_score_points_correct: Mapped[float] = mapped_column(Float, default=2.5, nullable=False)
+    first_team_to_score_points_incorrect: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
 
-    clean_sheet_points_correct: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
-    clean_sheet_points_incorrect: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    clean_sheet_points_correct: Mapped[float] = mapped_column(Float, default=2.5, nullable=False)
+    clean_sheet_points_incorrect: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
 
-    max_base_score: Mapped[int] = mapped_column(Integer, default=25, nullable=False)
+    max_base_score: Mapped[float] = mapped_column(Float, default=25.0, nullable=False)
 
-    technical_max_per_category: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
-    technical_max_total: Mapped[int] = mapped_column(Integer, default=20, nullable=False)
+    technical_max_per_category: Mapped[float] = mapped_column(Float, default=5.0, nullable=False)
+    technical_max_total: Mapped[float] = mapped_column(Float, default=20.0, nullable=False)
 
     presentation_ai_explanation_max: Mapped[int] = mapped_column(Integer, default=20, nullable=False)
     presentation_qa_score_max: Mapped[int] = mapped_column(Integer, default=15, nullable=False)

@@ -169,33 +169,44 @@ def delete_match(
     from app.models.prediction import PredictionModel, PlayerPredictionModel
     from app.model_execution.models.model_upload import ModelUploadModel
     from app.model_execution.models.model_execution import ModelExecutionModel
+    from app.models.batch_execution import BatchExecutionJobModel
     from app.services.scoring_service import ScoringService
 
     logger.warning(f"Deleting match {match_id} (match_number={match.match_number})")
 
     try:
-        # 1. Delete scores
-        n = db.query(ScoreModel).filter(ScoreModel.match_id == match_id).delete(synchronize_session='fetch')
-        if n:
-            logger.warning(f"  Deleted {n} score(s)")
+        from app.models.score import CumulativePhaseScoreModel
+        from app.models.leaderboard import LeaderboardModel
 
-        # 2. Delete player actuals (children of actual_results)
-        actual_ids = [
-            r[0] for r in
-            db.query(ActualResultModel.id).filter(ActualResultModel.match_id == match_id).all()
-        ]
-        if actual_ids:
-            n = db.query(PlayerActualModel).filter(
-                PlayerActualModel.actual_result_id.in_(actual_ids)
+        # Phase 1: Find every model_upload belonging to that match
+        uploads = db.query(ModelUploadModel.id).filter(ModelUploadModel.match_id == match_id).all()
+        upload_ids = [r[0] for r in uploads]
+
+        # Phase 2: Delete every dependent batch execution job first
+        if upload_ids:
+            n = db.query(BatchExecutionJobModel).filter(
+                BatchExecutionJobModel.model_upload_id.in_(upload_ids)
             ).delete(synchronize_session='fetch')
-            logger.warning(f"  Deleted {n} player actual(s)")
+            logger.warning(f"  Deleted {n} batch execution jobs (by upload_id)")
 
-        # 3. Delete player predictions & model executions tied to predictions
-        pred_ids = [
-            r[0] for r in
-            db.query(PredictionModel.id).filter(PredictionModel.match_id == match_id).all()
-        ]
-        if pred_ids:
+        n = db.query(BatchExecutionJobModel).filter(
+            BatchExecutionJobModel.match_id == match_id
+        ).delete(synchronize_session='fetch')
+        if n:
+            logger.warning(f"  Deleted {n} batch execution jobs (by match_id)")
+
+        # Phase 3: Delete every remaining dependent record for the match in the correct order
+
+        if upload_ids:
+            n = db.query(ModelExecutionModel).filter(
+                ModelExecutionModel.model_upload_id.in_(upload_ids)
+            ).delete(synchronize_session='fetch')
+            if n:
+                logger.warning(f"  Deleted {n} model execution(s) (by model_upload_id)")
+
+        preds = db.query(PredictionModel.id).filter(PredictionModel.match_id == str(match_id)).all()
+        if preds:
+            pred_ids = [r[0] for r in preds]
             n = db.query(PlayerPredictionModel).filter(
                 PlayerPredictionModel.prediction_id.in_(pred_ids)
             ).delete(synchronize_session='fetch')
@@ -206,37 +217,39 @@ def delete_match(
             ).delete(synchronize_session='fetch')
             logger.warning(f"  Deleted {n} model execution(s) (by prediction_id)")
 
-        # 4. Delete model executions tied to model uploads & model uploads
-        upload_ids = [
-            r[0] for r in
-            db.query(ModelUploadModel.id).filter(ModelUploadModel.match_id == match_id).all()
-        ]
-        if upload_ids:
-            n = db.query(ModelExecutionModel).filter(
-                ModelExecutionModel.model_upload_id.in_(upload_ids)
+            n = db.query(PredictionModel).filter(
+                PredictionModel.id.in_(pred_ids)
             ).delete(synchronize_session='fetch')
-            if n:
-                logger.warning(f"  Deleted {n} model execution(s) (by model_upload_id)")
+            logger.warning(f"  Deleted {n} prediction(s)")
 
+        results = db.query(ActualResultModel.id).filter(ActualResultModel.match_id == str(match_id)).all()
+        if results:
+            res_ids = [r[0] for r in results]
+            n = db.query(PlayerActualModel).filter(
+                PlayerActualModel.actual_result_id.in_(res_ids)
+            ).delete(synchronize_session='fetch')
+            logger.warning(f"  Deleted {n} player actual(s)")
+
+            n = db.query(ActualResultModel).filter(
+                ActualResultModel.id.in_(res_ids)
+            ).delete(synchronize_session='fetch')
+            logger.warning(f"  Deleted {n} actual result(s)")
+
+        n = db.query(ScoreModel).filter(ScoreModel.match_id == str(match_id)).delete(synchronize_session='fetch')
+        if n:
+            logger.warning(f"  Deleted {n} score(s)")
+
+        db.query(LeaderboardModel).delete(synchronize_session='fetch')
+        db.query(CumulativePhaseScoreModel).delete(synchronize_session='fetch')
+        logger.warning(f"  Cleared leaderboard and cumulative scores")
+
+        if upload_ids:
             n = db.query(ModelUploadModel).filter(
-                ModelUploadModel.match_id == match_id
+                ModelUploadModel.id.in_(upload_ids)
             ).delete(synchronize_session='fetch')
             logger.warning(f"  Deleted {n} model upload(s)")
 
-        # 5. Delete actual results and predictions (parents of children above)
-        n = db.query(ActualResultModel).filter(
-            ActualResultModel.match_id == match_id
-        ).delete(synchronize_session='fetch')
-        if n:
-            logger.warning(f"  Deleted {n} actual result(s)")
-
-        n = db.query(PredictionModel).filter(
-            PredictionModel.match_id == match_id
-        ).delete(synchronize_session='fetch')
-        if n:
-            logger.warning(f"  Deleted {n} prediction(s)")
-
-        # 6. Delete the match itself
+        # Phase 4: Delete the match itself
         db.delete(match)
         db.flush()
         db.expire_all()

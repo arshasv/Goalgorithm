@@ -55,5 +55,12 @@ class Settings:
         self.agentmail_api_key: str = os.environ.get("AGENTMAIL_API_KEY", "")
         self.agentmail_inbox_id: str = os.environ.get("AGENTMAIL_INBOX_ID", "")
 
+        self.google_drive_folder_id: str = os.environ.get(
+            "GOOGLE_DRIVE_FOLDER_ID", ""
+        )
+        self.use_google_drive: bool = (
+            os.environ.get("USE_GOOGLE_DRIVE", "false").lower() == "true"
+        )
+
 
 settings = Settings()

@@ -20,6 +20,7 @@ from app.models.judge import JudgeModel
 from app.models.presentation_round import PresentationRoundModel
 from app.model_execution.models.model_upload import ModelUploadModel
 from app.model_execution.models.model_execution import ModelExecutionModel
+from app.models.batch_execution import BatchExecutionModel, BatchExecutionJobModel
 
 __all__ = [
     "TeamModel",
@@ -45,4 +46,6 @@ __all__ = [
     "PresentationRoundModel",
     "ModelUploadModel",
     "ModelExecutionModel",
+    "BatchExecutionModel",
+    "BatchExecutionJobModel",
 ]

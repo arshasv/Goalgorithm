@@ -3,6 +3,7 @@ services:
     build: .
     ports:
       - "8002:8000"
+      - "8080:8080"
     env_file:
       - ./backend/.env
     depends_on:

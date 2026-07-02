@@ -1,18 +1,6 @@
-WINNER_POINTS_CORRECT = 5.0
-WINNER_POINTS_INCORRECT = 0.0
-
-
-def calculate_winner_score(
-    prediction: dict,
-    actual_result: dict,
-    config: dict | None = None,
-) -> float:
+def calculate_winner_score(prediction: dict, actual_result: dict, config: dict | None = None) -> float:
     predicted_winner = prediction["match_prediction"]["predicted_winner"]
     actual_winner = actual_result["actual_winner"]
-
-    points_correct = config.get("winner_points_correct", WINNER_POINTS_CORRECT) if config else WINNER_POINTS_CORRECT
-    points_incorrect = config.get("winner_points_incorrect", WINNER_POINTS_INCORRECT) if config else WINNER_POINTS_INCORRECT
-
     if predicted_winner == actual_winner:
-        return float(points_correct)
-    return float(points_incorrect)
+        return float(config.get("winner_points_correct", 2.5)) if config else 2.5
+    return float(config.get("winner_points_incorrect", 0.0)) if config else 0.0

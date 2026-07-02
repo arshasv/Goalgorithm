@@ -251,7 +251,7 @@ def calculate_all_scores_for_match(
         match_exists = db.query(MatchModel).filter(MatchModel.id == match_uuid).first() is not None
         logger.info("Does match exist in matches table?: %s", "YES" if match_exists else "NO")
 
-        existing_count = db.query(ScoreModel).filter(ScoreModel.match_id == match_uuid).count()
+        existing_count = db.query(ScoreModel).filter(ScoreModel.match_id == str(match_uuid)).count()
         logger.info("Number of existing score rows: %s", existing_count)
 
         actual = db.query(ActualResultModel).filter(ActualResultModel.match_id == match_uuid).first()
@@ -261,7 +261,7 @@ def calculate_all_scores_for_match(
             logger.info("=== DIAGNOSTICS END: Missing Actual Result ===")
             raise HTTPException(status_code=400, detail="Actual result not found for this match.")
 
-        predictions = db.query(PredictionModel).filter(PredictionModel.match_id == match_uuid).all()
+        predictions = db.query(PredictionModel).filter(PredictionModel.match_id == str(match_uuid)).all()
         logger.info("Number of predictions found: %s", len(predictions))
         
         if not predictions:
@@ -333,7 +333,7 @@ def calculate_all_scores_for_match(
         # Purge ALL existing scores for this match completely before recalculating
         # Use synchronize_session='fetch' to properly sync the session identity map
         delete_count = db.query(ScoreModel).filter(
-            ScoreModel.match_id == match_uuid
+            ScoreModel.match_id == str(match_uuid)
         ).delete(synchronize_session='fetch')
         logger.info("Number deleted: %s", delete_count)
         db.commit()
@@ -358,7 +358,7 @@ def calculate_all_scores_for_match(
 
         # --- RELATIVE RANK MULTIPLIER ---
         scores = db.query(ScoreModel).filter(
-            ScoreModel.match_id == match_uuid
+            ScoreModel.match_id == str(match_uuid)
         ).order_by(ScoreModel.base_score.desc()).all()
 
         logger.info(
