@@ -1,183 +1,217 @@
 pipeline {
 
+    agent any
+
     environment {
 
-        APP_NAME="goalgorithm"
+        // OKD Configuration
+        OKD_PROJECT = "goalgorithm"
+        OKD_API = "https://api.crc.testing:6443"
+        REGISTRY_URL = "default-route-openshift-image-registry.apps-crc.testing"
 
-        REGISTRY="192.168.21.116:8081"
+        // Images
+        FRONTEND_IMAGE = "frontend"
+        BACKEND_IMAGE = "backend"
 
-        REPOSITORY="docker"
+        TAG = "${BUILD_NUMBER}"
 
-        IMAGE="${REGISTRY}/${REPOSITORY}/${APP_NAME}"
-
-        BUILD_TAG="${BUILD_NUMBER}"
-
-        GIT_SHA="${env.GIT_COMMIT}"
-
-        PROJECT="goalgorithm"
-
-        OC_API="https://api.okd.local:6443"
-
+        // Jenkins Credential
+        OKD_TOKEN_CREDENTIALS_ID = "okd-token"
     }
 
     stages {
 
-        stage('Checkout') {
-
+        stage('Checkout Source') {
             steps {
-                git branch: 'main',
-                    credentialsId: 'github-creds',
-                    url: 'https://github.com/arshasv/Goalgorithm.git'
+                checkout scm
             }
-
         }
 
-        stage('Install Dependencies') {
-
+        stage('Build Backend Image') {
             steps {
+                dir('backend') {
 
-                sh '''
-                npm install
-                '''
+                    sh '''
+                    docker build \
+                    -t $REGISTRY_URL/$OKD_PROJECT/$BACKEND_IMAGE:$TAG .
 
+                    docker tag \
+                    $REGISTRY_URL/$OKD_PROJECT/$BACKEND_IMAGE:$TAG \
+                    $REGISTRY_URL/$OKD_PROJECT/$BACKEND_IMAGE:latest
+                    '''
+                }
             }
-
         }
 
-        stage('Build') {
-
+        stage('Build Frontend Image') {
             steps {
+                dir('frontend') {
 
-                sh '''
-                npm run build
-                '''
+                    sh '''
+                    docker build \
+                    -t $REGISTRY_URL/$OKD_PROJECT/$FRONTEND_IMAGE:$TAG .
 
+                    docker tag \
+                    $REGISTRY_URL/$OKD_PROJECT/$FRONTEND_IMAGE:$TAG \
+                    $REGISTRY_URL/$OKD_PROJECT/$FRONTEND_IMAGE:latest
+                    '''
+                }
             }
-
         }
 
-        stage('Docker Build') {
+        stage('Login to OKD Registry') {
 
             steps {
 
-                sh """
+                withCredentials([
+                    string(
+                        credentialsId: "${OKD_TOKEN_CREDENTIALS_ID}",
+                        variable: 'OKD_TOKEN'
+                    )
+                ]) {
 
-                docker build \
-                -t ${IMAGE}:${BUILD_NUMBER} \
-                -t ${IMAGE}:latest \
-                -t ${IMAGE}:${GIT_COMMIT.take(7)} .
+                    sh '''
 
-                """
-
-            }
-
-        }
-
-        stage('Push Image') {
-
-            steps {
-
-                withCredentials([usernamePassword(
-
-                        credentialsId: 'nexus-creds',
-
-                        usernameVariable: 'USER',
-
-                        passwordVariable: 'PASS'
-
-                )]) {
-
-                    sh """
-
-                    echo \$PASS | docker login ${REGISTRY} \
-                    -u \$USER \
+                    echo $OKD_TOKEN | docker login \
+                    $REGISTRY_URL \
+                    -u developer \
                     --password-stdin
 
-                    docker push ${IMAGE}:${BUILD_NUMBER}
-
-                    docker push ${IMAGE}:latest
-
-                    docker push ${IMAGE}:${GIT_COMMIT.take(7)}
-
-                    """
-
+                    '''
                 }
-
             }
-
         }
 
-        stage('Deploy OKD') {
-
-            steps {
-
-                withCredentials([string(credentialsId: 'okd-token',
-
-                        variable: 'TOKEN')]) {
-
-                    sh """
-
-                    oc login ${OC_API} --token=\$TOKEN --insecure-skip-tls-verify=true
-
-                    oc project ${PROJECT}
-
-                    oc set image deployment/${APP_NAME} \
-                    ${APP_NAME}=${IMAGE}:${BUILD_NUMBER}
-
-                    oc rollout status deployment/${APP_NAME}
-
-                    """
-
-                }
-
-            }
-
-        }
-
-        stage('Verification') {
+        stage('Push Backend Image') {
 
             steps {
 
                 sh '''
 
-                oc get pods
+                docker push \
+                $REGISTRY_URL/$OKD_PROJECT/$BACKEND_IMAGE:$TAG
 
-                oc get deployment
-
-                oc get svc
-
-                oc get route
-
-                oc rollout history deployment/goalgorithm
+                docker push \
+                $REGISTRY_URL/$OKD_PROJECT/$BACKEND_IMAGE:latest
 
                 '''
-
             }
-
         }
 
+        stage('Push Frontend Image') {
+
+            steps {
+
+                sh '''
+
+                docker push \
+                $REGISTRY_URL/$OKD_PROJECT/$FRONTEND_IMAGE:$TAG
+
+                docker push \
+                $REGISTRY_URL/$OKD_PROJECT/$FRONTEND_IMAGE:latest
+
+                '''
+            }
+        }
+
+        stage('Deploy to OKD') {
+
+            steps {
+
+                withCredentials([
+                    string(
+                        credentialsId: "${OKD_TOKEN_CREDENTIALS_ID}",
+                        variable: 'OKD_TOKEN'
+                    )
+                ]) {
+
+                    sh '''
+
+                    oc login \
+                    --token=$OKD_TOKEN \
+                    --server=$OKD_API \
+                    --insecure-skip-tls-verify=true
+
+                    oc project $OKD_PROJECT
+
+                    echo "Updating Backend Deployment..."
+
+                    oc set image deployment/backend \
+                    backend=$REGISTRY_URL/$OKD_PROJECT/$BACKEND_IMAGE:$TAG
+
+                    echo "Updating Frontend Deployment..."
+
+                    oc set image deployment/frontend \
+                    frontend=$REGISTRY_URL/$OKD_PROJECT/$FRONTEND_IMAGE:$TAG
+
+                    oc rollout restart deployment/backend
+                    oc rollout restart deployment/frontend
+
+                    oc rollout status deployment/backend --timeout=300s
+                    oc rollout status deployment/frontend --timeout=300s
+
+                    '''
+                }
+            }
+        }
+
+        stage('Deployment Verification') {
+
+            steps {
+
+                sh '''
+
+                oc project $OKD_PROJECT
+
+                echo "================ PODS ================"
+                oc get pods
+
+                echo "================ DEPLOYMENTS ================"
+                oc get deployment
+
+                echo "================ SERVICES ================"
+                oc get svc
+
+                echo "================ ROUTES ================"
+                oc get route
+
+                echo "================ IMAGE STREAMS ================"
+                oc get is
+
+                '''
+            }
+        }
     }
 
     post {
 
         success {
 
-            echo "Deployment Successful"
-
+            echo '''
+====================================================
+        GOALGORITHM DEPLOYMENT SUCCESSFUL
+====================================================
+'''
         }
 
         failure {
 
-            echo "Deployment Failed"
-
+            echo '''
+====================================================
+        GOALGORITHM DEPLOYMENT FAILED
+====================================================
+'''
         }
 
         always {
 
-            sh 'docker logout ${REGISTRY} || true'
+            sh '''
 
+            docker logout $REGISTRY_URL || true
+
+            docker image prune -f || true
+
+            '''
         }
-
     }
-
 }
