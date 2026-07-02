@@ -34,14 +34,11 @@ def _validate_config_values(data: dict) -> None:
     for key, val in data.items():
         if val is None:
             continue
-        if key in ("probability_threshold",):
+        if "threshold" in key or "avg" in key:
             if val < 0:
                 errors.append(f"{key} cannot be negative")
             if val > 100:
                 errors.append(f"{key} must be ≤ 100")
-        elif "threshold" in key or "avg" in key:
-            if val < 0:
-                errors.append(f"{key} cannot be negative")
         elif key != "name":
             if isinstance(val, (int, float)) and val < 0:
                 errors.append(f"{key} cannot be negative")
@@ -114,9 +111,42 @@ def create_config(
         version=next_version,
         winner_points_correct=body.winner_points_correct,
         winner_points_incorrect=body.winner_points_incorrect,
+        first_team_to_score_points_correct=body.first_team_to_score_points_correct,
+        first_team_to_score_points_incorrect=body.first_team_to_score_points_incorrect,
         scoreline_points_exact=body.scoreline_points_exact,
+        scoreline_points_one_team_correct=body.scoreline_points_one_team_correct,
         scoreline_points_margin=body.scoreline_points_margin,
         scoreline_points_incorrect=body.scoreline_points_incorrect,
+        btts_points_correct=body.btts_points_correct,
+        btts_points_incorrect=body.btts_points_incorrect,
+        prob_winner_high_threshold=body.prob_winner_high_threshold,
+        prob_winner_high_points=body.prob_winner_high_points,
+        prob_winner_medium_threshold=body.prob_winner_medium_threshold,
+        prob_winner_medium_points=body.prob_winner_medium_points,
+        prob_winner_low_threshold=body.prob_winner_low_threshold,
+        prob_winner_low_points=body.prob_winner_low_points,
+        prob_winner_fail_points=body.prob_winner_fail_points,
+        prob_btts_high_threshold=body.prob_btts_high_threshold,
+        prob_btts_high_points=body.prob_btts_high_points,
+        prob_btts_medium_threshold=body.prob_btts_medium_threshold,
+        prob_btts_medium_points=body.prob_btts_medium_points,
+        prob_btts_low_threshold=body.prob_btts_low_threshold,
+        prob_btts_low_points=body.prob_btts_low_points,
+        prob_btts_fail_points=body.prob_btts_fail_points,
+        prob_first_goal_high_threshold=body.prob_first_goal_high_threshold,
+        prob_first_goal_high_points=body.prob_first_goal_high_points,
+        prob_first_goal_medium_threshold=body.prob_first_goal_medium_threshold,
+        prob_first_goal_medium_points=body.prob_first_goal_medium_points,
+        prob_first_goal_low_threshold=body.prob_first_goal_low_threshold,
+        prob_first_goal_low_points=body.prob_first_goal_low_points,
+        prob_first_goal_fail_points=body.prob_first_goal_fail_points,
+        player_goals_all_correct=body.player_goals_all_correct,
+        player_goals_half_correct=body.player_goals_half_correct,
+        player_goals_at_least_one=body.player_goals_at_least_one,
+        player_goals_none=body.player_goals_none,
+        clean_sheet_both_correct=body.clean_sheet_both_correct,
+        clean_sheet_one_correct=body.clean_sheet_one_correct,
+        clean_sheet_none=body.clean_sheet_none,
         probability_threshold=body.probability_threshold,
         probability_points_pass=body.probability_points_pass,
         probability_points_fail=body.probability_points_fail,
@@ -166,10 +196,30 @@ def update_config(
         config.name = update_data["name"]
     for field in [
         "winner_points_correct", "winner_points_incorrect",
-        "scoreline_points_exact", "scoreline_points_margin", "scoreline_points_incorrect",
+        "first_team_to_score_points_correct", "first_team_to_score_points_incorrect",
+        "scoreline_points_exact", "scoreline_points_one_team_correct",
+        "scoreline_points_margin", "scoreline_points_incorrect",
+        "btts_points_correct", "btts_points_incorrect",
+        "prob_winner_high_threshold", "prob_winner_high_points",
+        "prob_winner_medium_threshold", "prob_winner_medium_points",
+        "prob_winner_low_threshold", "prob_winner_low_points",
+        "prob_winner_fail_points",
+        "prob_btts_high_threshold", "prob_btts_high_points",
+        "prob_btts_medium_threshold", "prob_btts_medium_points",
+        "prob_btts_low_threshold", "prob_btts_low_points",
+        "prob_btts_fail_points",
+        "prob_first_goal_high_threshold", "prob_first_goal_high_points",
+        "prob_first_goal_medium_threshold", "prob_first_goal_medium_points",
+        "prob_first_goal_low_threshold", "prob_first_goal_low_points",
+        "prob_first_goal_fail_points",
+        "player_goals_all_correct", "player_goals_half_correct",
+        "player_goals_at_least_one", "player_goals_none",
+        "clean_sheet_both_correct", "clean_sheet_one_correct", "clean_sheet_none",
         "probability_threshold", "probability_points_pass", "probability_points_fail",
         "player_points_exact", "player_points_close", "player_points_wrong",
         "player_avg_threshold_exact", "player_avg_threshold_close",
+        "total_goals_points_exact", "total_goals_points_wrong",
+        "clean_sheet_points_correct", "clean_sheet_points_incorrect",
         "max_base_score",
         "technical_max_per_category", "technical_max_total",
         "presentation_ai_explanation_max", "presentation_qa_score_max",

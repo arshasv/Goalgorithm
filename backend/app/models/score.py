@@ -29,6 +29,15 @@ class ScoreModel(Base):
     first_team_to_score_points: Mapped[float | None] = mapped_column(Float, default=0.0, nullable=True)
     clean_sheet_points: Mapped[float | None] = mapped_column(Float, default=0.0, nullable=True)
 
+    winner_prediction_points: Mapped[float | None] = mapped_column(Float, default=0.0, nullable=True)
+    exact_scoreline_points: Mapped[float | None] = mapped_column(Float, default=0.0, nullable=True)
+    one_team_score_points: Mapped[float | None] = mapped_column(Float, default=0.0, nullable=True)
+    goal_difference_points: Mapped[float | None] = mapped_column(Float, default=0.0, nullable=True)
+    winner_confidence_points: Mapped[float | None] = mapped_column(Float, default=0.0, nullable=True)
+    btts_probability_points: Mapped[float | None] = mapped_column(Float, default=0.0, nullable=True)
+    first_team_to_score_probability_points: Mapped[float | None] = mapped_column(Float, default=0.0, nullable=True)
+    goal_scorer_points: Mapped[float | None] = mapped_column(Float, default=0.0, nullable=True)
+
     base_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     match_rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
     grade: Mapped[Grade | None] = mapped_column(

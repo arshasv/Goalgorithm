@@ -20,39 +20,77 @@ class ScoringConfigModel(Base):
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
 
-    winner_points_correct: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
-    winner_points_incorrect: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    # --- Winner Prediction (Max 5) ---
+    winner_points_correct: Mapped[float] = mapped_column(Float, default=2.5, nullable=False)
+    winner_points_incorrect: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    first_team_to_score_points_correct: Mapped[float] = mapped_column(Float, default=2.5, nullable=False)
+    first_team_to_score_points_incorrect: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
 
-    scoreline_points_exact: Mapped[int] = mapped_column(Integer, default=10, nullable=False)
-    scoreline_points_margin: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
-    scoreline_points_incorrect: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    # --- Scoreline Prediction (Max 10) ---
+    scoreline_points_exact: Mapped[float] = mapped_column(Float, default=7.5, nullable=False)
+    scoreline_points_one_team_correct: Mapped[float] = mapped_column(Float, default=4.0, nullable=False)
+    scoreline_points_margin: Mapped[float] = mapped_column(Float, default=3.0, nullable=False)
+    scoreline_points_incorrect: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    btts_points_correct: Mapped[float] = mapped_column(Float, default=2.5, nullable=False)
+    btts_points_incorrect: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
 
+    # --- Probability Accuracy (Max 5) ---
+    # Winner Confidence
+    prob_winner_high_threshold: Mapped[float] = mapped_column(Float, default=70.0, nullable=False)
+    prob_winner_high_points: Mapped[float] = mapped_column(Float, default=2.0, nullable=False)
+    prob_winner_medium_threshold: Mapped[float] = mapped_column(Float, default=50.0, nullable=False)
+    prob_winner_medium_points: Mapped[float] = mapped_column(Float, default=1.5, nullable=False)
+    prob_winner_low_threshold: Mapped[float] = mapped_column(Float, default=30.0, nullable=False)
+    prob_winner_low_points: Mapped[float] = mapped_column(Float, default=1.0, nullable=False)
+    prob_winner_fail_points: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+
+    # BTTS Probability
+    prob_btts_high_threshold: Mapped[float] = mapped_column(Float, default=70.0, nullable=False)
+    prob_btts_high_points: Mapped[float] = mapped_column(Float, default=1.0, nullable=False)
+    prob_btts_medium_threshold: Mapped[float] = mapped_column(Float, default=50.0, nullable=False)
+    prob_btts_medium_points: Mapped[float] = mapped_column(Float, default=0.75, nullable=False)
+    prob_btts_low_threshold: Mapped[float] = mapped_column(Float, default=30.0, nullable=False)
+    prob_btts_low_points: Mapped[float] = mapped_column(Float, default=0.5, nullable=False)
+    prob_btts_fail_points: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+
+    # First Team To Score Probability
+    prob_first_goal_high_threshold: Mapped[float] = mapped_column(Float, default=70.0, nullable=False)
+    prob_first_goal_high_points: Mapped[float] = mapped_column(Float, default=2.0, nullable=False)
+    prob_first_goal_medium_threshold: Mapped[float] = mapped_column(Float, default=50.0, nullable=False)
+    prob_first_goal_medium_points: Mapped[float] = mapped_column(Float, default=1.5, nullable=False)
+    prob_first_goal_low_threshold: Mapped[float] = mapped_column(Float, default=30.0, nullable=False)
+    prob_first_goal_low_points: Mapped[float] = mapped_column(Float, default=1.0, nullable=False)
+    prob_first_goal_fail_points: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+
+    # --- Player Performance (Max 5) ---
+    # Goal Scorers
+    player_goals_all_correct: Mapped[float] = mapped_column(Float, default=2.5, nullable=False)
+    player_goals_half_correct: Mapped[float] = mapped_column(Float, default=1.5, nullable=False)
+    player_goals_at_least_one: Mapped[float] = mapped_column(Float, default=1.0, nullable=False)
+    player_goals_none: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+
+    # Clean Sheet
+    clean_sheet_both_correct: Mapped[float] = mapped_column(Float, default=2.5, nullable=False)
+    clean_sheet_one_correct: Mapped[float] = mapped_column(Float, default=1.0, nullable=False)
+    clean_sheet_none: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+
+    # --- Legacy fields (kept for backward compat) ---
     probability_threshold: Mapped[float] = mapped_column(Float, default=15.0, nullable=False)
-    probability_points_pass: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
-    probability_points_fail: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-
+    probability_points_pass: Mapped[float] = mapped_column(Float, default=5.0, nullable=False)
+    probability_points_fail: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     probability_high_threshold: Mapped[float] = mapped_column(Float, default=15.0, nullable=False)
-    probability_high_points: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
+    probability_high_points: Mapped[float] = mapped_column(Float, default=5.0, nullable=False)
     probability_medium_threshold: Mapped[float] = mapped_column(Float, default=30.0, nullable=False)
-    probability_medium_points: Mapped[int] = mapped_column(Integer, default=2, nullable=False)
-
-    player_points_exact: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
-    player_points_close: Mapped[int] = mapped_column(Integer, default=2, nullable=False)
-    player_points_wrong: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    probability_medium_points: Mapped[float] = mapped_column(Float, default=2.0, nullable=False)
+    player_points_exact: Mapped[float] = mapped_column(Float, default=5.0, nullable=False)
+    player_points_close: Mapped[float] = mapped_column(Float, default=2.0, nullable=False)
+    player_points_wrong: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     player_avg_threshold_exact: Mapped[float] = mapped_column(Float, default=4.0, nullable=False)
     player_avg_threshold_close: Mapped[float] = mapped_column(Float, default=2.0, nullable=False)
-
-    total_goals_points_exact: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
-    total_goals_points_wrong: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-
-    btts_points_correct: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
-    btts_points_incorrect: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-
-    first_team_to_score_points_correct: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
-    first_team_to_score_points_incorrect: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-
-    clean_sheet_points_correct: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
-    clean_sheet_points_incorrect: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    total_goals_points_exact: Mapped[float] = mapped_column(Float, default=5.0, nullable=False)
+    total_goals_points_wrong: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    clean_sheet_points_correct: Mapped[float] = mapped_column(Float, default=5.0, nullable=False)
+    clean_sheet_points_incorrect: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
 
     max_base_score: Mapped[int] = mapped_column(Integer, default=25, nullable=False)
 
@@ -75,7 +113,7 @@ class ScoringConfigModel(Base):
     presentation_judge_count: Mapped[int] = mapped_column(Integer, default=2, nullable=False)
 
     def to_dict(self) -> dict:
-        return {
+        d = {
             "id": str(self.id),
             "name": self.name,
             "is_active": self.is_active,
@@ -83,9 +121,42 @@ class ScoringConfigModel(Base):
             "created_at": self.created_at.isoformat(),
             "winner_points_correct": self.winner_points_correct,
             "winner_points_incorrect": self.winner_points_incorrect,
+            "first_team_to_score_points_correct": self.first_team_to_score_points_correct,
+            "first_team_to_score_points_incorrect": self.first_team_to_score_points_incorrect,
             "scoreline_points_exact": self.scoreline_points_exact,
+            "scoreline_points_one_team_correct": self.scoreline_points_one_team_correct,
             "scoreline_points_margin": self.scoreline_points_margin,
             "scoreline_points_incorrect": self.scoreline_points_incorrect,
+            "btts_points_correct": self.btts_points_correct,
+            "btts_points_incorrect": self.btts_points_incorrect,
+            "prob_winner_high_threshold": self.prob_winner_high_threshold,
+            "prob_winner_high_points": self.prob_winner_high_points,
+            "prob_winner_medium_threshold": self.prob_winner_medium_threshold,
+            "prob_winner_medium_points": self.prob_winner_medium_points,
+            "prob_winner_low_threshold": self.prob_winner_low_threshold,
+            "prob_winner_low_points": self.prob_winner_low_points,
+            "prob_winner_fail_points": self.prob_winner_fail_points,
+            "prob_btts_high_threshold": self.prob_btts_high_threshold,
+            "prob_btts_high_points": self.prob_btts_high_points,
+            "prob_btts_medium_threshold": self.prob_btts_medium_threshold,
+            "prob_btts_medium_points": self.prob_btts_medium_points,
+            "prob_btts_low_threshold": self.prob_btts_low_threshold,
+            "prob_btts_low_points": self.prob_btts_low_points,
+            "prob_btts_fail_points": self.prob_btts_fail_points,
+            "prob_first_goal_high_threshold": self.prob_first_goal_high_threshold,
+            "prob_first_goal_high_points": self.prob_first_goal_high_points,
+            "prob_first_goal_medium_threshold": self.prob_first_goal_medium_threshold,
+            "prob_first_goal_medium_points": self.prob_first_goal_medium_points,
+            "prob_first_goal_low_threshold": self.prob_first_goal_low_threshold,
+            "prob_first_goal_low_points": self.prob_first_goal_low_points,
+            "prob_first_goal_fail_points": self.prob_first_goal_fail_points,
+            "player_goals_all_correct": self.player_goals_all_correct,
+            "player_goals_half_correct": self.player_goals_half_correct,
+            "player_goals_at_least_one": self.player_goals_at_least_one,
+            "player_goals_none": self.player_goals_none,
+            "clean_sheet_both_correct": self.clean_sheet_both_correct,
+            "clean_sheet_one_correct": self.clean_sheet_one_correct,
+            "clean_sheet_none": self.clean_sheet_none,
             "probability_threshold": self.probability_threshold,
             "probability_points_pass": self.probability_points_pass,
             "probability_points_fail": self.probability_points_fail,
@@ -100,10 +171,6 @@ class ScoringConfigModel(Base):
             "player_avg_threshold_close": self.player_avg_threshold_close,
             "total_goals_points_exact": self.total_goals_points_exact,
             "total_goals_points_wrong": self.total_goals_points_wrong,
-            "btts_points_correct": self.btts_points_correct,
-            "btts_points_incorrect": self.btts_points_incorrect,
-            "first_team_to_score_points_correct": self.first_team_to_score_points_correct,
-            "first_team_to_score_points_incorrect": self.first_team_to_score_points_incorrect,
             "clean_sheet_points_correct": self.clean_sheet_points_correct,
             "clean_sheet_points_incorrect": self.clean_sheet_points_incorrect,
             "max_base_score": self.max_base_score,
@@ -127,4 +194,5 @@ class ScoringConfigModel(Base):
             ],
             "presentation_judge_count": self.presentation_judge_count,
         }
+        return d
 

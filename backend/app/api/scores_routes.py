@@ -123,6 +123,13 @@ def get_match_breakdown(
                     "predicted_home_goals": pred.predicted_home_goals,
                     "predicted_away_goals": pred.predicted_away_goals,
                     "status": pred.status.value if pred.status else None,
+                    "home_win_probability": pred.home_win_probability,
+                    "draw_probability": pred.draw_probability,
+                    "away_win_probability": pred.away_win_probability,
+                    "both_teams_to_score_prediction": pred.both_teams_to_score_prediction,
+                    "both_teams_to_score_probability": pred.both_teams_to_score_probability,
+                    "first_goal_team": pred.first_goal_team.value if pred.first_goal_team else None,
+                    "first_goal_team_probability": pred.first_goal_team_probability,
                 }
 
             teams.append({
@@ -139,6 +146,14 @@ def get_match_breakdown(
                     "btts_points": s.btts_points,
                     "first_team_to_score_points": s.first_team_to_score_points,
                     "clean_sheet_points": s.clean_sheet_points,
+                    "winner_prediction_points": s.winner_prediction_points,
+                    "exact_scoreline_points": s.exact_scoreline_points,
+                    "one_team_score_points": s.one_team_score_points,
+                    "goal_difference_points": s.goal_difference_points,
+                    "winner_confidence_points": s.winner_confidence_points,
+                    "btts_probability_points": s.btts_probability_points,
+                    "first_team_to_score_probability_points": s.first_team_to_score_probability_points,
+                    "goal_scorer_points": s.goal_scorer_points,
                     "base_score": s.base_score,
                     "earned_points": s.earned_points,
                     "match_rank": s.match_rank,
@@ -155,6 +170,7 @@ def get_match_breakdown(
                 else None,
                 "actual_home_goals": actual.actual_home_goals,
                 "actual_away_goals": actual.actual_away_goals,
+                "first_team_to_score": actual.first_team_to_score,
             }
 
         result.append({
