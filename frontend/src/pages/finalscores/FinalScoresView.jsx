@@ -239,7 +239,7 @@ const FinalScoresView = () => {
           </div>
           <div className="table-wrapper">
             <table>
-              <thead><tr><th>Team</th><th>Prediction</th><th>Winner</th><th>Scoreline</th><th>Prob.</th><th>Player</th><th>Tot Goals</th><th>BTTS</th><th>First Team</th><th>Clean Sheet</th><th>Base Score</th><th>Grade</th><th>Mult</th><th>Earned Pts</th></tr></thead>
+<thead><tr><th>Team</th><th>Prediction</th><th>Winner</th><th>Scoreline</th><th>Prob.</th><th>Player</th><th>Tot Goals</th><th>BTTS</th><th>First Team</th><th>Clean Sheet</th><th>Base Score</th><th>Grade</th><th>Mult</th><th>Earned Pts</th></tr></thead>
               <tbody>
                 {(match.teams || []).map(t => {
                   const sc = t.score_breakdown || {};
@@ -260,18 +260,18 @@ const FinalScoresView = () => {
                     <tr key={t.team_id}>
                       <td><strong>{formatTeamDisplay({ team_code: t.team_code, name: t.team_name })}</strong></td>
                       <td>{predStr}</td>
-                      <td><span className={sc.winner_points >= maxWinner ? 'badge badge-success' : sc.winner_points > 0 ? 'badge badge-warning' : 'badge badge-error'}>{sc.winner_points ?? '—'}/{maxWinner}</span></td>
-                      <td><span className={sc.scoreline_points >= maxScoreline ? 'badge badge-success' : sc.scoreline_points > 0 ? 'badge badge-warning' : 'badge badge-error'}>{sc.scoreline_points ?? '—'}/{maxScoreline}</span></td>
-                      <td><span className={sc.probability_points >= maxProbability ? 'badge badge-success' : sc.probability_points > 0 ? 'badge badge-warning' : 'badge badge-error'}>{sc.probability_points ?? '—'}/{maxProbability}</span></td>
-                      <td><span className={sc.player_points >= maxPlayer ? 'badge badge-success' : sc.player_points > 0 ? 'badge badge-warning' : 'badge badge-error'}>{sc.player_points ?? '—'}/{maxPlayer}</span></td>
-                      <td><span className={sc.total_goals_points > 0 ? 'badge badge-success' : 'badge badge-error'}>{sc.total_goals_points ?? '—'}/{maxTotalGoals.toFixed(1)}</span></td>
-                      <td><span className={sc.btts_points >= maxBtts ? 'badge badge-success' : 'badge badge-error'}>{sc.btts_points ?? '—'}/{maxBtts}</span></td>
-                      <td><span className={sc.first_team_to_score_points >= maxFtts ? 'badge badge-success' : 'badge badge-error'}>{sc.first_team_to_score_points ?? '—'}/{maxFtts}</span></td>
-                      <td><span className={sc.clean_sheet_points >= maxCleanSheet ? 'badge badge-success' : sc.clean_sheet_points > 0 ? 'badge badge-warning' : 'badge badge-error'}>{sc.clean_sheet_points ?? '—'}/{maxCleanSheet}</span></td>
-                      <td><strong className={`score-num ${scoreColor(sc.base_score, maxBase)}`}>{fmt1(sc.base_score)}</strong></td>
-                      <td><span className="badge">{sc.grade || '—'}</span></td>
-                      <td>{sc.multiplier != null ? `x${sc.multiplier}` : '—'}</td>
-                      <td><strong className="score-num">{fmt1(sc.earned_points)}</strong></td>
+<<td><span className={sc.winner_points >= maxWinner ? 'badge badge-success' : sc.winner_points > 0 ? 'badge badge-warning' : 'badge badge-error'}>{sc.winner_points ?? '—'}/{maxWinner}</span></td>
+<td><span className={sc.scoreline_points >= maxScoreline ? 'badge badge-success' : sc.scoreline_points > 0 ? 'badge badge-warning' : 'badge badge-error'}>{sc.scoreline_points ?? '—'}/{maxScoreline}</span></td>
+<td><span className={sc.probability_points >= maxProbability ? 'badge badge-success' : sc.probability_points > 0 ? 'badge badge-warning' : 'badge badge-error'}>{sc.probability_points ?? '—'}/{maxProbability}</span></td>
+<td><span className={sc.player_points >= maxPlayer ? 'badge badge-success' : sc.player_points > 0 ? 'badge badge-warning' : 'badge badge-error'}>{sc.player_points ?? '—'}/{maxPlayer}</span></td>
+<td><span className={sc.total_goals_points > 0 ? 'badge badge-success' : 'badge badge-error'}>{sc.total_goals_points ?? '—'}/{maxTotalGoals.toFixed(1)}</span></td>
+<td><span className={sc.btts_points >= maxBtts ? 'badge badge-success' : 'badge badge-error'}>{sc.btts_points ?? '—'}/{maxBtts}</span></td>
+<td><span className={sc.first_team_to_score_points >= maxFtts ? 'badge badge-success' : 'badge badge-error'}>{sc.first_team_to_score_points ?? '—'}/{maxFtts}</span></td>
+<td><span className={sc.clean_sheet_points >= maxCleanSheet ? 'badge badge-success' : sc.clean_sheet_points > 0 ? 'badge badge-warning' : 'badge badge-error'}>{sc.clean_sheet_points ?? '—'}/{maxCleanSheet}</span></td>
+<td><strong className={`score-num ${scoreColor(sc.base_score, maxBase)}`}>{fmt1(sc.base_score)}</strong></td>
+<td><span className="badge">{sc.grade || '—'}</span></td>
+<td>{sc.multiplier != null ? `x${sc.multiplier}` : '—'}</td>
+<td><strong className="score-num">{fmt1(sc.earned_points)}</strong></td>
                     </tr>
                   );
                 })}

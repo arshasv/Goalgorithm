@@ -48,7 +48,7 @@ class TestScoringConfigAPI:
         assert resp.status_code == 200
         body = resp.json()
         assert body["config"]["name"] == "Test Default"
-        assert len(body["guidelines"]) == 25
+        assert len(body["guidelines"]) == 50
         assert body["guidelines"][0]["key"] == "winner_points_correct"
 
     def test_organizer_creates_config(self, client, organizer_headers):
@@ -74,7 +74,7 @@ class TestScoringConfigAPI:
         body = resp.json()
         assert body["winner_points_correct"] == 8
         assert body["probability_threshold"] == 20.0
-        assert body["scoreline_points_exact"] == 10
+        assert body["scoreline_points_exact"] == 7.5
 
     def test_team_cannot_update_config(self, client, team_leader_headers, default_scoring_config):
         resp = client.put(
@@ -102,7 +102,7 @@ class TestScoringConfigAPI:
         assert reset_resp.status_code == 200
         body = reset_resp.json()
         assert body["id"] == DEFAULT_CONFIG_ID
-        assert body["winner_points_correct"] == 5
+        assert body["winner_points_correct"] == 2.5
 
     def test_new_config_affects_new_scores(self, client, organizer_headers, team_a, sample_match, db_session, default_scoring_config):
         pred = _patch_payload(
@@ -117,7 +117,7 @@ class TestScoringConfigAPI:
             headers=organizer_headers,
         )
         assert resp.status_code == 200
-        assert resp.json()["breakdown"]["winner_score"] == 5
+        assert resp.json()["breakdown"]["winner_score"] == 2.5
 
         cfg_resp = client.post(
             "/api/v1/admin/scoring-config",

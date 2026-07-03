@@ -14,17 +14,42 @@ def _check_positive(name: str, v: int | float | None, errors: list) -> None:
 GUIDELINE_DESCRIPTIONS: list[dict] = [
     {"key": "winner_points_correct", "label": "Winner — Correct", "description": "Points awarded when a team correctly predicts the match winner."},
     {"key": "winner_points_incorrect", "label": "Winner — Incorrect", "description": "Points awarded when the predicted winner is wrong."},
+    {"key": "first_team_to_score_points_correct", "label": "First Team to Score — Correct", "description": "Points awarded for correctly predicting the first team to score."},
+    {"key": "first_team_to_score_points_incorrect", "label": "First Team to Score — Incorrect", "description": "Points awarded when the first team to score prediction is wrong."},
     {"key": "scoreline_points_exact", "label": "Scoreline — Exact", "description": "Points awarded for predicting the exact final score (both home and away goals match)."},
+    {"key": "scoreline_points_one_team_correct", "label": "Scoreline — One Team Correct", "description": "Points awarded when one team's goal count is predicted correctly but not the other."},
     {"key": "scoreline_points_margin", "label": "Scoreline — Margin Only", "description": "Points awarded when the predicted goal margin and direction match the actual result, but not the exact goals."},
     {"key": "scoreline_points_incorrect", "label": "Scoreline — Incorrect", "description": "Points awarded when neither the exact score nor the margin is correct."},
-    {"key": "probability_threshold", "label": "Probability Threshold (±%)", "description": "Maximum absolute percentage difference allowed between predicted and actual probabilities. All five probability fields must be within this range to earn points."},
-    {"key": "probability_points_pass", "label": "Probability — Pass", "description": "Points awarded when all predicted probabilities are within the threshold."},
-    {"key": "probability_points_fail", "label": "Probability — Fail", "description": "Points awarded when any predicted probability falls outside the threshold."},
-    {"key": "player_points_exact", "label": "Player Performance — Exact", "description": "Points per player when predicted goals exactly match actual goals (difference = 0)."},
-    {"key": "player_points_close", "label": "Player Performance — Close", "description": "Points per player when predicted goals are off by exactly 1."},
-    {"key": "player_points_wrong", "label": "Player Performance — Wrong", "description": "Points per player when the prediction differs by 2 or more goals."},
-    {"key": "player_avg_threshold_exact", "label": "Player Avg Threshold — Exact (≥)", "description": "Minimum average player score required for the team to receive exact points."},
-    {"key": "player_avg_threshold_close", "label": "Player Avg Threshold — Close (≥)", "description": "Minimum average player score required for the team to receive close points."},
+    {"key": "btts_points_correct", "label": "BTTS — Correct", "description": "Points awarded for correctly predicting whether both teams score."},
+    {"key": "btts_points_incorrect", "label": "BTTS — Incorrect", "description": "Points awarded when the BTTS prediction is wrong."},
+    {"key": "prob_winner_high_threshold", "label": "Prob — Winner High Threshold (≥%)", "description": "Minimum confidence % for the highest tier of winner probability points."},
+    {"key": "prob_winner_high_points", "label": "Prob — Winner High Tier Points", "description": "Points when winner confidence ≥ the high threshold."},
+    {"key": "prob_winner_medium_threshold", "label": "Prob — Winner Medium Threshold (≥%)", "description": "Minimum confidence % for the middle tier of winner probability points."},
+    {"key": "prob_winner_medium_points", "label": "Prob — Winner Medium Tier Points", "description": "Points when winner confidence ≥ the medium threshold but below the high threshold."},
+    {"key": "prob_winner_low_threshold", "label": "Prob — Winner Low Threshold (≥%)", "description": "Minimum confidence % for the lowest tier of winner probability points."},
+    {"key": "prob_winner_low_points", "label": "Prob — Winner Low Tier Points", "description": "Points when winner confidence ≥ the low threshold but below the medium threshold."},
+    {"key": "prob_winner_fail_points", "label": "Prob — Winner Fail Points", "description": "Points when winner confidence is below the low threshold."},
+    {"key": "prob_btts_high_threshold", "label": "Prob — BTTS High Threshold (≥%)", "description": "Minimum confidence % for the highest tier of BTTS probability points."},
+    {"key": "prob_btts_high_points", "label": "Prob — BTTS High Tier Points", "description": "Points when BTTS confidence ≥ the high threshold."},
+    {"key": "prob_btts_medium_threshold", "label": "Prob — BTTS Medium Threshold (≥%)", "description": "Minimum confidence % for the middle tier of BTTS probability points."},
+    {"key": "prob_btts_medium_points", "label": "Prob — BTTS Medium Tier Points", "description": "Points when BTTS confidence ≥ the medium threshold but below the high threshold."},
+    {"key": "prob_btts_low_threshold", "label": "Prob — BTTS Low Threshold (≥%)", "description": "Minimum confidence % for the lowest tier of BTTS probability points."},
+    {"key": "prob_btts_low_points", "label": "Prob — BTTS Low Tier Points", "description": "Points when BTTS confidence ≥ the low threshold but below the medium threshold."},
+    {"key": "prob_btts_fail_points", "label": "Prob — BTTS Fail Points", "description": "Points when BTTS confidence is below the low threshold."},
+    {"key": "prob_first_goal_high_threshold", "label": "Prob — First Goal High Threshold (≥%)", "description": "Minimum confidence % for the highest tier of first goal probability points."},
+    {"key": "prob_first_goal_high_points", "label": "Prob — First Goal High Tier Points", "description": "Points when first goal confidence ≥ the high threshold."},
+    {"key": "prob_first_goal_medium_threshold", "label": "Prob — First Goal Medium Threshold (≥%)", "description": "Minimum confidence % for the middle tier of first goal probability points."},
+    {"key": "prob_first_goal_medium_points", "label": "Prob — First Goal Medium Tier Points", "description": "Points when first goal confidence ≥ the medium threshold but below the high threshold."},
+    {"key": "prob_first_goal_low_threshold", "label": "Prob — First Goal Low Threshold (≥%)", "description": "Minimum confidence % for the lowest tier of first goal probability points."},
+    {"key": "prob_first_goal_low_points", "label": "Prob — First Goal Low Tier Points", "description": "Points when first goal confidence ≥ the low threshold but below the medium threshold."},
+    {"key": "prob_first_goal_fail_points", "label": "Prob — First Goal Fail Points", "description": "Points when first goal confidence is below the low threshold."},
+    {"key": "player_goals_all_correct", "label": "Player — All Goal Scorers Correct", "description": "Points when every predicted goal scorer correctly matches the actual scorers."},
+    {"key": "player_goals_half_correct", "label": "Player — ≥50% Goal Scorers Correct", "description": "Points when at least half of predicted goal scorers are correct."},
+    {"key": "player_goals_at_least_one", "label": "Player — At Least One Scorer Correct", "description": "Points when at least one predicted goal scorer is correct."},
+    {"key": "player_goals_none", "label": "Player — No Scorers Correct", "description": "Points when no predicted goal scorers are correct."},
+    {"key": "clean_sheet_both_correct", "label": "Clean Sheet — Both Teams Correct", "description": "Points when both team clean sheet predictions are correct."},
+    {"key": "clean_sheet_one_correct", "label": "Clean Sheet — One Team Correct", "description": "Points when exactly one team's clean sheet prediction is correct."},
+    {"key": "clean_sheet_none", "label": "Clean Sheet — None Correct", "description": "Points when no clean sheet predictions are correct."},
     {"key": "max_base_score", "label": "Max Base Score", "description": "The maximum possible base score for a single match (winner + scoreline + probability + player)."},
     {"key": "technical_max_per_category", "label": "Technical Eval — Max Per Category", "description": "Maximum score per technical evaluation dimension (code quality, backend, teamwork, AI explanation)."},
     {"key": "technical_max_total", "label": "Technical Eval — Max Total", "description": "Maximum total technical evaluation score across all four categories."},
@@ -50,7 +75,10 @@ class ScoringConfigCreate(BaseModel):
     probability_threshold: float = 15.0
     probability_points_pass: float = 5.0
     probability_points_fail: float = 0.0
+    probability_points_pass: float = 5.0
+    probability_points_fail: float = 0.0
     probability_high_threshold: float = 15.0
+    probability_high_points: float = 5.0
     probability_high_points: float = 5.0
     probability_medium_threshold: float = 30.0
     probability_medium_points: float = 2.0
@@ -78,11 +106,24 @@ class ScoringConfigCreate(BaseModel):
     def validate_rules(self) -> "ScoringConfigCreate":
         errors: list[str] = []
         for f in ["winner_points_correct", "winner_points_incorrect",
-                   "scoreline_points_exact", "scoreline_points_margin", "scoreline_points_incorrect"]:
-            _check_positive(f, getattr(self, f, None), errors)
-        for f in ["probability_points_pass", "probability_points_fail",
+                   "first_team_to_score_points_correct", "first_team_to_score_points_incorrect",
+                   "scoreline_points_exact", "scoreline_points_one_team_correct",
+                   "scoreline_points_margin", "scoreline_points_incorrect",
+                   "btts_points_correct", "btts_points_incorrect",
+                   "prob_winner_high_points", "prob_winner_medium_points", "prob_winner_low_points",
+                   "prob_winner_fail_points",
+                   "prob_btts_high_points", "prob_btts_medium_points", "prob_btts_low_points",
+                   "prob_btts_fail_points",
+                   "prob_first_goal_high_points", "prob_first_goal_medium_points", "prob_first_goal_low_points",
+                   "prob_first_goal_fail_points",
+                   "player_goals_all_correct", "player_goals_half_correct", "player_goals_at_least_one",
+                   "player_goals_none",
+                   "clean_sheet_both_correct", "clean_sheet_one_correct", "clean_sheet_none",
+                   "probability_points_pass", "probability_points_fail",
                    "probability_high_points", "probability_medium_points",
                    "player_points_exact", "player_points_close", "player_points_wrong",
+                   "total_goals_points_exact", "total_goals_points_wrong",
+                   "clean_sheet_points_correct", "clean_sheet_points_incorrect",
                    "max_base_score",
                    "technical_max_per_category", "technical_max_total",
                    "presentation_ai_explanation_max", "presentation_qa_score_max",
@@ -90,10 +131,16 @@ class ScoringConfigCreate(BaseModel):
                    "multiplier_a", "multiplier_b", "multiplier_c",
                    "phase1_max_marks", "presentation_judge_count"]:
             _check_positive(f, getattr(self, f, None), errors)
-        if self.probability_threshold < 0:
-            errors.append("probability_threshold cannot be negative")
-        if self.probability_threshold > 100:
-            errors.append("probability_threshold must be ≤ 100")
+        for thresh in ["prob_winner_high_threshold", "prob_winner_medium_threshold", "prob_winner_low_threshold",
+                        "prob_btts_high_threshold", "prob_btts_medium_threshold", "prob_btts_low_threshold",
+                        "prob_first_goal_high_threshold", "prob_first_goal_medium_threshold", "prob_first_goal_low_threshold",
+                        "probability_threshold", "probability_high_threshold", "probability_medium_threshold"]:
+            val = getattr(self, thresh, None)
+            if val is not None:
+                if val < 0:
+                    errors.append(f"{thresh} cannot be negative")
+                if val > 100:
+                    errors.append(f"{thresh} must be ≤ 100")
         if self.player_avg_threshold_exact < 0:
             errors.append("player_avg_threshold_exact cannot be negative")
         if self.player_avg_threshold_close < 0:
@@ -113,9 +160,16 @@ class ScoringConfigUpdate(BaseModel):
     probability_threshold: float | None = None
     probability_points_pass: float | None = None
     probability_points_fail: float | None = None
+    probability_points_pass: float | None = None
+    probability_points_fail: float | None = None
     probability_high_threshold: float | None = None
     probability_high_points: float | None = None
+    probability_high_points: float | None = None
     probability_medium_threshold: float | None = None
+    probability_medium_points: float | None = None
+    player_points_exact: float | None = None
+    player_points_close: float | None = None
+    player_points_wrong: float | None = None
     probability_medium_points: float | None = None
     player_points_exact: float | None = None
     player_points_close: float | None = None
@@ -141,10 +195,24 @@ class ScoringConfigUpdate(BaseModel):
     def validate_rules(self) -> "ScoringConfigUpdate":
         errors: list[str] = []
         for f in ["winner_points_correct", "winner_points_incorrect",
-                   "scoreline_points_exact", "scoreline_points_margin", "scoreline_points_incorrect",
+                   "first_team_to_score_points_correct", "first_team_to_score_points_incorrect",
+                   "scoreline_points_exact", "scoreline_points_one_team_correct",
+                   "scoreline_points_margin", "scoreline_points_incorrect",
+                   "btts_points_correct", "btts_points_incorrect",
+                   "prob_winner_high_points", "prob_winner_medium_points", "prob_winner_low_points",
+                   "prob_winner_fail_points",
+                   "prob_btts_high_points", "prob_btts_medium_points", "prob_btts_low_points",
+                   "prob_btts_fail_points",
+                   "prob_first_goal_high_points", "prob_first_goal_medium_points", "prob_first_goal_low_points",
+                   "prob_first_goal_fail_points",
+                   "player_goals_all_correct", "player_goals_half_correct", "player_goals_at_least_one",
+                   "player_goals_none",
+                   "clean_sheet_both_correct", "clean_sheet_one_correct", "clean_sheet_none",
                    "probability_points_pass", "probability_points_fail",
                    "probability_high_points", "probability_medium_points",
                    "player_points_exact", "player_points_close", "player_points_wrong",
+                   "total_goals_points_exact", "total_goals_points_wrong",
+                   "clean_sheet_points_correct", "clean_sheet_points_incorrect",
                    "max_base_score",
                    "technical_max_per_category", "technical_max_total",
                    "presentation_ai_explanation_max", "presentation_qa_score_max",
@@ -154,11 +222,16 @@ class ScoringConfigUpdate(BaseModel):
             val = getattr(self, f, None)
             if val is not None:
                 _check_positive(f, val, errors)
-        if self.probability_threshold is not None:
-            if self.probability_threshold < 0:
-                errors.append("probability_threshold cannot be negative")
-            if self.probability_threshold > 100:
-                errors.append("probability_threshold must be ≤ 100")
+        for thresh in ["prob_winner_high_threshold", "prob_winner_medium_threshold", "prob_winner_low_threshold",
+                        "prob_btts_high_threshold", "prob_btts_medium_threshold", "prob_btts_low_threshold",
+                        "prob_first_goal_high_threshold", "prob_first_goal_medium_threshold", "prob_first_goal_low_threshold",
+                        "probability_threshold", "probability_high_threshold", "probability_medium_threshold"]:
+            val = getattr(self, thresh, None)
+            if val is not None:
+                if val < 0:
+                    errors.append(f"{thresh} cannot be negative")
+                if val > 100:
+                    errors.append(f"{thresh} must be ≤ 100")
         if self.player_avg_threshold_exact is not None and self.player_avg_threshold_exact < 0:
             errors.append("player_avg_threshold_exact cannot be negative")
         if self.player_avg_threshold_close is not None and self.player_avg_threshold_close < 0:
@@ -182,9 +255,16 @@ class ScoringConfigResponse(BaseModel):
     probability_threshold: float
     probability_points_pass: float
     probability_points_fail: float
+    probability_points_pass: float
+    probability_points_fail: float
     probability_high_threshold: float
     probability_high_points: float
+    probability_high_points: float
     probability_medium_threshold: float
+    probability_medium_points: float
+    player_points_exact: float
+    player_points_close: float
+    player_points_wrong: float
     probability_medium_points: float
     player_points_exact: float
     player_points_close: float

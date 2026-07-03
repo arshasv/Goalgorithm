@@ -366,6 +366,7 @@ const TeamLeaderDashboard = () => {
                       <span style={{fontWeight:600}}>Match {match.match_number}</span>
                       <span className="badge badge-info">{match.home_team_name} vs {match.away_team_name}</span>
                     </div>
+<<<<<<< HEAD:frontend/src/pages/dashboard/TeamLeaderDashboard.jsx
                     <div style={{display:'grid',gridTemplateColumns:'repeat(12,1fr)',gap:'var(--space-sm)',textAlign:'center'}}>
                       <div><div style={{fontSize:'var(--text-xs)',color:'var(--color-text-muted)'}}>Winner</div><div className="score-digit">{sc.winner_points ?? '—'}/{maxWinner}</div></div>
                       <div><div style={{fontSize:'var(--text-xs)',color:'var(--color-text-muted)'}}>Scoreline</div><div className="score-digit">{sc.scoreline_points ?? '—'}/{maxScoreline}</div></div>
@@ -379,6 +380,14 @@ const TeamLeaderDashboard = () => {
                       <div><div style={{fontSize:'var(--text-xs)',color:'var(--color-text-muted)'}}>Grade</div><div className="score-digit">{sc.grade ?? '—'}</div></div>
                       <div><div style={{fontSize:'var(--text-xs)',color:'var(--color-text-muted)'}}>Mult</div><div className="score-digit">{sc.multiplier != null ? `x${sc.multiplier}` : '—'}</div></div>
                       <div><div style={{fontSize:'var(--text-xs)',color:'var(--color-text-muted)'}}>Earned</div><div className="score-digit" style={{fontWeight:700,color:'var(--color-accent)'}}>{sc.earned_points ?? '—'}</div></div>
+=======
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:'var(--space-sm)',textAlign:'center'}}>
+                      <div><div style={{fontSize:'var(--text-xs)',color:'var(--color-text-muted)'}}>Winner Prediction</div><div className="score-digit">{sc.winner_points ?? '—'}/5</div></div>
+                      <div><div style={{fontSize:'var(--text-xs)',color:'var(--color-text-muted)'}}>Scoreline</div><div className="score-digit">{sc.scoreline_points ?? '—'}/7.5</div></div>
+                      <div><div style={{fontSize:'var(--text-xs)',color:'var(--color-text-muted)'}}>Probability</div><div className="score-digit">{sc.probability_points ?? '—'}/5</div></div>
+                      <div><div style={{fontSize:'var(--text-xs)',color:'var(--color-text-muted)'}}>Player Perf.</div><div className="score-digit">{sc.player_points ?? '—'}/5</div></div>
+                      <div><div style={{fontSize:'var(--text-xs)',color:'var(--color-text-muted)'}}>Base Score</div><div className="score-digit" style={{fontWeight:700}}>{sc.base_score ?? '—'}/25</div></div>
+>>>>>>> develop:react-frontend/src/pages/dashboard/TeamLeaderDashboard.jsx
                     </div>
                   </div>
                 );
