@@ -1,49 +1,43 @@
-FROM python:3.12-slim AS builder
+# ---------- Base Image ----------
+FROM python:3.12-slim
 
-WORKDIR /app
-
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends libgomp1 && \
-    rm -rf /var/lib/apt/lists/*
-
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Stage 2: Final minimal runner image
-FROM python:3.12-slim AS runner
-
-# Set security and Python execution environment variables
+# Python settings
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PATH="/opt/venv/bin:$PATH"
+    PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-# Install curl for health checks
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Install required system packages
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
     curl \
+    libgomp1 \
+    gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy virtual environment from builder stage
-COPY --from=builder /opt/venv /opt/venv
+# Copy dependency file first (better Docker layer caching)
+COPY requirements.txt .
 
-# Copy all backend source files
+# Upgrade pip and install Python dependencies
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Copy application source
 COPY . .
 
-# Create a non-privileged user and group for runtime security
-RUN groupadd -g 10001 appgroup && \
-    useradd -r -u 10001 -g appgroup -d /app -s /sbin/nologin appuser && \
+# Create a non-root user
+RUN groupadd -r appgroup && \
+    useradd -r -g appgroup appuser && \
     chown -R appuser:appgroup /app
 
-# Run the container as the non-root user
 USER appuser
 
-# Expose API runtime port
+# Expose FastAPI port
 EXPOSE 8000
 
-# Container healthcheck definition
-HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:8000/health || exit 1
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
 
-# Launch the FastAPI app with Uvicorn
+# Start application
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
