@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: goalgorithm
+  labels:
+    app: goalgorithm
+    tier: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: goalgorithm
+  template:
+    metadata:
+      labels:
+        app: goalgorithm
+        tier: backend
+    spec:
+      containers:
+      - name: goalgorithm
+        image: 192.168.21.116:8081/goalgorithm:latest
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 8000
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+          requests:
+            cpu: "250m"
+            memory: "256Mi"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 15
+          periodSeconds: 20
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 2
+          successThreshold: 1
+          failureThreshold: 2
+        env:
+        - name: APP_ENV
+          value: "production"
+        - name: DATABASE_URL
+          value: "sqlite:///fifa_dev.db"
+        - name: ACCESS_TOKEN_EXPIRE_MINUTES
+          value: "60"
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: goalgorithm-secret
+              key: secret-key
+              optional: true
+      imagePullSecrets:
+      - name: nexus-secret

@@ -1,6 +1,6 @@
 services:
   fifa-scoring-api:
-    build: .
+    build: ./backend
     ports:
       - "8002:8000"
     env_file:

@@ -1,3 +1,11 @@
 .env
 venv/
 .pytest_cache/
+client_secret.json
+token.json
+
+backend/app/file_manager/client_secret.json
+backend/app/file_manager/token.json
+
+File-manager/client_secret.json
+File-manager/token.json
