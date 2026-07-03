@@ -39,7 +39,11 @@ def calculate_scoreline_score_breakdown(
     one_team_score_points = 0.0
 
     # One Team Goals Correct
-    if (pred_home == actual_home and pred_away != actual_away) or (pred_home != actual_home and pred_away == actual_away):
+    if (
+        (pred_home == actual_home and pred_away != actual_away)
+        or
+        (pred_home != actual_home and pred_away == actual_away)
+    ):
         one_team_score_points = float(pts_one_team)
 
     # Goal Difference Correct
@@ -86,7 +90,11 @@ def calculate_scoreline_score(
     partial_score = 0.0
 
     # One Team Goals Correct
-    if (pred_home == actual_home and pred_away != actual_away) or (pred_home != actual_home and pred_away == actual_away):
+    if (
+        (pred_home == actual_home and pred_away != actual_away)
+        or
+        (pred_home != actual_home and pred_away == actual_away)
+    ):
         partial_score += float(pts_one_team)
 
     # Goal Difference Correct
@@ -98,5 +106,5 @@ def calculate_scoreline_score(
     if btts_val > 0.0:
         partial_score += float(pts_btts)
 
-    # Cap the scoreline part at the mentioned maximum score (Exact Scoreline = 7.5)
-    return min(float(pts_exact), partial_score) if partial_score > 0 else float(pts_incorrect)
+# Cap the scoreline category at 10 points
+return min(10.0, partial_score) if partial_score > 0 else float(pts_incorrect)

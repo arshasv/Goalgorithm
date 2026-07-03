@@ -32,10 +32,13 @@ def calculate_btts_score(
     actual_scoreline = actual_result.get("final_score") or {}
     actual_home = actual_scoreline.get("home_team_goals")
     actual_away = actual_scoreline.get("away_team_goals")
+
     if actual_home is None or actual_away is None:
         return float(points_incorrect)
+
     actual_btts = actual_home > 0 and actual_away > 0
 
     if pred_btts == actual_btts:
         return float(points_correct)
+
     return float(points_incorrect)

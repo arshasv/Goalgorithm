@@ -67,80 +67,29 @@ GUIDELINE_DESCRIPTIONS: list[dict] = [
 
 class ScoringConfigCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
-
-    # Winner Prediction (Max 5)
     winner_points_correct: float = 2.5
     winner_points_incorrect: float = 0.0
-    first_team_to_score_points_correct: float = 2.5
-    first_team_to_score_points_incorrect: float = 0.0
-
-    # Scoreline Prediction (Max 10)
     scoreline_points_exact: float = 7.5
-    scoreline_points_one_team_correct: float = 4.0
     scoreline_points_margin: float = 3.0
     scoreline_points_incorrect: float = 0.0
-    btts_points_correct: float = 2.5
-    btts_points_incorrect: float = 0.0
-
-    # Probability Accuracy — Winner Confidence
-    prob_winner_high_threshold: float = 70.0
-    prob_winner_high_points: float = 2.0
-    prob_winner_medium_threshold: float = 50.0
-    prob_winner_medium_points: float = 1.5
-    prob_winner_low_threshold: float = 30.0
-    prob_winner_low_points: float = 1.0
-    prob_winner_fail_points: float = 0.0
-
-    # Probability Accuracy — BTTS
-    prob_btts_high_threshold: float = 70.0
-    prob_btts_high_points: float = 1.0
-    prob_btts_medium_threshold: float = 50.0
-    prob_btts_medium_points: float = 0.75
-    prob_btts_low_threshold: float = 30.0
-    prob_btts_low_points: float = 0.5
-    prob_btts_fail_points: float = 0.0
-
-    # Probability Accuracy — First Team to Score
-    prob_first_goal_high_threshold: float = 70.0
-    prob_first_goal_high_points: float = 2.0
-    prob_first_goal_medium_threshold: float = 50.0
-    prob_first_goal_medium_points: float = 1.5
-    prob_first_goal_low_threshold: float = 30.0
-    prob_first_goal_low_points: float = 1.0
-    prob_first_goal_fail_points: float = 0.0
-
-    # Player Performance — Goal Scorers
-    player_goals_all_correct: float = 2.5
-    player_goals_half_correct: float = 1.5
-    player_goals_at_least_one: float = 1.0
-    player_goals_none: float = 0.0
-
-    # Player Performance — Clean Sheet
-    clean_sheet_both_correct: float = 2.5
-    clean_sheet_one_correct: float = 1.0
-    clean_sheet_none: float = 0.0
-
-    # Legacy fields (kept for backward compat)
     probability_threshold: float = 15.0
+    probability_points_pass: float = 5.0
+    probability_points_fail: float = 0.0
     probability_points_pass: float = 5.0
     probability_points_fail: float = 0.0
     probability_high_threshold: float = 15.0
     probability_high_points: float = 5.0
+    probability_high_points: float = 5.0
     probability_medium_threshold: float = 30.0
     probability_medium_points: float = 2.0
-    player_points_exact: float = 5.0
-    player_points_close: float = 2.0
+    player_points_exact: float = 2.5
+    player_points_close: float = 1.5
     player_points_wrong: float = 0.0
     player_avg_threshold_exact: float = 4.0
     player_avg_threshold_close: float = 2.0
-    total_goals_points_exact: float = 5.0
-    total_goals_points_wrong: float = 0.0
-    clean_sheet_points_correct: float = 5.0
-    clean_sheet_points_incorrect: float = 0.0
-
-    max_base_score: int = 25
-    technical_max_per_category: int = 5
-    technical_max_total: int = 20
+    max_base_score: float = 25.0
+    technical_max_per_category: float = 5.0
+    technical_max_total: float = 20.0
     presentation_ai_explanation_max: int = 20
     presentation_qa_score_max: int = 15
     presentation_delivery_score_max: int = 15
@@ -203,80 +152,33 @@ class ScoringConfigCreate(BaseModel):
 
 class ScoringConfigUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
-
-    # Winner Prediction
     winner_points_correct: float | None = None
     winner_points_incorrect: float | None = None
-    first_team_to_score_points_correct: float | None = None
-    first_team_to_score_points_incorrect: float | None = None
-
-    # Scoreline Prediction
     scoreline_points_exact: float | None = None
-    scoreline_points_one_team_correct: float | None = None
     scoreline_points_margin: float | None = None
     scoreline_points_incorrect: float | None = None
-    btts_points_correct: float | None = None
-    btts_points_incorrect: float | None = None
-
-    # Probability — Winner Confidence
-    prob_winner_high_threshold: float | None = None
-    prob_winner_high_points: float | None = None
-    prob_winner_medium_threshold: float | None = None
-    prob_winner_medium_points: float | None = None
-    prob_winner_low_threshold: float | None = None
-    prob_winner_low_points: float | None = None
-    prob_winner_fail_points: float | None = None
-
-    # Probability — BTTS
-    prob_btts_high_threshold: float | None = None
-    prob_btts_high_points: float | None = None
-    prob_btts_medium_threshold: float | None = None
-    prob_btts_medium_points: float | None = None
-    prob_btts_low_threshold: float | None = None
-    prob_btts_low_points: float | None = None
-    prob_btts_fail_points: float | None = None
-
-    # Probability — First Team to Score
-    prob_first_goal_high_threshold: float | None = None
-    prob_first_goal_high_points: float | None = None
-    prob_first_goal_medium_threshold: float | None = None
-    prob_first_goal_medium_points: float | None = None
-    prob_first_goal_low_threshold: float | None = None
-    prob_first_goal_low_points: float | None = None
-    prob_first_goal_fail_points: float | None = None
-
-    # Player Performance — Goal Scorers
-    player_goals_all_correct: float | None = None
-    player_goals_half_correct: float | None = None
-    player_goals_at_least_one: float | None = None
-    player_goals_none: float | None = None
-
-    # Player Performance — Clean Sheet
-    clean_sheet_both_correct: float | None = None
-    clean_sheet_one_correct: float | None = None
-    clean_sheet_none: float | None = None
-
-    # Legacy fields
     probability_threshold: float | None = None
     probability_points_pass: float | None = None
     probability_points_fail: float | None = None
+    probability_points_pass: float | None = None
+    probability_points_fail: float | None = None
     probability_high_threshold: float | None = None
+    probability_high_points: float | None = None
     probability_high_points: float | None = None
     probability_medium_threshold: float | None = None
     probability_medium_points: float | None = None
     player_points_exact: float | None = None
     player_points_close: float | None = None
     player_points_wrong: float | None = None
+    probability_medium_points: float | None = None
+    player_points_exact: float | None = None
+    player_points_close: float | None = None
+    player_points_wrong: float | None = None
     player_avg_threshold_exact: float | None = None
     player_avg_threshold_close: float | None = None
-    total_goals_points_exact: float | None = None
-    total_goals_points_wrong: float | None = None
-    clean_sheet_points_correct: float | None = None
-    clean_sheet_points_incorrect: float | None = None
-
-    max_base_score: int | None = None
-    technical_max_per_category: int | None = None
-    technical_max_total: int | None = None
+    max_base_score: float | None = None
+    technical_max_per_category: float | None = None
+    technical_max_total: float | None = None
     presentation_ai_explanation_max: int | None = None
     presentation_qa_score_max: int | None = None
     presentation_delivery_score_max: int | None = None
@@ -345,80 +247,33 @@ class ScoringConfigResponse(BaseModel):
     is_active: bool
     version: int
     created_at: datetime
-
-    # Winner Prediction
     winner_points_correct: float
     winner_points_incorrect: float
-    first_team_to_score_points_correct: float
-    first_team_to_score_points_incorrect: float
-
-    # Scoreline Prediction
     scoreline_points_exact: float
-    scoreline_points_one_team_correct: float
     scoreline_points_margin: float
     scoreline_points_incorrect: float
-    btts_points_correct: float
-    btts_points_incorrect: float
-
-    # Probability — Winner Confidence
-    prob_winner_high_threshold: float
-    prob_winner_high_points: float
-    prob_winner_medium_threshold: float
-    prob_winner_medium_points: float
-    prob_winner_low_threshold: float
-    prob_winner_low_points: float
-    prob_winner_fail_points: float
-
-    # Probability — BTTS
-    prob_btts_high_threshold: float
-    prob_btts_high_points: float
-    prob_btts_medium_threshold: float
-    prob_btts_medium_points: float
-    prob_btts_low_threshold: float
-    prob_btts_low_points: float
-    prob_btts_fail_points: float
-
-    # Probability — First Team to Score
-    prob_first_goal_high_threshold: float
-    prob_first_goal_high_points: float
-    prob_first_goal_medium_threshold: float
-    prob_first_goal_medium_points: float
-    prob_first_goal_low_threshold: float
-    prob_first_goal_low_points: float
-    prob_first_goal_fail_points: float
-
-    # Player Performance — Goal Scorers
-    player_goals_all_correct: float
-    player_goals_half_correct: float
-    player_goals_at_least_one: float
-    player_goals_none: float
-
-    # Player Performance — Clean Sheet
-    clean_sheet_both_correct: float
-    clean_sheet_one_correct: float
-    clean_sheet_none: float
-
-    # Legacy fields
     probability_threshold: float
     probability_points_pass: float
     probability_points_fail: float
+    probability_points_pass: float
+    probability_points_fail: float
     probability_high_threshold: float
+    probability_high_points: float
     probability_high_points: float
     probability_medium_threshold: float
     probability_medium_points: float
     player_points_exact: float
     player_points_close: float
     player_points_wrong: float
+    probability_medium_points: float
+    player_points_exact: float
+    player_points_close: float
+    player_points_wrong: float
     player_avg_threshold_exact: float
     player_avg_threshold_close: float
-    total_goals_points_exact: float
-    total_goals_points_wrong: float
-    clean_sheet_points_correct: float
-    clean_sheet_points_incorrect: float
-
-    max_base_score: int
-    technical_max_per_category: int
-    technical_max_total: int
+    max_base_score: float
+    technical_max_per_category: float
+    technical_max_total: float
     presentation_ai_explanation_max: int
     presentation_qa_score_max: int
     presentation_delivery_score_max: int

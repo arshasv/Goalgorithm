@@ -15,7 +15,7 @@ from app.scoring_engine.base_score.btts_score import calculate_btts_score
 from app.scoring_engine.base_score.first_team_to_score_score import calculate_first_team_to_score_score
 from app.scoring_engine.base_score.clean_sheet_score import calculate_clean_sheet_score
 
-MAX_BASE_SCORE = 25
+MAX_BASE_SCORE = 25.0
 
 
 def calculate_base_score(
@@ -24,8 +24,18 @@ def calculate_base_score(
     actual_probabilities: dict | None = None,
     config: dict | None = None,
 ) -> dict:
-    max_base = float(config.get("max_base_score", MAX_BASE_SCORE) if config else MAX_BASE_SCORE)
+    max_base = MAX_BASE_SCORE
 
+<<<<<<< HEAD
+    winner_score = min(float(calculate_winner_score(prediction, actual_result, config)), 2.5)
+    scoreline_score = min(float(calculate_scoreline_score(prediction, actual_result, config)), 7.5)
+    probability_score = min(float(calculate_probability_score(prediction, actual_result, config)), 5.0)
+    player_score = min(float(calculate_player_score(prediction, actual_result, config)), 2.5)
+    total_goals_score = min(float(calculate_total_goals_score(prediction, actual_result, config)), 0.0)
+    btts_score = min(float(calculate_btts_score(prediction, actual_result, config)), 2.5)
+    first_team_to_score_score = min(float(calculate_first_team_to_score_score(prediction, actual_result, config)), 2.5)
+    clean_sheet_score = min(float(calculate_clean_sheet_score(prediction, actual_result, config)), 2.5)
+=======
     # 1. Winner Prediction Category
     winner_prediction_points = float(calculate_winner_score(prediction, actual_result, config))
     first_team_to_score_points = float(calculate_first_team_to_score_score(prediction, actual_result, config))
@@ -54,6 +64,7 @@ def calculate_base_score(
     # Other subscores
     btts_score = float(calculate_btts_score(prediction, actual_result, config))
     clean_sheet_score = float(calculate_clean_sheet_score(prediction, actual_result, config))
+>>>>>>> develop
 
     # Base Score must be the sum of these 11 fields, capped at max_base
     new_base_score_sum = (

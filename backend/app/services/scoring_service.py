@@ -1,3 +1,4 @@
+from app.models import LeaderboardModel
 import uuid
 from sqlalchemy.orm import Session
 
@@ -108,8 +109,8 @@ class ScoringService:
         match_uuid = self._resolve_match_uuid(prediction["match_id"])
 
         stmt = insert(ScoreModel).values(
-            team_id=team_uuid,
-            match_id=match_uuid,
+            team_id=str(team_uuid),
+            match_id=str(match_uuid),
             winner_points=result["breakdown"].get("winner_score", 0.0),
             scoreline_points=result["breakdown"].get("scoreline_score", 0.0),
             probability_points=result["breakdown"].get("probability_score", 0.0),
@@ -315,10 +316,8 @@ class ScoringService:
 
         for entry in ranked:
             team_id_str = entry["team_id"]
-            team_id_uuid = uuid.UUID(team_id_str)
-            # Query with explicit UUID object to avoid type coercion issues
             existing = self.db.query(LeaderboardModel).filter(
-                LeaderboardModel.team_id == team_id_uuid
+                LeaderboardModel.team_id == team_id_str
             ).first()
 
             scores = entry.get("scores", {})
@@ -332,7 +331,7 @@ class ScoringService:
                 existing.is_final = True
             else:
                 leaderboard_entry = LeaderboardModel(
-                    team_id=team_id_uuid,
+                    team_id=team_id_str,
                     rank=entry["rank"],
                     phase1_score=scores.get("ai_accuracy"),
                     technical_score=scores.get("technical"),
@@ -344,7 +343,7 @@ class ScoringService:
                 
             # Update cumulative phase scores to match leaderboard recalculations
             cum_existing = self.db.query(CumulativePhaseScoreModel).filter(
-                CumulativePhaseScoreModel.team_id == team_id_uuid
+                CumulativePhaseScoreModel.team_id == team_id_str
             ).first()
             
             matches_played = len([s for s in all_scores if str(s.team_id) == team_id_str])
@@ -356,7 +355,7 @@ class ScoringService:
                 cum_existing.matches_played = matches_played
             else:
                 cum_entry = CumulativePhaseScoreModel(
-                    team_id=team_id_uuid,
+                    team_id=team_id_str,
                     phase1_score=scores.get("ai_accuracy"),
                     technical_score=scores.get("technical"),
                     presentation_score=scores.get("presentation"),

@@ -32,7 +32,7 @@ async def get_fixtures(
         fixtures = await service.fetch_fixtures_by_date(target_date)
         return fixtures
     except FootballAPIError as e:
-        raise HTTPException(status_code=502, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/external-matches/import")
 async def import_fixtures(
@@ -44,7 +44,7 @@ async def import_fixtures(
     try:
         fixtures = await service.fetch_fixtures_by_date(request.target_date)
     except FootballAPIError as e:
-        raise HTTPException(status_code=502, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
         
     created_count = 0
     updated_count = 0
@@ -119,7 +119,7 @@ async def sync_results(
     try:
         results = await service.fetch_fixtures_by_ids(list(api_id_to_match.keys()))
     except FootballAPIError as e:
-        raise HTTPException(status_code=502, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
         
     completed_matches = 0
     skipped_matches = 0

@@ -1,0 +1,3 @@
+Found ScoringView update
+"const dimensionIcon = (val, max) => {\n  if (val >= max) return '✅';\n  if (val === 0) return '❌';\n  return '〜';\n};\n\nconst calculateScorelineSubcategory = (prediction, actualResult) => {\n  if (!prediction || !actualResult) return 0.0;\n  const 
+<truncated 14823 bytes>

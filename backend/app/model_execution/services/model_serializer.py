@@ -52,8 +52,23 @@ class ModelSerializer:
         score_prediction = output.get("score_prediction", {})
         scoreline = score_prediction.get("predicted_scoreline", {})
 
-        home_goals = int(scoreline.get("home_goals", 0))
-        away_goals = int(scoreline.get("away_goals", 0))
+        def safe_int(val):
+            if val is None:
+                return 0
+            if isinstance(val, (int, float)):
+                return int(val)
+            if isinstance(val, str):
+                s = val.strip().lower()
+                if s in ["", "data unavailable", "unknown", "n/a", "none", "null"]:
+                    return 0
+                try:
+                    return int(float(s))
+                except ValueError:
+                    return 0
+            return 0
+
+        home_goals = safe_int(scoreline.get("home_goals", 0))
+        away_goals = safe_int(scoreline.get("away_goals", 0))
         home_team_name = scoreline.get("home_team")
         away_team_name = scoreline.get("away_team")
         total_goals = score_prediction.get("total_goals")
@@ -76,7 +91,6 @@ class ModelSerializer:
         player_prediction = output.get("player_prediction", {})
         player_predictions = []
         clean_sheet_predictions = []
-        goal_scorers = {"home": [], "away": []}
 
         for side in ["home_team", "away_team"]:
             side_data = player_prediction.get(side, {})
@@ -99,12 +113,6 @@ class ModelSerializer:
                     "team": short_side,
                     "predicted_goals": predicted_goals,
                     "goal_probability": goal_prob
-                })
-                
-                goal_scorers[short_side].append({
-                    "name": name,
-                    "predicted_goals": predicted_goals,
-                    "probability": goal_prob
                 })
 
             # Clean sheet
@@ -130,8 +138,7 @@ class ModelSerializer:
                 "total_goals_prediction": total_goals,
                 "first_team_to_score": first_team,
                 "both_teams_to_score": btts,
-                "clean_sheet_predictions": clean_sheet_predictions,
-                "goal_scorers": goal_scorers
+                "clean_sheet_predictions": clean_sheet_predictions
             },
             "player_predictions": player_predictions
         }

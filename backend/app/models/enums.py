@@ -51,3 +51,24 @@ class ModelStatus(str, enum.Enum):
     TESTING = "Testing"
     EVALUATED = "Evaluated"
     FAILED = "Failed"
+
+
+class StorageProvider(str, enum.Enum):
+    LOCAL = "LOCAL"
+    GOOGLE_DRIVE = "GOOGLE_DRIVE"
+
+
+class BatchExecutionStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    RUNNING = "RUNNING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
+
+
+class BatchJobStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    RUNNING = "RUNNING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+    CANCELLED = "CANCELLED"

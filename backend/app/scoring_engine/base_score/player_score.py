@@ -78,29 +78,53 @@ def calculate_player_score_breakdown(
     actual_home_normalized = _normalize_scorers_list(actual_home_scorers)
     actual_away_normalized = _normalize_scorers_list(actual_away_scorers)
 
-    pred_set = {name.lower().strip() for name in (pred_home_normalized + pred_away_normalized) if name}
-    actual_set = {name.lower().strip() for name in (actual_home_normalized + actual_away_normalized) if name}
+    pred_set = {
+        name.lower().strip()
+        for name in (pred_home_normalized + pred_away_normalized)
+        if name
+    }
+    actual_set = {
+        name.lower().strip()
+        for name in (actual_home_normalized + actual_away_normalized)
+        if name
+    }
 
     goal_scorers_pts = 0.0
     if len(actual_set) == 0 and len(pred_set) == 0:
-        goal_scorers_pts = config.get("player_goals_all_correct", 2.5) if config else 2.5
+        goal_scorers_pts = (
+            config.get("player_goals_all_correct", 2.5) if config else 2.5
+        )
     elif len(actual_set) == 0 or len(pred_set) == 0:
-        goal_scorers_pts = config.get("player_goals_none", 0.0) if config else 0.0
+        goal_scorers_pts = (
+            config.get("player_goals_none", 0.0) if config else 0.0
+        )
     else:
         correct_set = pred_set.intersection(actual_set)
         correct_count = len(correct_set)
 
         if pred_set == actual_set:
-            goal_scorers_pts = config.get("player_goals_all_correct", 2.5) if config else 2.5
+            goal_scorers_pts = (
+                config.get("player_goals_all_correct", 2.5) if config else 2.5
+            )
         elif correct_count / len(actual_set) >= 0.5:
-            goal_scorers_pts = config.get("player_goals_half_correct", 1.5) if config else 1.5
+            goal_scorers_pts = (
+                config.get("player_goals_half_correct", 1.5) if config else 1.5
+            )
         elif correct_count >= 1:
-            goal_scorers_pts = config.get("player_goals_at_least_one", 1.0) if config else 1.0
+            goal_scorers_pts = (
+                config.get("player_goals_at_least_one", 1.0) if config else 1.0
+            )
         else:
-            goal_scorers_pts = config.get("player_goals_none", 0.0) if config else 0.0
+            goal_scorers_pts = (
+                config.get("player_goals_none", 0.0) if config else 0.0
+            )
 
     # 2. Clean Sheet Points
-    clean_sheet_pts = calculate_clean_sheet_score(prediction, actual_result, config)
+    clean_sheet_pts = calculate_clean_sheet_score(
+        prediction,
+        actual_result,
+        config,
+    )
 
     return {
         "goal_scorer_points": float(goal_scorers_pts),
@@ -113,5 +137,12 @@ def calculate_player_score(
     actual_result: dict,
     config: dict | None = None,
 ) -> float:
-    breakdown = calculate_player_score_breakdown(prediction, actual_result, config)
-    return float(breakdown["goal_scorer_points"] + breakdown["clean_sheet_points"])
+    breakdown = calculate_player_score_breakdown(
+        prediction,
+        actual_result,
+        config,
+    )
+    return float(
+        breakdown["goal_scorer_points"]
+        + breakdown["clean_sheet_points"]
+    )

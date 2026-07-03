@@ -250,9 +250,9 @@ class PredictionService:
 
         create_kwargs = {
 
-            "team_id": uuid.UUID(payload["team_id"]) if isinstance(payload["team_id"], str) else payload["team_id"],
+            "team_id": str(payload["team_id"]),
 
-            "match_id": uuid.UUID(payload["match_id"]) if isinstance(payload["match_id"], str) else payload["match_id"],
+            "match_id": str(payload["match_id"]),
 
             "submission_id":
                 payload["submission_id"],

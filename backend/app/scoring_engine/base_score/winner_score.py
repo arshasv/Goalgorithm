@@ -1,3 +1,4 @@
+
 def calculate_winner_score(
     prediction: dict,
     actual_result: dict,
@@ -16,3 +17,4 @@ def calculate_winner_score(
     if pred == act:
         return float(pts_correct)
     return float(pts_incorrect)
+
