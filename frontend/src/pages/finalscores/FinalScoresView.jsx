@@ -233,32 +233,84 @@ const FinalScoresView = () => {
             <span className="card-title">Match {match.match_number} — {match.home_team_name} vs {match.away_team_name}</span>
             <span style={{ fontFamily: 'var(--font-score)', fontSize: 'var(--text-xl)', color: 'var(--color-accent)' }}>{scoreline}</span>
           </div>
-          <div className="table-wrapper">
-            <table>
-              <thead><tr><th>Team</th><th>Prediction</th><th>Winner</th><th>Scoreline</th><th>Prob.</th><th>Player</th><th>Tot Goals</th><th>BTTS</th><th>First Team</th><th>Clean Sheet</th><th>Base Score</th></tr></thead>
-              <tbody>
-                {(match.teams || []).map(t => {
-                  const sc = t.score_breakdown || {};
-                  const pred = t.prediction || {};
-                  const predStr = pred.predicted_home_goals != null ? `${pred.predicted_home_goals}–${pred.predicted_away_goals}` : '—';
-                  return (
-                    <tr key={t.team_id}>
-                      <td><strong>{formatTeamDisplay({ team_code: t.team_code, name: t.team_name })}</strong></td>
-                      <td>{predStr}</td>
-                      <td><span className={sc.winner_points === 5 ? 'badge badge-success' : 'badge badge-error'}>{sc.winner_points ?? '—'}/5</span></td>
-                      <td><span className={sc.scoreline_points === 10 ? 'badge badge-success' : sc.scoreline_points === 5 ? 'badge badge-warning' : 'badge badge-error'}>{sc.scoreline_points ?? '—'}/10</span></td>
-                      <td><span className={sc.probability_points === 5 ? 'badge badge-success' : 'badge badge-error'}>{sc.probability_points ?? '—'}/5</span></td>
-                      <td><span className={sc.player_points === 5 ? 'badge badge-success' : sc.player_points >= 2 ? 'badge badge-warning' : 'badge badge-error'}>{sc.player_points ?? '—'}/5</span></td>
-                      <td><span className={sc.total_goals_points === 5 ? 'badge badge-success' : 'badge badge-error'}>{sc.total_goals_points ?? '—'}/5</span></td>
-                      <td><span className={sc.btts_points === 5 ? 'badge badge-success' : 'badge badge-error'}>{sc.btts_points ?? '—'}/5</span></td>
-                      <td><span className={sc.first_team_to_score_points === 5 ? 'badge badge-success' : 'badge badge-error'}>{sc.first_team_to_score_points ?? '—'}/5</span></td>
-                      <td><span className={sc.clean_sheet_points === 5 ? 'badge badge-success' : 'badge badge-error'}>{sc.clean_sheet_points ?? '—'}/5</span></td>
-                      <td><strong className={`score-num ${scoreColor(sc.base_score, 45)}`}>{fmt1(sc.base_score)}</strong></td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div style={{ padding: 'var(--space-md)' }}>
+            {(match.teams || []).map(t => {
+              const sc = t.score_breakdown || {};
+              
+              // Totals
+              const winnerTotal = (sc.winner_points || 0) + (sc.first_team_to_score_points || 0);
+              const scorelineTotal = (sc.scoreline_points || 0) + (sc.btts_points || 0);
+              const probTotal = (sc.probability_points || 0) + (sc.total_goals_points || 0) + (sc.first_team_probability_points || 0);
+              const playerTotal = (sc.player_points || 0) + (sc.clean_sheet_points || 0);
+
+              return (
+                <div key={t.team_id} style={{ marginBottom: 'var(--space-xl)', padding: 'var(--space-md)', background: 'var(--color-surface-secondary)', borderRadius: 'var(--radius-md)' }}>
+                  <div style={{ marginBottom: 'var(--space-md)' }}>
+                    <strong style={{ fontSize: 'var(--text-lg)' }}>{formatTeamDisplay({ team_code: t.team_code, name: t.team_name })}</strong>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 'var(--space-lg)' }}>
+                    
+                    {/* Winner Prediction */}
+                    <div>
+                      <h4 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-sm)', marginBottom: 'var(--space-sm)' }}>Winner Prediction</h4>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}><span>Winner Prediction</span><span>{fmt1(sc.winner_points)} / 2.5</span></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}><span>First Team To Score</span><span>{fmt1(sc.first_team_to_score_points)} / 2.5</span></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', marginTop: 'var(--space-sm)' }}><span>Winner Total</span><span>{fmt1(winnerTotal)} / 5</span></div>
+                    </div>
+
+                    {/* Scoreline Prediction */}
+                    <div>
+                      <h4 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-sm)', marginBottom: 'var(--space-sm)' }}>Scoreline Prediction</h4>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}><span>Exact Scoreline</span><span>{fmt1(sc.scoreline_points)} / 7.5</span></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}><span>BTTS Prediction</span><span>{fmt1(sc.btts_points)} / 2.5</span></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', marginTop: 'var(--space-sm)' }}><span>Scoreline Total</span><span>{fmt1(scorelineTotal)} / 10</span></div>
+                    </div>
+
+                    {/* Probability Accuracy */}
+                    <div>
+                      <h4 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-sm)', marginBottom: 'var(--space-sm)' }}>Probability Accuracy</h4>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}><span>Winner Confidence</span><span>{fmt1(sc.probability_points)} / 2</span></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}><span>BTTS Probability</span><span>{fmt1(sc.total_goals_points)} / 1</span></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}><span>First Team Probability</span><span>{fmt1(sc.first_team_probability_points)} / 2</span></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', marginTop: 'var(--space-sm)' }}><span>Probability Total</span><span>{fmt1(probTotal)} / 5</span></div>
+                    </div>
+
+                    {/* Player Performance */}
+                    <div>
+                      <h4 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-sm)', marginBottom: 'var(--space-sm)' }}>Player Performance</h4>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}><span>Goal Scorers</span><span>{fmt1(sc.player_points)} / 2.5</span></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}><span>Clean Sheet</span><span>{fmt1(sc.clean_sheet_points)} / 2.5</span></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', marginTop: 'var(--space-sm)' }}><span>Player Total</span><span>{fmt1(playerTotal)} / 5</span></div>
+                    </div>
+
+                  </div>
+
+                  {/* Overall Scoring */}
+                  <div style={{ marginTop: 'var(--space-lg)', paddingTop: 'var(--space-md)', borderTop: '2px solid var(--color-border)' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--space-md)', textAlign: 'center' }}>
+                      <div>
+                        <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>Base Score</div>
+                        <div className="score-num">{fmt1(sc.base_score)} / 25</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>Grade</div>
+                        <div>{sc.grade ? gradeBadge(sc.grade) : '—'}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>Multiplier</div>
+                        <div className="score-num">{sc.multiplier ? `x${sc.multiplier}` : '—'}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>Earned Points</div>
+                        <div className="score-num" style={{ color: 'var(--color-accent)' }}>{fmt1(sc.earned_points)}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              );
+            })}
           </div>
           {(!match.teams || match.teams.length === 0) && (
             <div style={{ padding: 'var(--space-md)', color: 'var(--color-text-secondary)', fontStyle: 'italic' }}>No scores recorded for this match yet.</div>

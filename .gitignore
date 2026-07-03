@@ -1,11 +1,50 @@
+# Environment & Secrets
 .env
-venv/
-.pytest_cache/
-client_secret.json
+.env.*
+client_secret*.json
+credentials.json
 token.json
-
 backend/app/file_manager/client_secret.json
 backend/app/file_manager/token.json
-
 File-manager/client_secret.json
 File-manager/token.json
+*.pem
+*.key
+*.crt
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+.venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node / Frontend
+node_modules/
+dist/
+.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Databases
+*.db
+*.sqlite3
+fifa_dev.db
+
+# Logs & Debug Output
+*.log
+out.txt
+test_out.txt
+pytest_traceback.txt
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

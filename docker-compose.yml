@@ -22,19 +22,19 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fifa_user} -d ${POSTGRES_DB:-fifa_scoring_db}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fifa_user} -d ${POSTGRES_DB:-fifa_scoring_db}" ]
       interval: 5s
       timeout: 5s
       retries: 5
     restart: unless-stopped
 
-  react-frontend:
+  frontend:
     build:
-      context: ./react-frontend
+      context: ./frontend
     ports:
       - "3001:3000"
     volumes:
-      - ./react-frontend:/app
+      - ./frontend:/app
       - /app/node_modules
     depends_on:
       - fifa-scoring-api

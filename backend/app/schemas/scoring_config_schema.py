@@ -42,35 +42,35 @@ GUIDELINE_DESCRIPTIONS: list[dict] = [
 
 class ScoringConfigCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
-    winner_points_correct: int = 5
-    winner_points_incorrect: int = 0
-    scoreline_points_exact: int = 10
-    scoreline_points_margin: int = 5
-    scoreline_points_incorrect: int = 0
+    winner_points_correct: float = 5.0
+    winner_points_incorrect: float = 0.0
+    scoreline_points_exact: float = 10.0
+    scoreline_points_margin: float = 5.0
+    scoreline_points_incorrect: float = 0.0
     probability_threshold: float = 15.0
-    probability_points_pass: int = 5
-    probability_points_fail: int = 0
+    probability_points_pass: float = 5.0
+    probability_points_fail: float = 0.0
     probability_high_threshold: float = 15.0
-    probability_high_points: int = 5
+    probability_high_points: float = 5.0
     probability_medium_threshold: float = 30.0
-    probability_medium_points: int = 2
-    player_points_exact: int = 5
-    player_points_close: int = 2
-    player_points_wrong: int = 0
+    probability_medium_points: float = 2.0
+    player_points_exact: float = 5.0
+    player_points_close: float = 2.0
+    player_points_wrong: float = 0.0
     player_avg_threshold_exact: float = 4.0
     player_avg_threshold_close: float = 2.0
-    max_base_score: int = 25
-    technical_max_per_category: int = 5
-    technical_max_total: int = 20
-    presentation_ai_explanation_max: int = 20
-    presentation_qa_score_max: int = 15
-    presentation_delivery_score_max: int = 15
-    presentation_denominator: int = 150
-    presentation_max_marks: int = 20
-    multiplier_a: int = 3
-    multiplier_b: int = 2
-    multiplier_c: int = 1
-    phase1_max_marks: int = 60
+    max_base_score: float = 25.0
+    technical_max_per_category: float = 5.0
+    technical_max_total: float = 20.0
+    presentation_ai_explanation_max: float = 20.0
+    presentation_qa_score_max: float = 15.0
+    presentation_delivery_score_max: float = 15.0
+    presentation_denominator: float = 150.0
+    presentation_max_marks: float = 20.0
+    multiplier_a: float = 3.0
+    multiplier_b: float = 2.0
+    multiplier_c: float = 1.0
+    phase1_max_marks: float = 60.0
     presentation_criteria: list[dict] | None = None
     presentation_judge_count: int = 2
 
@@ -105,35 +105,35 @@ class ScoringConfigCreate(BaseModel):
 
 class ScoringConfigUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
-    winner_points_correct: int | None = None
-    winner_points_incorrect: int | None = None
-    scoreline_points_exact: int | None = None
-    scoreline_points_margin: int | None = None
-    scoreline_points_incorrect: int | None = None
+    winner_points_correct: float | None = None
+    winner_points_incorrect: float | None = None
+    scoreline_points_exact: float | None = None
+    scoreline_points_margin: float | None = None
+    scoreline_points_incorrect: float | None = None
     probability_threshold: float | None = None
-    probability_points_pass: int | None = None
-    probability_points_fail: int | None = None
+    probability_points_pass: float | None = None
+    probability_points_fail: float | None = None
     probability_high_threshold: float | None = None
-    probability_high_points: int | None = None
+    probability_high_points: float | None = None
     probability_medium_threshold: float | None = None
-    probability_medium_points: int | None = None
-    player_points_exact: int | None = None
-    player_points_close: int | None = None
-    player_points_wrong: int | None = None
+    probability_medium_points: float | None = None
+    player_points_exact: float | None = None
+    player_points_close: float | None = None
+    player_points_wrong: float | None = None
     player_avg_threshold_exact: float | None = None
     player_avg_threshold_close: float | None = None
-    max_base_score: int | None = None
-    technical_max_per_category: int | None = None
-    technical_max_total: int | None = None
-    presentation_ai_explanation_max: int | None = None
-    presentation_qa_score_max: int | None = None
-    presentation_delivery_score_max: int | None = None
-    presentation_denominator: int | None = None
-    presentation_max_marks: int | None = None
-    multiplier_a: int | None = None
-    multiplier_b: int | None = None
-    multiplier_c: int | None = None
-    phase1_max_marks: int | None = None
+    max_base_score: float | None = None
+    technical_max_per_category: float | None = None
+    technical_max_total: float | None = None
+    presentation_ai_explanation_max: float | None = None
+    presentation_qa_score_max: float | None = None
+    presentation_delivery_score_max: float | None = None
+    presentation_denominator: float | None = None
+    presentation_max_marks: float | None = None
+    multiplier_a: float | None = None
+    multiplier_b: float | None = None
+    multiplier_c: float | None = None
+    phase1_max_marks: float | None = None
     presentation_criteria: list[dict] | None = None
     presentation_judge_count: int | None = None
 
@@ -174,35 +174,35 @@ class ScoringConfigResponse(BaseModel):
     is_active: bool
     version: int
     created_at: datetime
-    winner_points_correct: int
-    winner_points_incorrect: int
-    scoreline_points_exact: int
-    scoreline_points_margin: int
-    scoreline_points_incorrect: int
+    winner_points_correct: float
+    winner_points_incorrect: float
+    scoreline_points_exact: float
+    scoreline_points_margin: float
+    scoreline_points_incorrect: float
     probability_threshold: float
-    probability_points_pass: int
-    probability_points_fail: int
+    probability_points_pass: float
+    probability_points_fail: float
     probability_high_threshold: float
-    probability_high_points: int
+    probability_high_points: float
     probability_medium_threshold: float
-    probability_medium_points: int
-    player_points_exact: int
-    player_points_close: int
-    player_points_wrong: int
+    probability_medium_points: float
+    player_points_exact: float
+    player_points_close: float
+    player_points_wrong: float
     player_avg_threshold_exact: float
     player_avg_threshold_close: float
-    max_base_score: int
-    technical_max_per_category: int
-    technical_max_total: int
-    presentation_ai_explanation_max: int
-    presentation_qa_score_max: int
-    presentation_delivery_score_max: int
-    presentation_denominator: int
-    presentation_max_marks: int
-    multiplier_a: int
-    multiplier_b: int
-    multiplier_c: int
-    phase1_max_marks: int
+    max_base_score: float
+    technical_max_per_category: float
+    technical_max_total: float
+    presentation_ai_explanation_max: float
+    presentation_qa_score_max: float
+    presentation_delivery_score_max: float
+    presentation_denominator: float
+    presentation_max_marks: float
+    multiplier_a: float
+    multiplier_b: float
+    multiplier_c: float
+    phase1_max_marks: float
     presentation_criteria: list[dict] | None = None
     presentation_judge_count: int
 

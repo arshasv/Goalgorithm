@@ -22,6 +22,11 @@ const rankBadge = (rank) => {
   return <span className="rank-badge rank-badge-n">#{rank}</span>;
 };
 
+const gradeBadge = (grade) => {
+  const colors = { A: 'badge-success', B: 'badge-info', C: 'badge-warning', D: 'badge-error' };
+  return <span className={`badge ${colors[grade] || 'badge-warning'}`}>Grade {grade}</span>;
+};
+
 const teamBadge = (name, size) => {
   const initial = (name || '?').charAt(0).toUpperCase();
   return (
@@ -352,16 +357,61 @@ const TeamLeaderDashboard = () => {
                       <span style={{fontWeight:600}}>Match {match.match_number}</span>
                       <span className="badge badge-info">{match.home_team_name} vs {match.away_team_name}</span>
                     </div>
-                    <div style={{display:'grid',gridTemplateColumns:'repeat(9,1fr)',gap:'var(--space-sm)',textAlign:'center'}}>
-                      <div><div style={{fontSize:'var(--text-xs)',color:'var(--color-text-muted)'}}>Winner</div><div className="score-digit">{sc.winner_points ?? '—'}/5</div></div>
-                      <div><div style={{fontSize:'var(--text-xs)',color:'var(--color-text-muted)'}}>Scoreline</div><div className="score-digit">{sc.scoreline_points ?? '—'}/10</div></div>
-                      <div><div style={{fontSize:'var(--text-xs)',color:'var(--color-text-muted)'}}>Prob</div><div className="score-digit">{sc.probability_points ?? '—'}/5</div></div>
-                      <div><div style={{fontSize:'var(--text-xs)',color:'var(--color-text-muted)'}}>Player</div><div className="score-digit">{sc.player_points ?? '—'}/5</div></div>
-                      <div><div style={{fontSize:'var(--text-xs)',color:'var(--color-text-muted)'}}>Tot Goals</div><div className="score-digit">{sc.total_goals_points ?? '—'}/5</div></div>
-                      <div><div style={{fontSize:'var(--text-xs)',color:'var(--color-text-muted)'}}>BTTS</div><div className="score-digit">{sc.btts_points ?? '—'}/5</div></div>
-                      <div><div style={{fontSize:'var(--text-xs)',color:'var(--color-text-muted)'}}>1st Team</div><div className="score-digit">{sc.first_team_to_score_points ?? '—'}/5</div></div>
-                      <div><div style={{fontSize:'var(--text-xs)',color:'var(--color-text-muted)'}}>Clean Sht</div><div className="score-digit">{sc.clean_sheet_points ?? '—'}/5</div></div>
-                      <div><div style={{fontSize:'var(--text-xs)',color:'var(--color-text-muted)'}}>Base Score</div><div className="score-digit" style={{fontWeight:700}}>{sc.base_score ?? '—'}/45</div></div>
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))',gap:'var(--space-lg)',textAlign:'left',marginTop:'var(--space-md)'}}>
+                      {/* Winner Prediction */}
+                      <div>
+                        <h4 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-sm)', marginBottom: 'var(--space-sm)' }}>Winner Prediction</h4>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}><span style={{fontSize:'var(--text-sm)'}}>Winner Prediction</span><span className="score-digit">{fmt1(sc.winner_points)} / 2.5</span></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}><span style={{fontSize:'var(--text-sm)'}}>First Team To Score</span><span className="score-digit">{fmt1(sc.first_team_to_score_points)} / 2.5</span></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', marginTop: 'var(--space-sm)' }}><span style={{fontSize:'var(--text-sm)'}}>Winner Total</span><span className="score-digit">{fmt1((sc.winner_points||0)+(sc.first_team_to_score_points||0))} / 5</span></div>
+                      </div>
+
+                      {/* Scoreline Prediction */}
+                      <div>
+                        <h4 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-sm)', marginBottom: 'var(--space-sm)' }}>Scoreline Prediction</h4>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}><span style={{fontSize:'var(--text-sm)'}}>Exact Scoreline</span><span className="score-digit">{fmt1(sc.scoreline_points)} / 7.5</span></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}><span style={{fontSize:'var(--text-sm)'}}>BTTS Prediction</span><span className="score-digit">{fmt1(sc.btts_points)} / 2.5</span></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', marginTop: 'var(--space-sm)' }}><span style={{fontSize:'var(--text-sm)'}}>Scoreline Total</span><span className="score-digit">{fmt1((sc.scoreline_points||0)+(sc.btts_points||0))} / 10</span></div>
+                      </div>
+
+                      {/* Probability Accuracy */}
+                      <div>
+                        <h4 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-sm)', marginBottom: 'var(--space-sm)' }}>Probability Accuracy</h4>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}><span style={{fontSize:'var(--text-sm)'}}>Winner Confidence</span><span className="score-digit">{fmt1(sc.probability_points)} / 2</span></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}><span style={{fontSize:'var(--text-sm)'}}>BTTS Probability</span><span className="score-digit">{fmt1(sc.total_goals_points)} / 1</span></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}><span style={{fontSize:'var(--text-sm)'}}>First Team Probability</span><span className="score-digit">{fmt1(sc.first_team_probability_points)} / 2</span></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', marginTop: 'var(--space-sm)' }}><span style={{fontSize:'var(--text-sm)'}}>Probability Total</span><span className="score-digit">{fmt1((sc.probability_points||0)+(sc.total_goals_points||0)+(sc.first_team_probability_points||0))} / 5</span></div>
+                      </div>
+
+                      {/* Player Performance */}
+                      <div>
+                        <h4 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-sm)', marginBottom: 'var(--space-sm)' }}>Player Performance</h4>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}><span style={{fontSize:'var(--text-sm)'}}>Goal Scorers</span><span className="score-digit">{fmt1(sc.player_points)} / 2.5</span></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}><span style={{fontSize:'var(--text-sm)'}}>Clean Sheet</span><span className="score-digit">{fmt1(sc.clean_sheet_points)} / 2.5</span></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', marginTop: 'var(--space-sm)' }}><span style={{fontSize:'var(--text-sm)'}}>Player Total</span><span className="score-digit">{fmt1((sc.player_points||0)+(sc.clean_sheet_points||0))} / 5</span></div>
+                      </div>
+                    </div>
+
+                    {/* Overall Scoring */}
+                    <div style={{ marginTop: 'var(--space-lg)', paddingTop: 'var(--space-md)', borderTop: '2px solid var(--color-border)' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--space-md)', textAlign: 'center' }}>
+                        <div>
+                          <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>Base Score</div>
+                          <div className="score-num">{fmt1(sc.base_score)} / 25</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>Grade</div>
+                          <div>{sc.grade ? gradeBadge(sc.grade) : '—'}</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>Multiplier</div>
+                          <div className="score-num">{sc.multiplier ? `x${sc.multiplier}` : '—'}</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>Earned Points</div>
+                          <div className="score-num" style={{ color: 'var(--color-accent)' }}>{fmt1(sc.earned_points)}</div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 );
