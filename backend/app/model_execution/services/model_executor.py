@@ -1,6 +1,8 @@
 import uuid
 import pickle
 from datetime import datetime, timezone
+
+from app.model_execution.services.model_compat import safe_load
 from sqlalchemy.orm import Session
 
 from app.database import session
@@ -56,7 +58,7 @@ class ModelExecutor:
 
             try:
                 with open(file_path, "rb") as f:
-                    model = pickle.load(f)
+                    model = safe_load(f)
 
             except Exception as e:
                 raise ValueError(

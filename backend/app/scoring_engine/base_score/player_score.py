@@ -1,6 +1,20 @@
-PLAYER_POINTS_EXACT = 5.0
-PLAYER_POINTS_CLOSE = 2.0
-PLAYER_POINTS_WRONG = 0.0
+ALL_SCORERS_CORRECT = 2.5
+HALF_SCORERS_CORRECT = 1.5
+AT_LEAST_ONE_CORRECT = 1.0
+NO_SCORER_CORRECT = 0.0
+CLEAN_SHEET_BOTH = 2.5
+CLEAN_SHEET_ONE = 1.0
+CLEAN_SHEET_NONE = 0.0
+MAX_PLAYER_SCORE = 5.0
+
+
+def _normalize_scorer(entry):
+    if isinstance(entry, str):
+        return entry.lower().strip()
+    if isinstance(entry, dict):
+        name = entry.get("name") or entry.get("player_name") or ""
+        return name.lower().strip()
+    return str(entry).lower().strip()
 
 
 def calculate_player_score(
@@ -8,35 +22,67 @@ def calculate_player_score(
     actual_result: dict,
     config: dict | None = None,
 ) -> float:
-    points_exact = config.get("player_points_exact", PLAYER_POINTS_EXACT) if config else PLAYER_POINTS_EXACT
-    points_close = config.get("player_points_close", PLAYER_POINTS_CLOSE) if config else PLAYER_POINTS_CLOSE
-    points_wrong = config.get("player_points_wrong", PLAYER_POINTS_WRONG) if config else PLAYER_POINTS_WRONG
+    mp = prediction["match_prediction"]
 
-    # Match by lowercased name because AI predictions might not have player IDs
-    actual_by_name: dict[str, int] = {
-        p["player_name"].lower().strip(): p["actual_goals"]
-        for p in actual_result["player_results"]
-    }
+    # Goal Scorer Prediction (max 2.5)
+    pred_scorers = mp.get("goal_scorers", {})
+    predicted_home_scorers = [_normalize_scorer(s) for s in pred_scorers.get("home", [])]
+    predicted_away_scorers = [_normalize_scorer(s) for s in pred_scorers.get("away", [])]
 
-    best_score = float(points_wrong)
+    actual_scorers = actual_result.get("goal_scorers", {})
+    actual_home_scorers = [_normalize_scorer(s) for s in actual_scorers.get("home", [])]
+    actual_away_scorers = [_normalize_scorer(s) for s in actual_scorers.get("away", [])]
 
-    player_preds = prediction.get("player_predictions", [])
-    if not player_preds:
-        return best_score
+    all_actual_scorers = set(actual_home_scorers + actual_away_scorers)
+    all_predicted_scorers = set(predicted_home_scorers + predicted_away_scorers)
 
-    for player_pred in player_preds:
-        name = player_pred.get("player_name", "").lower().strip()
-        actual_goals = actual_by_name.get(name, 0)
-
-        diff = abs(player_pred.get("predicted_goals", 0) - actual_goals)
-        if diff == 0:
-            score = float(points_exact)
-        elif diff == 1:
-            score = float(points_close)
+    if not all_actual_scorers and not all_predicted_scorers:
+        goal_scorer_points = ALL_SCORERS_CORRECT
+    elif not all_predicted_scorers:
+        goal_scorer_points = NO_SCORER_CORRECT
+    else:
+        correct_scorers = all_predicted_scorers & all_actual_scorers
+        if correct_scorers == all_actual_scorers and correct_scorers == all_predicted_scorers:
+            goal_scorer_points = ALL_SCORERS_CORRECT
+        elif len(correct_scorers) >= max(len(all_actual_scorers), 1) / 2:
+            goal_scorer_points = HALF_SCORERS_CORRECT
+        elif len(correct_scorers) >= 1:
+            goal_scorer_points = AT_LEAST_ONE_CORRECT
         else:
-            score = float(points_wrong)
+            goal_scorer_points = NO_SCORER_CORRECT
 
-        if score > best_score:
-            best_score = score
+    # Clean Sheet Prediction (max 2.5)
+    actual_scoreline = actual_result.get("final_score", {})
+    actual_home_conceded = actual_scoreline.get("away_team_goals", 0)
+    actual_away_conceded = actual_scoreline.get("home_team_goals", 0)
 
-    return best_score
+    actual_home_cs = actual_away_conceded == 0
+    actual_away_cs = actual_home_conceded == 0
+
+    pred_home_cs = None
+    pred_away_cs = None
+
+    cs_preds = mp.get("clean_sheet_predictions")
+    if cs_preds and isinstance(cs_preds, list) and len(cs_preds) >= 2:
+        pred_home_cs = cs_preds[0].get("prediction", False)
+        pred_away_cs = cs_preds[1].get("prediction", False)
+    else:
+        legacy_cs = mp.get("clean_sheet_probability", {})
+        if isinstance(legacy_cs, dict):
+            pred_home_cs = legacy_cs.get("home_team", 0) >= 50.0
+            pred_away_cs = legacy_cs.get("away_team", 0) >= 50.0
+
+    if pred_home_cs is not None and pred_away_cs is not None:
+        home_correct = pred_home_cs == actual_home_cs
+        away_correct = pred_away_cs == actual_away_cs
+        if home_correct and away_correct:
+            clean_sheet_points = CLEAN_SHEET_BOTH
+        elif home_correct or away_correct:
+            clean_sheet_points = CLEAN_SHEET_ONE
+        else:
+            clean_sheet_points = CLEAN_SHEET_NONE
+    else:
+        clean_sheet_points = CLEAN_SHEET_NONE
+
+    total = goal_scorer_points + clean_sheet_points
+    return min(total, MAX_PLAYER_SCORE)

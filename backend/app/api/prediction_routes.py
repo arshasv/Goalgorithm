@@ -15,6 +15,37 @@ from app.services.prediction_service import PredictionService
 router = APIRouter(tags=["predictions"])
 
 
+def _normalize_goal_scorers(payload: dict) -> dict:
+    """Normalize dict-type entries in goal_scorers to plain name strings.
+    Handles both the new format (objects with 'name', 'player_name' keys)
+    and legacy format (strings)."""
+    mp = payload.get("match_prediction")
+    if mp is None:
+        return payload
+
+    gs = mp.get("goal_scorers")
+    if not isinstance(gs, dict):
+        return payload
+
+    for side in ("home", "away"):
+        raw_list = gs.get(side, [])
+        if not isinstance(raw_list, list):
+            continue
+        normalized = []
+        for entry in raw_list:
+            if isinstance(entry, str):
+                normalized.append(entry)
+            elif isinstance(entry, dict):
+                name = entry.get("name") or entry.get("player_name") or ""
+                if name:
+                    normalized.append(name)
+            else:
+                normalized.append(str(entry))
+        gs[side] = normalized
+
+    return payload
+
+
 def _normalize_ai_output(raw: dict) -> dict:
     """
     Detect whether the payload is the new AI model output format
@@ -54,8 +85,9 @@ def _normalize_ai_output(raw: dict) -> dict:
     is_new_format = has_score_prediction or has_goal_insights or has_player_prediction or has_win_probabilities
 
     if not is_new_format:
-        # Already in legacy format — pass through as-is with envelope intact
-        return raw
+        # Not the full AI format, but may still have dict-type goal_scorers.
+        # Normalize any dict entries in goal_scorers to plain name strings.
+        return _normalize_goal_scorers(raw)
 
     # ---- New AI model output format: normalize to legacy schema ----
     mp_raw = inner.get("match_prediction", {})

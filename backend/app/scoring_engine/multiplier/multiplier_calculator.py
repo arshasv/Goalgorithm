@@ -18,21 +18,17 @@ def assign_grades(
     mult_b = config.get("multiplier_b", MULTIPLIER_B) if config else MULTIPLIER_B
     mult_c = config.get("multiplier_c", MULTIPLIER_C) if config else MULTIPLIER_C
 
-    top_score = ranked_teams[0]["base_score"]
-    bottom_score = ranked_teams[-1]["base_score"]
-
-    top_count = sum(
-        1 for t in ranked_teams if t["base_score"] == top_score
-    )
-    all_tied = top_score == bottom_score
+    scores = [t["base_score"] for t in ranked_teams]
+    highest = max(scores)
+    lowest = min(scores)
 
     results: list[dict] = []
     for team in ranked_teams:
         score = team["base_score"]
 
-        if score == top_score and top_count == 1:
+        if score == highest:
             grade, multiplier = GRADE_A, mult_a
-        elif score == bottom_score and not all_tied:
+        elif score == lowest:
             grade, multiplier = GRADE_C, mult_c
         else:
             grade, multiplier = GRADE_B, mult_b

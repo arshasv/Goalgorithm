@@ -1,7 +1,10 @@
-SCORELINE_POINTS_EXACT = 10.0
-SCORELINE_POINTS_MARGIN = 5.0
-SCORELINE_POINTS_PARTIAL = 2.5
-SCORELINE_POINTS_INCORRECT = 0.0
+SCORELINE_EXACT = 7.5
+SCORELINE_ONE_TEAM = 4.0
+SCORELINE_GOAL_DIFF = 3.0
+SCORELINE_INCORRECT = 0.0
+BTTS_CORRECT = 2.5
+BTTS_INCORRECT = 0.0
+MAX_SCORELINE_SCORE = 10.0
 
 
 def calculate_scoreline_score(
@@ -9,36 +12,44 @@ def calculate_scoreline_score(
     actual_result: dict,
     config: dict | None = None,
 ) -> float:
-    pred_scoreline = prediction["match_prediction"]["predicted_scoreline"]
-    actual_scoreline = actual_result["final_score"]
+    mp = prediction["match_prediction"]
+    pred_scoreline = mp.get("predicted_scoreline", {})
+    actual_scoreline = actual_result.get("final_score", {})
 
-    pred_home = pred_scoreline["home_team_goals"]
-    pred_away = pred_scoreline["away_team_goals"]
-    actual_home = actual_scoreline["home_team_goals"]
-    actual_away = actual_scoreline["away_team_goals"]
+    pred_home = pred_scoreline.get("home_team_goals", 0)
+    pred_away = pred_scoreline.get("away_team_goals", 0)
+    actual_home = actual_scoreline.get("home_team_goals", 0)
+    actual_away = actual_scoreline.get("away_team_goals", 0)
 
-    points_exact = config.get("scoreline_points_exact", SCORELINE_POINTS_EXACT) if config else SCORELINE_POINTS_EXACT
-    points_margin = config.get("scoreline_points_margin", SCORELINE_POINTS_MARGIN) if config else SCORELINE_POINTS_MARGIN
-    points_partial = config.get("scoreline_points_partial", SCORELINE_POINTS_PARTIAL) if config else SCORELINE_POINTS_PARTIAL
-    points_incorrect = config.get("scoreline_points_incorrect", SCORELINE_POINTS_INCORRECT) if config else SCORELINE_POINTS_INCORRECT
-
-    # Priority 1: EXACT SCORE
+    # Scoreline prediction (max 7.5)
     if (pred_home, pred_away) == (actual_home, actual_away):
-        return float(points_exact)
+        scoreline_points = SCORELINE_EXACT
+    else:
+        pred_margin = pred_home - pred_away
+        actual_margin = actual_home - actual_away
+        correct_home = pred_home == actual_home
+        correct_away = pred_away == actual_away
 
-    pred_margin = pred_home - pred_away
-    actual_margin = actual_home - actual_away
+        if correct_home or correct_away:
+            scoreline_points = SCORELINE_ONE_TEAM
+        elif pred_margin == actual_margin:
+            scoreline_points = SCORELINE_GOAL_DIFF
+        else:
+            scoreline_points = SCORELINE_INCORRECT
 
-    # Priority 2: Correct goal difference
-    if pred_margin == actual_margin:
-        return float(points_margin)
+    # BTTS (max 2.5)
+    actual_btts = actual_home > 0 and actual_away > 0
+    pred_btts = None
+    btts = mp.get("both_teams_to_score")
+    if btts and isinstance(btts, dict) and "prediction" in btts:
+        pred_btts = btts["prediction"]
+    elif mp.get("both_teams_to_score_probability") is not None:
+        pred_btts = mp["both_teams_to_score_probability"] > 50.0
 
-    # Priority 3: Individual team goal accuracy
-    score = 0.0
-    if pred_home == actual_home:
-        score += float(points_partial)
-    if pred_away == actual_away:
-        score += float(points_partial)
+    if pred_btts == actual_btts:
+        btts_points = BTTS_CORRECT
+    else:
+        btts_points = BTTS_INCORRECT
 
-    return score if score > 0 else float(points_incorrect)
-
+    total = scoreline_points + btts_points
+    return min(total, MAX_SCORELINE_SCORE)

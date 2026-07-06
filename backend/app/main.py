@@ -19,6 +19,9 @@ api_router.include_router(presentation_round_router)
 from app.model_execution.routes.execution_routes import router as execution_router
 api_router.include_router(execution_router)
 
+from app.model_execution.routes.batch_execution_routes import router as batch_execution_router
+api_router.include_router(batch_execution_router)
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> Generator:
     Base.metadata.create_all(bind=engine)
