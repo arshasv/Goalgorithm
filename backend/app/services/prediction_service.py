@@ -289,20 +289,34 @@ class PredictionService:
 
 
             "predicted_home_goals":
+                # Support both legacy home_team_goals and new home_goals field names
                 mp.get(
                     "predicted_scoreline",
                     {}
                 ).get(
                     "home_team_goals"
+                ) or mp.get(
+                    "predicted_scoreline",
+                    {}
+                ).get(
+                    "home_goals",
+                    0
                 ),
 
 
             "predicted_away_goals":
+                # Support both legacy away_team_goals and new away_goals field names
                 mp.get(
                     "predicted_scoreline",
                     {}
                 ).get(
                     "away_team_goals"
+                ) or mp.get(
+                    "predicted_scoreline",
+                    {}
+                ).get(
+                    "away_goals",
+                    0
                 ),
 
 
@@ -378,10 +392,17 @@ class PredictionService:
             []
         ):
 
+            # Support both legacy player_name and new 'name' field
+            player_name = (
+                pp.get("player_name")
+                or pp.get("name")
+                or "Unknown"
+            )
+
             player_data_list.append(
                 {
                     "player_name":
-                        pp["player_name"],
+                        player_name,
 
                     "team":
                         pp.get("team"),

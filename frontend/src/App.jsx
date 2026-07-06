@@ -23,6 +23,7 @@ import LeaderboardSettingsView from './pages/leaderboardsettings/LeaderboardSett
 import ModelEvaluation from './pages/modelevaluation/ModelEvaluation';
 import ReportsView from './pages/reports/ReportsView';
 import ModelExecutionView from './pages/modelexecution/ModelExecutionView';
+import BatchModelExecutionView from './pages/modelexecution/BatchModelExecutionView';
 
 const PrivateRoute = ({ element, roleRequired }) => {
   const { isAuthenticated, user, loading } = useAuth();
@@ -142,6 +143,10 @@ const App = () => {
             <Route 
               path="/model-execution" 
               element={<PrivateRoute element={<ModelExecutionView />} roleRequired="ORGANIZER" />} 
+            />
+            <Route 
+              path="/batch-execution" 
+              element={<PrivateRoute element={<BatchModelExecutionView />} roleRequired="ORGANIZER" />} 
             />
           </Route>
         </Routes>

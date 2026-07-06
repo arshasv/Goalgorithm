@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException
+import uuid as uuid_lib
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
@@ -12,6 +13,152 @@ from app.schemas import PredictionSubmission
 from app.services.prediction_service import PredictionService
 
 router = APIRouter(tags=["predictions"])
+
+
+def _normalize_ai_output(raw: dict) -> dict:
+    """
+    Detect whether the payload is the new AI model output format
+    (containing an "output" wrapper or top-level score_prediction / goal_insights keys)
+    and normalize it into the legacy PredictionSubmission structure.
+
+    New AI model output format (top-level or wrapped in "output"):
+      match_prediction.win_probabilities.home_team.probability
+      score_prediction.predicted_scoreline.home_goals / away_goals
+      goal_insights.first_team_to_score / both_teams_to_score
+      player_prediction.home_team.goal[] / player_prediction.away_team.goal[]
+      player_prediction.home_team.clean_sheet_prediction
+      player_prediction.away_team.clean_sheet_prediction
+
+    Returns the normalized dict ready for PredictionSubmission Pydantic parsing.
+    Preserves non-prediction envelope fields (team_id, match_id, submission_id, etc.).
+    """
+    # Preserve envelope fields
+    team_id = raw.get("team_id", "")
+    match_id = raw.get("match_id", "")
+    submission_id = raw.get("submission_id", f"sub-json-{uuid_lib.uuid4()}")
+    idempotency_key = raw.get("idempotency_key")
+
+    # Check for new AI model output format:
+    # Either wrapped under "output" key, or directly has score_prediction/goal_insights
+    inner = raw.get("output", raw)
+
+    has_score_prediction = "score_prediction" in inner
+    has_goal_insights = "goal_insights" in inner
+    has_player_prediction = "player_prediction" in inner
+    has_win_probabilities = (
+        "match_prediction" in inner
+        and "win_probabilities" in inner.get("match_prediction", {})
+    )
+
+    # Detect new format: must have at least one of these new-format keys
+    is_new_format = has_score_prediction or has_goal_insights or has_player_prediction or has_win_probabilities
+
+    if not is_new_format:
+        # Already in legacy format — pass through as-is with envelope intact
+        return raw
+
+    # ---- New AI model output format: normalize to legacy schema ----
+    mp_raw = inner.get("match_prediction", {})
+    score_pred = inner.get("score_prediction", {})
+    goal_insights = inner.get("goal_insights", {})
+    player_pred_raw = inner.get("player_prediction", {})
+
+    # 1. Win probabilities → legacy probabilities
+    win_probs = mp_raw.get("win_probabilities", {})
+    home_prob = win_probs.get("home_team", {}).get("probability", 0)
+    draw_prob = win_probs.get("draw", {}).get("probability", 0)
+    away_prob = win_probs.get("away_team", {}).get("probability", 0)
+
+    # Determine predicted_winner
+    probs_map = {"home": home_prob, "draw": draw_prob, "away": away_prob}
+    predicted_winner = max(probs_map, key=probs_map.get)
+
+    # 2. Score prediction → predicted_scoreline
+    scoreline_raw = score_pred.get("predicted_scoreline", {})
+    home_goals = int(scoreline_raw.get("home_goals", 0))
+    away_goals = int(scoreline_raw.get("away_goals", 0))
+    home_team_name = scoreline_raw.get("home_team")
+    away_team_name = scoreline_raw.get("away_team")
+    total_goals = score_pred.get("total_goals", home_goals + away_goals)
+
+    # 3. Goal insights
+    fts_raw = goal_insights.get("first_team_to_score", {})
+    first_team_obj = {}
+    if fts_raw:
+        team_val = fts_raw.get("team", "")
+        # Normalize team name → "home"/"away" if possible
+        if team_val == home_team_name:
+            normalized_team = "home"
+        elif team_val == away_team_name:
+            normalized_team = "away"
+        else:
+            normalized_team = team_val.lower() if team_val else "home"
+        first_team_obj = {
+            "team": normalized_team,
+            "probability": fts_raw.get("probability", 0),
+        }
+
+    btts_raw = goal_insights.get("both_teams_to_score", {})
+    btts_obj = btts_raw if btts_raw else {}
+
+    # 4. Player predictions + clean sheet
+    player_predictions = []
+    clean_sheet_predictions = []
+    goal_scorers = {"home": [], "away": []}
+
+    for side_key, side_label in [("home_team", "home"), ("away_team", "away")]:
+        side_data = player_pred_raw.get(side_key, {})
+
+        # Goal scorers
+        goal_list = side_data.get("goal", [])
+        for p in goal_list:
+            name = p.get("name")
+            preds = p.get("predictions", [])
+            if not name or not preds:
+                continue
+            best = max(preds, key=lambda x: x.get("probability", 0))
+            predicted_goals = best.get("goal_count", 0)
+            goal_prob = best.get("probability", 0)
+            player_predictions.append({
+                "player_name": name,
+                "team": side_label,
+                "predicted_goals": predicted_goals,
+                "goal_probability": goal_prob,
+                "probability": goal_prob,
+            })
+            goal_scorers[side_label].append(name)
+
+        # Clean sheet
+        cs = side_data.get("clean_sheet_prediction", {})
+        if cs and (cs.get("goalkeeper") or cs.get("prediction") is not None):
+            clean_sheet_predictions.append(cs)
+
+    normalized = {
+        "team_id": team_id,
+        "match_id": match_id,
+        "submission_id": submission_id,
+        "idempotency_key": idempotency_key,
+        "match_prediction": {
+            "predicted_winner": predicted_winner,
+            "predicted_scoreline": {
+                "home_team_goals": home_goals,
+                "away_team_goals": away_goals,
+            },
+            "probabilities": {
+                "home_win_probability": home_prob,
+                "draw_probability": draw_prob,
+                "away_win_probability": away_prob,
+            },
+            "total_goals_prediction": total_goals,
+            "first_team_to_score": first_team_obj or None,
+            "both_teams_to_score": btts_obj or None,
+            "clean_sheet_predictions": clean_sheet_predictions,
+            "goal_scorers": goal_scorers,
+        },
+        "player_predictions": player_predictions,
+    }
+
+    return normalized
 
 
 @router.get("/predictions")
@@ -126,15 +273,47 @@ def list_predictions(
 
 
 @router.post("/predictions")
-def submit_prediction(
-    payload: PredictionSubmission,
+async def submit_prediction(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(get_current_user),
 ):
+    """
+    Submit a match prediction. Accepts two formats automatically:
+    
+    1. **Legacy / Manual format**: Standard PredictionSubmission with match_prediction.predicted_scoreline,
+       match_prediction.probabilities, and player_predictions[].player_name.
+    
+    2. **New AI model output format**: JSON with an "output" wrapper (or top-level) containing
+       score_prediction, goal_insights, player_prediction, and match_prediction.win_probabilities.
+       The system automatically detects and normalizes the new format.
+    
+    No manual conversion required.
+    """
+    try:
+        raw_body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=422, detail="Invalid JSON body.")
+
+    # Detect and normalize AI model output format → legacy schema
+    try:
+        normalized = _normalize_ai_output(raw_body)
+    except Exception as e:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unsupported JSON structure. Expected either the legacy prediction schema or the official AI model output schema. Details: {str(e)}"
+        )
+
+    # Parse with Pydantic
+    try:
+        payload = PredictionSubmission(**normalized)
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    # Resolve team from authenticated user or organizer override
     if str(current_user.role).upper() == UserRole.ORGANIZER.value:
-        import uuid
         try:
-            team_uuid = uuid.UUID(payload.team_id)
+            team_uuid = uuid_lib.UUID(payload.team_id)
             team = db.query(TeamModel).filter(TeamModel.id == team_uuid).first()
         except ValueError:
             team = db.query(TeamModel).filter(TeamModel.team_id == payload.team_id).first()
@@ -144,7 +323,7 @@ def submit_prediction(
         team = db.query(TeamModel).filter(TeamModel.user_id == current_user.id).first()
         if not team:
             raise HTTPException(status_code=400, detail="Team not found for current user")
-            
+
     payload.team_id = str(team.id)
     service = PredictionService(db)
     return service.save_prediction(payload.model_dump())

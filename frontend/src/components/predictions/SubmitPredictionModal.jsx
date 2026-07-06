@@ -299,47 +299,150 @@ const SubmitPredictionModal = ({ match, isOpen, onClose, onPredictionSubmitted, 
     reader.onload = async (event) => {
       try {
         const rawJson = JSON.parse(event.target.result);
-        const json = rawJson.output ? rawJson.output : rawJson;
 
-        const missing = [];
-        if (!json.match_prediction) missing.push('match_prediction');
-        if (!json.score_prediction && !json.match_prediction?.predicted_scoreline) missing.push('score_prediction');
-        if (!json.goal_insights && !json.match_prediction?.both_teams_to_score) missing.push('goal_insights');
-        if (!json.player_prediction && !json.player_predictions) missing.push('player_prediction');
+        // ---------------------------------------------------------------
+        // Detect format: new AI model output or legacy prediction schema
+        // ---------------------------------------------------------------
+        const inner = rawJson.output ? rawJson.output : rawJson;
 
-        if (missing.length > 0) {
-          throw new Error(`Invalid JSON format. Missing required fields: ${missing.join(', ')}`);
+        const isNewFormat = (
+          'score_prediction' in inner ||
+          'goal_insights' in inner ||
+          'player_prediction' in inner ||
+          ('match_prediction' in inner && 'win_probabilities' in (inner.match_prediction || {}))
+        );
+
+        let payload;
+
+        if (isNewFormat) {
+          // ---- New AI model output format ----
+          const mpRaw = inner.match_prediction || {};
+          const scorePred = inner.score_prediction || {};
+          const goalInsights = inner.goal_insights || {};
+          const playerPredRaw = inner.player_prediction || {};
+
+          // Win probabilities
+          const winProbs = mpRaw.win_probabilities || {};
+          const homeProb = winProbs.home_team?.probability ?? 0;
+          const drawProb = winProbs.draw?.probability ?? 0;
+          const awayProb = winProbs.away_team?.probability ?? 0;
+
+          // Determine winner
+          const probsMap = { home: homeProb, draw: drawProb, away: awayProb };
+          const predictedWinner = Object.entries(probsMap).reduce(
+            (best, [k, v]) => v > best[1] ? [k, v] : best, ['home', -1]
+          )[0];
+
+          // Score prediction
+          const scorelineRaw = scorePred.predicted_scoreline || {};
+          const homeGoals = scorelineRaw.home_goals ?? 0;
+          const awayGoals = scorelineRaw.away_goals ?? 0;
+          const homeTeamName = scorelineRaw.home_team;
+          const awayTeamName = scorelineRaw.away_team;
+          const totalGoals = scorePred.total_goals ?? (homeGoals + awayGoals);
+
+          // First team to score
+          const ftsRaw = goalInsights.first_team_to_score || {};
+          let firstTeamObj = null;
+          if (ftsRaw.team) {
+            let normalizedTeam = ftsRaw.team;
+            if (ftsRaw.team === homeTeamName) normalizedTeam = 'home';
+            else if (ftsRaw.team === awayTeamName) normalizedTeam = 'away';
+            firstTeamObj = { team: normalizedTeam, probability: ftsRaw.probability ?? 0 };
+          }
+
+          // BTTS
+          const bttsRaw = goalInsights.both_teams_to_score || null;
+
+          // Player predictions + clean sheet
+          const playerPredictions = [];
+          const cleanSheetPredictions = [];
+          const goalScorers = { home: [], away: [] };
+
+          for (const [sideKey, sideLabel] of [['home_team', 'home'], ['away_team', 'away']]) {
+            const sideData = playerPredRaw[sideKey] || {};
+            const goalList = sideData.goal || [];
+            for (const p of goalList) {
+              const name = p.name;
+              const preds = p.predictions || [];
+              if (!name || !preds.length) continue;
+              const best = preds.reduce((a, b) => (b.probability ?? 0) > (a.probability ?? 0) ? b : a, preds[0]);
+              const predictedGoals = best.goal_count ?? 0;
+              const goalProb = best.probability ?? 0;
+              playerPredictions.push({
+                player_name: name,
+                team: sideLabel,
+                predicted_goals: predictedGoals,
+                goal_probability: goalProb,
+                probability: goalProb,
+              });
+              goalScorers[sideLabel].push({ name, predicted_goals: predictedGoals, probability: goalProb });
+            }
+            const cs = sideData.clean_sheet_prediction || {};
+            if (cs && (cs.goalkeeper || cs.prediction !== undefined)) {
+              cleanSheetPredictions.push(cs);
+            }
+          }
+
+          payload = {
+            team_id: isOrganizer ? orgTeam : 'self',
+            match_id: match.id,
+            submission_id: rawJson.submission_id || `sub-json-${Date.now()}`,
+            match_prediction: {
+              predicted_winner: predictedWinner,
+              predicted_scoreline: {
+                home_team_goals: homeGoals,
+                away_team_goals: awayGoals,
+              },
+              probabilities: {
+                home_win_probability: homeProb,
+                draw_probability: drawProb,
+                away_win_probability: awayProb,
+              },
+              total_goals_prediction: totalGoals,
+              first_team_to_score: firstTeamObj,
+              both_teams_to_score: bttsRaw,
+              clean_sheet_predictions: cleanSheetPredictions,
+              goal_scorers: goalScorers,
+            },
+            player_predictions: playerPredictions,
+          };
+
+        } else {
+          // ---- Legacy format: validate required fields ----
+          const missing = [];
+          if (!inner.match_prediction) missing.push('match_prediction');
+          if (!inner.match_prediction?.predicted_scoreline) missing.push('match_prediction.predicted_scoreline');
+          if (!inner.match_prediction?.probabilities) missing.push('match_prediction.probabilities');
+
+          if (missing.length > 0) {
+            throw new Error(
+              `Unsupported JSON structure. Expected either the legacy prediction schema or the official AI model output schema.\n` +
+              `Missing fields: ${missing.join(', ')}`
+            );
+          }
+
+          payload = {
+            ...inner,
+            team_id: isOrganizer ? orgTeam : 'self',
+            match_id: match.id,
+            submission_id: inner.submission_id || `sub-json-${Date.now()}`,
+          };
         }
 
-        // Map AI format to backend schema if needed
-        if (json.score_prediction && !json.match_prediction.predicted_scoreline) {
-          json.match_prediction.predicted_scoreline = json.score_prediction.predicted_scoreline || json.score_prediction;
-        }
-        if (json.goal_insights) {
-          json.match_prediction.both_teams_to_score = json.goal_insights.both_teams_to_score;
-          json.match_prediction.first_team_to_score = json.goal_insights.first_team_to_score;
-        }
-        if (json.player_prediction && !json.player_predictions) {
-          json.player_predictions = Array.isArray(json.player_prediction) ? json.player_prediction : [json.player_prediction];
-        }
-
-        // Validate match_id instead of blindly overwriting
-        if (json.match_id && json.match_id !== match.id) {
-          throw new Error(`JSON match_id (${json.match_id}) does not match current match (${match.id}).`);
-        }
-        json.match_id = match.id;
-        
-        json.team_id = isOrganizer ? orgTeam : 'self';
-        json.submission_id = json.submission_id || `sub-json-${Date.now()}`;
-
-        // Ensure player_predictions exists (can be empty in AI format)
-        if (!json.player_predictions) {
-          json.player_predictions = [];
+        // Validate match_id if present in JSON
+        if (rawJson.match_id && rawJson.match_id !== match.id) {
+          throw new Error(`JSON match_id (${rawJson.match_id}) does not match current match (${match.id}).`);
         }
 
         setLoading(true);
-        await PredictionService.submitPrediction(json);
-        showToast('Prediction submitted successfully', 'success');
+        await PredictionService.submitPrediction(payload);
+        showToast(
+          isNewFormat
+            ? 'AI model output parsed and submitted successfully'
+            : 'Prediction submitted successfully',
+          'success'
+        );
         onPredictionSubmitted();
         onClose();
       } catch (err) {

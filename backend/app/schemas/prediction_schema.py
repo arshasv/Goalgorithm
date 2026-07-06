@@ -1,10 +1,30 @@
 from pydantic import BaseModel, Field, field_validator, model_validator
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 
 class PredictedScoreline(BaseModel):
-    home_team_goals: int = Field(..., ge=0)
-    away_team_goals: int = Field(..., ge=0)
+    """Accepts both legacy format (home_team_goals / away_team_goals)
+    and new AI model output format (home_goals / away_goals)."""
+    home_team_goals: Optional[int] = Field(default=None, ge=0)
+    away_team_goals: Optional[int] = Field(default=None, ge=0)
+
+    # New AI model output field names
+    home_goals: Optional[int] = Field(default=None, ge=0)
+    away_goals: Optional[int] = Field(default=None, ge=0)
+
+    @model_validator(mode="after")
+    def normalize_goals(self):
+        """Accept either home_goals/away_goals (new format) or home_team_goals/away_team_goals (legacy)."""
+        if self.home_team_goals is None and self.home_goals is not None:
+            self.home_team_goals = self.home_goals
+        if self.away_team_goals is None and self.away_goals is not None:
+            self.away_team_goals = self.away_goals
+        # Default to 0 if still None
+        if self.home_team_goals is None:
+            self.home_team_goals = 0
+        if self.away_team_goals is None:
+            self.away_team_goals = 0
+        return self
 
 
 class Probabilities(BaseModel):
@@ -45,24 +65,25 @@ class GoalScorers(BaseModel):
 
 class MatchPrediction(BaseModel):
     """Match prediction — supports both AI JSON format and manual entry.
-    
-    AI format uses:
-      - both_teams_to_score: { prediction, probability }
-      - first_team_to_score: { team, probability }
-      - clean_sheet_predictions: [{ goalkeeper, prediction, probability }]
-      - No explicit predicted_winner (calculated from probabilities)
-    
-    Manual/legacy format uses:
+
+    New AI model output format (via output.match_prediction):
+      - win_probabilities: { home_team: {probability}, draw: {probability}, away_team: {probability} }
+      NOTE: score_prediction and goal_insights are top-level siblings in the AI output,
+            handled by the upstream normalizer in prediction_routes.py.
+
+    Legacy/manual format uses:
       - predicted_winner: "home"/"away"/"draw"
-      - both_teams_to_score_probability: float
-      - first_goal_team: "home"/"away"/"none"
-      - clean_sheet_probability: { home_team, away_team }
+      - predicted_scoreline: { home_team_goals, away_team_goals }
+      - probabilities: { home_win_probability, draw_probability, away_win_probability }
     """
     # Winner — can be provided manually or auto-calculated from probabilities
     predicted_winner: Optional[str] = None
-    predicted_scoreline: PredictedScoreline
-    probabilities: Probabilities
+    predicted_scoreline: Optional[PredictedScoreline] = None
+    probabilities: Optional[Probabilities] = None
     total_goals_prediction: Optional[int] = None
+
+    # --- New AI format: win_probabilities nested object ---
+    win_probabilities: Optional[Dict[str, Any]] = None
 
     # --- Goal insights (AI format) ---
     both_teams_to_score: Optional[BothTeamsToScore] = None
@@ -98,12 +119,27 @@ class MatchPrediction(BaseModel):
         return v.lower()
 
     @model_validator(mode="after")
+    def promote_win_probabilities(self):
+        """Promote new AI format win_probabilities → legacy probabilities object."""
+        if self.probabilities is None and self.win_probabilities is not None:
+            wp = self.win_probabilities
+            home_prob = wp.get("home_team", {}).get("probability", 0)
+            draw_prob = wp.get("draw", {}).get("probability", 0)
+            away_prob = wp.get("away_team", {}).get("probability", 0)
+            self.probabilities = Probabilities(
+                home_win_probability=float(home_prob),
+                draw_probability=float(draw_prob),
+                away_win_probability=float(away_prob),
+            )
+        return self
+
+    @model_validator(mode="after")
     def resolve_computed_fields(self):
         """Auto-calculate predicted_winner from probabilities if not provided.
         Auto-calculate total_goals_prediction from scoreline if not provided.
         Resolve BTTS / first_goal from AI sub-objects to flat fields for compat."""
         # Auto-calculate predicted_winner from highest probability
-        if self.predicted_winner is None:
+        if self.predicted_winner is None and self.probabilities is not None:
             probs = {
                 "home": self.probabilities.home_win_probability,
                 "draw": self.probabilities.draw_probability,
@@ -112,7 +148,7 @@ class MatchPrediction(BaseModel):
             self.predicted_winner = max(probs, key=probs.get)
 
         # Auto-calculate total_goals
-        if self.total_goals_prediction is None:
+        if self.total_goals_prediction is None and self.predicted_scoreline is not None:
             self.total_goals_prediction = (
                 self.predicted_scoreline.home_team_goals
                 + self.predicted_scoreline.away_team_goals
@@ -135,32 +171,47 @@ class MatchPrediction(BaseModel):
 
     @model_validator(mode="after")
     def validate_goal_scorers(self):
-        """Validate goal scorers count matches scoreline — only if scorers provided."""
+        """Validate goal scorers count matches scoreline — only if scorers provided
+        in legacy manual entry context (not AI format where scorers may be partial)."""
+        if self.predicted_scoreline is None:
+            return self
+
         home_count = len(self.goal_scorers.home)
         away_count = len(self.goal_scorers.away)
+
+        # If no scorers provided at all, skip validation
+        if home_count == 0 and away_count == 0:
+            return self
+
+        # Skip strict count validation if AI-format fields are present
+        # (AI format may list only known goal scorers, not all goals)
+        if self.both_teams_to_score is not None or self.first_team_to_score is not None:
+            return self
+
+        # Legacy manual entry: strictly validate scorer count = goal count
         expected_home = self.predicted_scoreline.home_team_goals
         expected_away = self.predicted_scoreline.away_team_goals
 
-        # Only validate if scorers are actually provided (not empty defaults)
-        if home_count > 0 or away_count > 0:
-            if home_count != expected_home:
-                raise ValueError(
-                    f"Number of home goal scorers ({home_count}) must equal predicted home goals ({expected_home})"
-                )
-            if away_count != expected_away:
-                raise ValueError(
-                    f"Number of away goal scorers ({away_count}) must equal predicted away goals ({expected_away})"
-                )
+        if home_count > 0 and home_count != expected_home:
+            raise ValueError(
+                f"Number of home goal scorers ({home_count}) must equal predicted home goals ({expected_home})"
+            )
+        if away_count > 0 and away_count != expected_away:
+            raise ValueError(
+                f"Number of away goal scorers ({away_count}) must equal predicted away goals ({expected_away})"
+            )
         return self
 
 
 class PlayerPrediction(BaseModel):
     """Player-level prediction.
-    
-    AI format: { player_name, team, predicted_goals, probability }
-    Legacy format: { player_id, player_name, goal_probability, predicted_goals, assist_probability }
+
+    New AI model output format: { name, team, predicted_goals, probability }
+    Legacy AI format: { player_name, team, predicted_goals, probability }
+    Legacy manual format: { player_id, player_name, goal_probability, predicted_goals, assist_probability }
     """
-    player_name: str = Field(..., min_length=1)
+    player_name: Optional[str] = Field(default=None)
+    name: Optional[str] = None  # New AI model output format uses 'name'
     team: Optional[str] = None
     predicted_goals: int = Field(default=0, ge=0)
     probability: Optional[float] = Field(default=None, ge=0, le=100)
@@ -169,6 +220,15 @@ class PlayerPrediction(BaseModel):
     player_id: Optional[str] = None
     goal_probability: Optional[float] = Field(default=None, ge=0, le=100)
     assist_probability: Optional[float] = Field(default=None, ge=0, le=100)
+
+    @model_validator(mode="after")
+    def resolve_player_name(self):
+        """Resolve player_name from 'name' field if not provided (new AI format)."""
+        if self.player_name is None and self.name is not None:
+            self.player_name = self.name
+        elif self.player_name is None and self.name is None:
+            self.player_name = "Unknown"
+        return self
 
     @model_validator(mode="after")
     def resolve_probability(self):
