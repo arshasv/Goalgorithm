@@ -2,7 +2,15 @@ pipeline {
 
     agent any
 
+    options {
+        timestamps()
+        ansiColor('xterm')
+    }
+
     environment {
+
+        // Disable BuildKit (temporary fix for BuildKit issues)
+        DOCKER_BUILDKIT = "0"
 
         // OKD Configuration
         OKD_PROJECT = "goalgorithm"
@@ -27,12 +35,49 @@ pipeline {
             }
         }
 
+        stage('Debug Environment') {
+            steps {
+                sh '''
+                echo "========== SYSTEM =========="
+                whoami
+                id
+                pwd
+
+                echo "========== PATH =========="
+                echo $PATH
+
+                echo "========== DOCKER =========="
+                which docker
+                docker version
+                docker info
+
+                echo "========== BUILDX =========="
+                docker buildx ls || true
+
+                echo "========== OC =========="
+                which oc || true
+                oc version --client || true
+                '''
+            }
+        }
+
+        stage('Clean Docker Cache') {
+            steps {
+                sh '''
+                docker builder prune -af || true
+                docker image prune -af || true
+                '''
+            }
+        }
+
         stage('Build Backend Image') {
             steps {
                 dir('backend') {
 
                     sh '''
-                    docker build \
+                    export DOCKER_BUILDKIT=0
+
+                    docker build --pull \
                     -t $REGISTRY_URL/$OKD_PROJECT/$BACKEND_IMAGE:$TAG .
 
                     docker tag \
@@ -48,7 +93,9 @@ pipeline {
                 dir('frontend') {
 
                     sh '''
-                    docker build \
+                    export DOCKER_BUILDKIT=0
+
+                    docker build --pull \
                     -t $REGISTRY_URL/$OKD_PROJECT/$FRONTEND_IMAGE:$TAG .
 
                     docker tag \
@@ -71,12 +118,10 @@ pipeline {
                 ]) {
 
                     sh '''
-
-                    echo $OKD_TOKEN | docker login \
+                    echo "$OKD_TOKEN" | docker login \
                     $REGISTRY_URL \
                     -u developer \
                     --password-stdin
-
                     '''
                 }
             }
@@ -87,13 +132,11 @@ pipeline {
             steps {
 
                 sh '''
-
                 docker push \
                 $REGISTRY_URL/$OKD_PROJECT/$BACKEND_IMAGE:$TAG
 
                 docker push \
                 $REGISTRY_URL/$OKD_PROJECT/$BACKEND_IMAGE:latest
-
                 '''
             }
         }
@@ -103,13 +146,11 @@ pipeline {
             steps {
 
                 sh '''
-
                 docker push \
                 $REGISTRY_URL/$OKD_PROJECT/$FRONTEND_IMAGE:$TAG
 
                 docker push \
                 $REGISTRY_URL/$OKD_PROJECT/$FRONTEND_IMAGE:latest
-
                 '''
             }
         }
@@ -126,7 +167,6 @@ pipeline {
                 ]) {
 
                     sh '''
-
                     oc login \
                     --token=$OKD_TOKEN \
                     --server=$OKD_API \
@@ -149,7 +189,6 @@ pipeline {
 
                     oc rollout status deployment/backend --timeout=300s
                     oc rollout status deployment/frontend --timeout=300s
-
                     '''
                 }
             }
@@ -160,11 +199,10 @@ pipeline {
             steps {
 
                 sh '''
-
                 oc project $OKD_PROJECT
 
                 echo "================ PODS ================"
-                oc get pods
+                oc get pods -o wide
 
                 echo "================ DEPLOYMENTS ================"
                 oc get deployment
@@ -178,6 +216,8 @@ pipeline {
                 echo "================ IMAGE STREAMS ================"
                 oc get is
 
+                echo "================ IMAGES ================"
+                oc get istag
                 '''
             }
         }
@@ -206,11 +246,10 @@ pipeline {
         always {
 
             sh '''
-
             docker logout $REGISTRY_URL || true
 
-            docker image prune -f || true
-
+            docker image prune -af || true
+            docker builder prune -af || true
             '''
         }
     }
