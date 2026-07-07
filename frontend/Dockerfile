@@ -1,23 +1,36 @@
-# Stage 2: Serve the application using Nginx
-FROM nginx:1.25-alpine
+# Stage 1: Development
+FROM node:20-alpine AS development
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+EXPOSE 3000
+CMD ["npm", "run", "dev"]
 
-# Create writable directories
-RUN mkdir -p /var/cache/nginx \
-    /var/run \
-    /tmp/nginx \
- && chmod -R 777 /var/cache/nginx /var/run /tmp/nginx /usr/share/nginx/html
+# Stage 2: Build the React application
+FROM node:20-alpine AS builder
+ARG VITE_API_BASE_URL
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
 
-# Configure nginx
-RUN printf 'server {\n\
-    listen 3000;\n\
-    location / {\n\
-        root /usr/share/nginx/html;\n\
-        index index.html index.htm;\n\
-        try_files $uri $uri/ /index.html;\n\
-    }\n\
-}\n' > /etc/nginx/conf.d/default.conf
+# Stage 3: Serve the application using Nginx
+FROM nginxinc/nginx-unprivileged:1.25-alpine AS production
+
+COPY nginx.conf /etc/nginx/nginx.conf
 
 COPY --from=builder /app/dist /usr/share/nginx/html
+
+RUN mkdir -p \
+    /tmp/client_temp \
+    /tmp/proxy_temp \
+    /tmp/fastcgi_temp \
+    /tmp/uwsgi_temp \
+    /tmp/scgi_temp && \
+    chmod -R 777 /tmp /usr/share/nginx/html
 
 EXPOSE 3000
 
