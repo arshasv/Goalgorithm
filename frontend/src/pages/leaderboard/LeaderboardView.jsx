@@ -10,7 +10,7 @@ const formatTeamDisplay = (e) => {
   return code ? `${code} – ${name}` : name;
 };
 
-const fmt1 = (val) => (val != null ? Number(val).toFixed(1) : '0.0');
+const fmt2 = (val) => (val != null ? Number(val).toFixed(2) : '0.00');
 
 const scoreColor = (val, max) => {
   if (val === 0) return 'color:var(--color-status-error)';
@@ -29,10 +29,10 @@ const rankBadge = (rank) => {
 const COLUMN_CONFIG = [
   { key: 'rank', label: 'Rank', render: (e) => e.rank, headerClass: '', cellClass: '' },
   { key: 'team_name', label: 'Team', render: (e) => <strong>{formatTeamDisplay(e)}</strong>, headerClass: '', cellClass: '' },
-  { key: 'phase1_score', label: 'Phase 1', render: (e) => <span className={`score-num ${scoreColor(e.phase1_score, 60)}`}>{fmt1(e.phase1_score)}</span>, headerClass: '', cellClass: '' },
-  { key: 'technical_score', label: 'Technical', render: (e) => <span className={`score-num ${scoreColor(e.technical_score, 20)}`}>{fmt1(e.technical_score)}</span>, headerClass: '', cellClass: '' },
-  { key: 'presentation_score', label: 'Presentation', render: (e) => <span className={`score-num ${scoreColor(e.presentation_score, 20)}`}>{fmt1(e.presentation_score)}</span>, headerClass: '', cellClass: '' },
-  { key: 'final_score', label: 'Final Score', render: (e) => <strong className="score-num" style={{fontSize:'var(--text-lg)'}}>{fmt1(e.final_score)}</strong>, headerClass: '', cellClass: '' },
+  { key: 'phase1_score',        label: 'Phase 1',      render: (e) => <span className={`score-num ${scoreColor(e.phase1_score, 60)}`}>{fmt2(e.phase1_score)}</span>, headerClass: '', cellClass: '' },
+  { key: 'technical_score',     label: 'Technical',    render: (e) => <span className={`score-num ${scoreColor(e.technical_score, 20)}`}>{fmt2(e.technical_score)}</span>, headerClass: '', cellClass: '' },
+  { key: 'presentation_score',  label: 'Presentation', render: (e) => <span className={`score-num ${scoreColor(e.presentation_score, 20)}`}>{fmt2(e.presentation_score)}</span>, headerClass: '', cellClass: '' },
+  { key: 'final_score',         label: 'Final Score',  render: (e) => <strong className="score-num" style={{fontSize:'var(--text-lg)'}}>{fmt2(e.final_score)}</strong>, headerClass: '', cellClass: '' },
 ];
 
 const LeaderboardView = () => {
@@ -133,7 +133,7 @@ const LeaderboardView = () => {
               </div>
               <div className="card stat-card">
                 <div className="stat-label">Top Score</div>
-                <div className="stat-value" style={{fontFamily:'var(--font-score)',fontSize:'var(--text-4xl)'}}>{fmt1(topScore)}</div>
+                <div className="stat-value" style={{fontFamily:'var(--font-score)',fontSize:'var(--text-4xl)'}}>{fmt2(topScore)}</div>
               </div>
               <div className="card stat-card">
                 <div className="stat-label">Top Team</div>
