@@ -1,5 +1,5 @@
 from pathlib import Path
-
+# pyright: ignore[reportMissingImports]
 from dotenv import load_dotenv
 
 _env_file = Path(__file__).resolve().parent.parent / ".env"
@@ -22,10 +22,7 @@ class Settings:
         self.host: str = os.environ.get("HOST", "0.0.0.0")
         self.port: int = int(os.environ.get("PORT", "8000"))
 
-        self.database_url: str = os.environ.get(
-            "DATABASE_URL",
-            "postgresql://fifa_user:fifa_password@postgres:5432/fifa_scoring_db",
-        )
+        self.database_url: str = os.environ["DATABASE_URL"]
         self.db_pool_size: int = int(os.environ.get("DB_POOL_SIZE", "5"))
         self.db_max_overflow: int = int(os.environ.get("DB_MAX_OVERFLOW", "10"))
         self.db_pool_pre_ping: bool = (
