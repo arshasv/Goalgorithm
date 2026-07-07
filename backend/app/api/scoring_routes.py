@@ -277,6 +277,7 @@ def calculate_all_scores_for_match(
                 "away_team_goals": actual.actual_away_goals or 0
             },
             "goal_scorers": actual.goal_scorers or {"home": [], "away": []},
+            "first_team_to_score": actual.first_team_to_score or "none",
             "player_results": [
                 {
                     "player_id": pa.player_id,
@@ -312,6 +313,7 @@ def calculate_all_scores_for_match(
                         "away_team": p.away_clean_sheet_probability or 0.0
                     },
                     "first_goal_team": p.first_goal_team.value if p.first_goal_team else "none",
+                    "first_goal_team_probability": p.first_goal_team_probability or 0.0,
                     "both_teams_to_score": {
                         "prediction": p.both_teams_to_score_prediction if p.both_teams_to_score_prediction is not None else False,
                         "probability": p.both_teams_to_score_probability or 0.0

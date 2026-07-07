@@ -255,8 +255,11 @@ class ScoringService:
                 if tid in team_earned_points:
                     team_earned_points[tid] += s.earned_points
                 
-        max_earned_points = max(team_earned_points.values()) if team_earned_points else 0.0
-        logger.info("Max earned points across all teams: %s", max_earned_points)
+        unique_match_ids = set(str(s.match_id) for s in all_scores)
+        total_matches = len(unique_match_ids)
+        max_earned_per_match = 75  # 25 base * 3× multiplier
+        total_possible = total_matches * max_earned_per_match
+        logger.info("Total matches evaluated: %s, total possible points: %s", total_matches, total_possible)
         
         tech_map = {str(e.team_id): e.total_score for e in tech_evals}
         # Aggregate presentation rounds (multiple rounds per team)
@@ -288,10 +291,11 @@ class ScoringService:
         for t in teams:
             tid = str(t.id)
             earned = team_earned_points[tid]
-            if max_earned_points > 0:
-                p1 = (earned / max_earned_points) * phase1_max
+            if total_possible > 0:
+                p1 = (earned / total_possible) * phase1_max
             else:
                 p1 = 0.0
+            p1 = min(p1, phase1_max)
                 
             computed_input.append({
                 "team_id": tid,

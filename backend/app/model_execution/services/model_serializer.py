@@ -101,11 +101,7 @@ class ModelSerializer:
                     "goal_probability": goal_prob
                 })
                 
-                goal_scorers[short_side].append({
-                    "name": name,
-                    "predicted_goals": predicted_goals,
-                    "probability": goal_prob
-                })
+                goal_scorers[short_side].append(name)
 
             # Clean sheet
             cs = side_data.get("clean_sheet_prediction", {})
