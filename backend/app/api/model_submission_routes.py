@@ -47,7 +47,7 @@ def _validate_model_file(filename: str, file_size: int) -> str:
 def _save_file(team_id: uuid.UUID, file: UploadFile, ext: str) -> str:
     _ensure_upload_dir()
     team_dir = UPLOAD_DIR / str(team_id)
-    team_dir.mkdir(parents=True, exist_ok=True)
+    team_dir.mkdir(parents=True, exist_ok=True, mode=0o777)
     unique_name = f"{uuid.uuid4()}{ext}"
     dest = team_dir / unique_name
     with open(dest, "wb") as f:
