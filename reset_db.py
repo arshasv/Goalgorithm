@@ -27,7 +27,7 @@ def reset_db():
         admin_user = UserModel(
             id="3e71ba6e-609c-4b7a-8c6c-a662eda07349",
             username="admin",
-            email="admin@fifa-scoring.com",
+            email="arshas@opentrends.net",
             password_hash="$2b$12$uj59QvCA5KoTTrGOeqSqbO/NBcLL7LgUhvULE7LgPlEZ4y1Ddw9s.",
             role=UserRole.ORGANIZER,
             is_active=True,

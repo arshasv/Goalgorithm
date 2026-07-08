@@ -35,11 +35,10 @@ services:
   frontend:
     build:
       context: ./frontend
+      args:
+        VITE_GRAPHQL_ENDPOINT: ${VITE_GRAPHQL_ENDPOINT}
     ports:
-      - "3001:3000"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
+      - "3001:8080"
     depends_on:
       - fifa-scoring-api
     restart: unless-stopped

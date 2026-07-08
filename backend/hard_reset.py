@@ -145,14 +145,14 @@ def reseed_mandatory_data(db: Session):
     # 1. Organizer admin account
     org = UserModel(
         username="admin",
-        email="admin@fifa-scoring.com",
+        email="arshas@opentrends.net",
         password_hash=hash_password("admin123"),
         role=UserRole.ORGANIZER,
         is_active=True,
     )
     db.add(org)
     db.flush()
-    logger.info(f"  users: created ORGANIZER 'admin@fifa-scoring.com' / 'admin123'")
+    logger.info(f"  users: created ORGANIZER 'arshas@opentrends.net' / 'admin123'")
 
     # 2. Default active scoring config
     config = ScoringConfigModel(
@@ -287,7 +287,7 @@ def main():
     print("  - All leaderboard data and analytics", file=sys.stderr)
     print("  - All users (except the default organizer)", file=sys.stderr)
     print("\nMandatory reference data will be re-created:", file=sys.stderr)
-    print("  - Admin account: admin@fifa-scoring.com / admin123", file=sys.stderr)
+    print("  - Admin account: arshas@opentrends.net / admin123", file=sys.stderr)
     print("  - Default scoring configuration", file=sys.stderr)
     print("  - Default leaderboard visibility settings", file=sys.stderr)
     print("  - Default upload window configuration", file=sys.stderr)

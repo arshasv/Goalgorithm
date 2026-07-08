@@ -27,7 +27,7 @@ def seed(force: bool = False):
                 db.delete(existing_org)
                 db.flush()
 
-            org_email = "admin@fifa-scoring.com"
+            org_email = "arshas@opentrends.net"
             email_err = validate_email_domain(org_email)
             if email_err:
                 print(
@@ -44,7 +44,7 @@ def seed(force: bool = False):
             )
             db.add(org)
             db.flush()
-            print(f"Created organizer: admin@fifa-scoring.com / admin123")
+            print(f"Created organizer: arshas@opentrends.net / admin123")
 
         db.commit()
         print("\nSeed complete! Only organizer account created.")

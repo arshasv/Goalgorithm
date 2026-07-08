@@ -121,7 +121,7 @@ Creates `SessionLocal = sessionmaker(bind=engine)`. The `get_db()` dependency ge
 
 #### `backend/seed.py`
 CLI script to populate the database. Creates:
-- **Organizer user**: `admin@fifa-scoring.com` / `admin123`
+- **Organizer user**: `arshas@opentrends.net` / `admin123`
 - **5 teams**: Team A through Team E
 - **3 sample matches**: Brazil vs Argentina, Germany vs France, England vs Portugal
 

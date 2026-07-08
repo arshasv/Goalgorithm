@@ -94,7 +94,7 @@ def repair():
         print("\nRepair complete! All team accounts:")
         for td in TEAMS:
             print(f"  Team {td['team_id']}: {td['email']} / {DEV_PASSWORD}")
-        print("\nOrganizer: admin@fifa-scoring.com / admin123")
+        print("\nOrganizer: arshas@opentrends.net / admin123")
 
     except Exception as e:
         db.rollback()
