@@ -111,9 +111,6 @@ const Sidebar = ({ collapsed, toggleSidebar }) => {
               <a className={isActive('matches')} data-page="matches" onClick={() => nav('matches')}>
                 <span className="nav-icon">⚽</span><span className="nav-label">Match Results</span>
               </a>
-              <a className={isActive('my-predictions')} data-page="my-predictions" onClick={() => nav('my-predictions')}>
-                <span className="nav-icon">📋</span><span className="nav-label">Predictions</span>
-              </a>
             </div>
             <div className="nav-section" id="tl-nav-stats">
               <div className="nav-section-title">Standings</div>
