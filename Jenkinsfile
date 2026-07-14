@@ -21,7 +21,32 @@ pipeline {
                 checkout scm
             }
         }
+    stage('Debug Environment') {
+        steps {
+            sh '''
+            echo "===== Hostname ====="
+            hostname
 
+            echo "===== Current User ====="
+            whoami
+
+            echo "===== DNS Lookup ====="
+            nslookup api.crc.testing || true
+
+            echo "===== Ping ====="
+            ping -c 2 api.crc.testing || true
+
+            echo "===== Resolve ====="
+            getent hosts api.crc.testing || true
+
+            echo "===== Curl ====="
+            curl -k https://api.crc.testing:6443/version || true
+
+            echo "===== CRC IP ====="
+            ping -c 2 192.168.21.75 || true
+            '''
+        }
+    }
         stage('Login to OKD') {
 
             steps {
