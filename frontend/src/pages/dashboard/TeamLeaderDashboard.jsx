@@ -478,13 +478,13 @@ const TeamLeaderDashboard = () => {
           <button className={`tab-btn ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => setActiveTab('profile')}>Team Profile</button>
           <button className={`tab-btn ${activeTab === 'members' ? 'active' : ''}`} onClick={() => setActiveTab('members')}>Members</button>
           <button className={`tab-btn ${activeTab === 'predictions' ? 'active' : ''}`} onClick={() => setActiveTab('predictions')}>My Predictions ({predictions.length})</button>
-          <button className={`tab-btn ${activeTab === 'scores' ? 'active' : ''}`} onClick={() => setActiveTab('scores')}>Match Scores</button>
+
         </div>
         <div>
           {activeTab === 'profile' && renderProfile()}
           {activeTab === 'members' && renderMembers()}
           {activeTab === 'predictions' && renderPredictions()}
-          {activeTab === 'scores' && renderScores()}
+
         </div>
       </div>
     </div>
