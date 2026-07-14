@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        OKD_API      = "https://192.168.21.75:6443"
+        OKD_API      = "https://api.crc.testing:6443"
         PROJECT      = "goal"
 
         REGISTRY     = "default-route-openshift-image-registry.apps-crc.testing"
