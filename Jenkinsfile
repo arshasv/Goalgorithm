@@ -21,32 +21,7 @@ pipeline {
                 checkout scm
             }
         }
-    stage('Debug Environment') {
-        steps {
-            sh '''
-            echo "===== Hostname ====="
-            hostname
 
-            echo "===== Current User ====="
-            whoami
-
-            echo "===== DNS Lookup ====="
-            nslookup api.crc.testing || true
-
-            echo "===== Ping ====="
-            ping -c 2 api.crc.testing || true
-
-            echo "===== Resolve ====="
-            getent hosts api.crc.testing || true
-
-            echo "===== Curl ====="
-            curl -k https://api.crc.testing:6443/version || true
-
-            echo "===== CRC IP ====="
-            ping -c 2 192.168.21.75 || true
-            '''
-        }
-    }
         stage('Login to OKD') {
 
             steps {
@@ -68,29 +43,38 @@ pipeline {
         }
 
         stage('Login to Vault') {
-
             steps {
-
                 withCredentials([
                     string(credentialsId: 'vault-role-id', variable: 'ROLE_ID'),
                     string(credentialsId: 'vault-secret-id', variable: 'SECRET_ID')
                 ]) {
-
                     sh '''
-                    LOGIN=$(curl -s \
-                      --request POST \
-                      --data "{\"role_id\":\"$ROLE_ID\",\"secret_id\":\"$SECRET_ID\"}" \
-                      ${VAULT_ADDR}/v1/auth/approle/login)
+                set -e
 
-                    echo $LOGIN > login.json
+                echo "Logging into Vault..."
 
-                    TOKEN=$(jq -r '.auth.client_token' login.json)
+                curl -s \
+                --request POST \
+                --data "{\"role_id\":\"$ROLE_ID\",\"secret_id\":\"$SECRET_ID\"}" \
+              ${VAULT_ADDR}/v1/auth/approle/login \
+              > login.json
 
-                    echo $TOKEN > vault.token
-                    '''
-                }
-            }
+            echo "===== Vault Login Response ====="
+            cat login.json
+            echo
+
+            TOKEN=$(jq -r '.auth.client_token // empty' login.json)
+
+            if [ -z "$TOKEN" ]; then
+                echo "ERROR: Failed to authenticate with Vault."
+                exit 1
+            fi
+
+            echo "$TOKEN" > vault.token
+            '''
         }
+    }
+}
 
         stage('Read Vault Secret') {
 
