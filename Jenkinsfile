@@ -139,7 +139,9 @@ EOF
 
                 sh '''
                 docker build \
-                  -t ${REGISTRY}/${PROJECT}/${IMAGE_NAME}:${IMAGE_TAG} .
+                    -t ${REGISTRY}/${PROJECT}/${IMAGE_NAME}:${IMAGE_TAG} \
+                    -f frontend/Dockerfile \
+                    frontend
                 '''
             }
         }
