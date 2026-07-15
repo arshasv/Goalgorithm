@@ -10,15 +10,15 @@ The backend will follow a **layered architecture** pattern with clear separation
 
 ```
 ┌─────────────────────────────────────────────┐
-│             API / Presentation Layer         │  ← HTTP endpoints, request/response handling
+│             API / Presentation Layer        │  ← HTTP endpoints, request/response handling
 ├─────────────────────────────────────────────┤
-│              Service / Use Case Layer        │  ← Business logic, scoring rules
+│              Service / Use Case Layer       │  ← Business logic, scoring rules
 ├─────────────────────────────────────────────┤
-│              Domain / Core Layer             │  ← Entities, formulas, validation rules
+│              Domain / Core Layer            │  ← Entities, formulas, validation rules
 ├─────────────────────────────────────────────┤
-│            Repository / Data Layer           │  ← Database access, queries
+│            Repository / Data Layer          │  ← Database access, queries
 ├─────────────────────────────────────────────┤
-│              Infrastructure Layer            │  ← DB connection, config, external services
+│              Infrastructure Layer           │  ← DB connection, config, external services
 └─────────────────────────────────────────────┘
 ```
 

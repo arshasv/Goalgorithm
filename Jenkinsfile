@@ -120,19 +120,28 @@ pipeline {
             }
         }
 
-        stage('Create OKD Secret') {
+        stage('Create OKD ConfigMap') {
             steps {
                 sh '''
                 set -e
 
                 rm -f frontend.env
 
+                # Convert Vault JSON to KEY=VALUE format
                 jq -r '.data.data | to_entries[] | "\\(.key)=\\(.value)"' frontend.json > frontend.env
 
-                oc delete secret frontend-secret --ignore-not-found=true
+                echo "===== Generated Environment File ====="
+                cat frontend.env
 
-                oc create secret generic frontend-secret \
+                # Delete existing ConfigMap if it exists
+                oc delete configmap frontend-config --ignore-not-found=true
+
+                # Create ConfigMap from Vault values
+                oc create configmap frontend-config \
                     --from-env-file=frontend.env
+
+                echo "===== ConfigMap Created ====="
+                oc describe configmap frontend-config
                 '''
             }
         }
@@ -171,16 +180,21 @@ pipeline {
                 sh '''
                 set -e
 
+                # Update deployment image
                 oc set image deployment/web \
                     web=${REGISTRY}/${PROJECT}/${IMAGE_NAME}:${IMAGE_TAG}
 
+                # Inject ConfigMap values as environment variables
+                oc set env deployment/web --from=configmap/frontend-config
+
+                # Restart deployment
                 oc rollout restart deployment/web
 
+                # Wait for rollout to complete
                 oc rollout status deployment/web
                 '''
             }
         }
-    }
 
     post {
         always {
