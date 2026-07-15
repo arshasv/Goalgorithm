@@ -195,6 +195,7 @@ pipeline {
                 '''
             }
         }
+    }
 
     post {
         always {
@@ -207,5 +208,4 @@ pipeline {
             '''
         }
     }
-}
 }
