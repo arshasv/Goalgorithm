@@ -2,19 +2,15 @@ pipeline {
     agent any
 
     environment {
-        OKD_API      = "https://api.crc.testing:6443"
-        PROJECT      = "goal"
+        OKD_API = "https://api.crc.testing:6443"
+        PROJECT = "goal"
 
-        REGISTRY     = "default-route-openshift-image-registry.apps-crc.testing"
+        REGISTRY = "default-route-openshift-image-registry.apps-crc.testing"
 
-        IMAGE_NAME   = "web"
-        IMAGE_TAG    = "${BUILD_NUMBER}"
+        IMAGE_NAME = "web"
+        IMAGE_TAG = "${BUILD_NUMBER}"
 
-        SECRET_PATH  = "secret/data/frontend"
-
-        VAULT_URL = "${params.VAULT_ADDR}"
-        ROLE_ID = "${params.VAULT_ROLE_ID}"
-        SECRET_ID = "${params.VAULT_SECRET_ID}"
+        SECRET_PATH = "secret/data/frontend"
     }
 
     stages {
@@ -26,21 +22,19 @@ pipeline {
         }
 
         stage('Login to OKD') {
-
             steps {
-
                 withCredentials([
                     string(credentialsId: 'okd-token', variable: 'TOKEN')
                 ]) {
-
                     sh '''
+                    set -e
+
                     oc login ${OKD_API} \
                       --token=$TOKEN \
                       --insecure-skip-tls-verify=true
 
                     oc project ${PROJECT}
                     '''
-
                 }
             }
         }
@@ -55,83 +49,73 @@ pipeline {
 
         stage('Login to Vault') {
             steps {
-                script {
-                    withEnv([
-                        "VAULT_URL=${params.VAULT_ADDR}",
-                        "ROLE_ID=${params.VAULT_ROLE_ID}",
-                        "SECRET_ID=${params.VAULT_SECRET_ID}"
-                    ]) {
+                withEnv([
+                    "VAULT_URL=${params.VAULT_ADDR}",
+                    "ROLE_ID=${params.VAULT_ROLE_ID}",
+                    "SECRET_ID=${params.VAULT_SECRET_ID}"
+                ]) {
 
-                        sh '''
-                            #!/bin/bash
-                            set -e
+                    sh '''
+                    set -e
 
-                            echo "Logging into Vault..."
+                    echo "Logging into Vault..."
 
-                            cat > login-payload.json <<EOF
-                            {
-                            "role_id": "${ROLE_ID}",
-                            "secret_id": "${SECRET_ID}"
-                            }
-                            EOF
+                    jq -n \
+                      --arg role "$ROLE_ID" \
+                      --arg secret "$SECRET_ID" \
+                      '{role_id:$role,secret_id:$secret}' \
+                      > login-payload.json
 
-                            echo "===== Login Payload ====="
-                            cat login-payload.json
+                    echo "===== Login Payload ====="
+                    cat login-payload.json
 
-                            curl -s \
-                                -X POST \
-                                -H "Content-Type: application/json" \
-                                --data @login-payload.json \
-                                "${VAULT_URL}/v1/auth/approle/login" \
-                                > login.json
+                    curl -s \
+                      -X POST \
+                      -H "Content-Type: application/json" \
+                      --data @login-payload.json \
+                      "$VAULT_URL/v1/auth/approle/login" \
+                      > login.json
 
-                            echo
-                            echo "===== Vault Login Response ====="
-                            cat login.json
+                    echo "===== Vault Login Response ====="
+                    cat login.json
 
-                            TOKEN=$(jq -r '.auth.client_token // empty' login.json)
+                    TOKEN=$(jq -r '.auth.client_token // empty' login.json)
 
-                            if [ -z "$TOKEN" ]; then
-                                echo "ERROR: Vault authentication failed."
-                                exit 1
-                            fi
+                    if [ -z "$TOKEN" ]; then
+                        echo "Vault authentication failed."
+                        exit 1
+                    fi
 
-                            echo "$TOKEN" > vault.token
-                            '''
-                        }
-                    }
+                    echo "$TOKEN" > vault.token
+                    '''
                 }
             }
         }
-    }
 
         stage('Read Vault Secret') {
             steps {
-                script {
-                    withEnv([
-                        "VAULT_URL=${params.VAULT_ADDR}"
-                    ]) {
+                withEnv([
+                    "VAULT_URL=${params.VAULT_ADDR}"
+                ]) {
 
-                        sh '''
-                            #!/bin/bash
-                            set -e
+                    sh '''
+                    set -e
 
-                            TOKEN=$(cat vault.token)
+                    TOKEN=$(cat vault.token)
 
-                            curl -s \
-                                -H "X-Vault-Token: $TOKEN" \
-                                "${VAULT_URL}/v1/${SECRET_PATH}" \
-                                > frontend.json
+                    curl -s \
+                      -H "X-Vault-Token: $TOKEN" \
+                      "$VAULT_URL/v1/${SECRET_PATH}" \
+                      > frontend.json
 
-                            echo "===== Vault Secret ====="
-                            cat frontend.json
+                    echo "===== Vault Secret ====="
+                    cat frontend.json
 
-                            if jq -e '.errors' frontend.json >/dev/null; then
-                                echo "Vault returned an error."
-                                exit 1
-                            fi
-                        '''
-                    }
+                    if jq -e '.errors' frontend.json >/dev/null; then
+                        echo "Vault returned an error."
+                        exit 1
+                    fi
+                    '''
                 }
             }
         }
@@ -139,24 +123,25 @@ pipeline {
         stage('Create OKD Secret') {
             steps {
                 sh '''
-                    rm -f frontend.env
+                set -e
 
-                    jq -r '.data.data | to_entries[] | "\\(.key)=\\(.value)"' frontend.json \
-                        > frontend.env
+                rm -f frontend.env
 
-                    oc delete secret frontend-secret --ignore-not-found
+                jq -r '.data.data | to_entries[] | "\\(.key)=\\(.value)"' frontend.json > frontend.env
 
-                    oc create secret generic frontend-secret \
-                        --from-env-file=frontend.env
+                oc delete secret frontend-secret --ignore-not-found=true
+
+                oc create secret generic frontend-secret \
+                    --from-env-file=frontend.env
                 '''
             }
         }
 
         stage('Build Image') {
-
             steps {
-
                 sh '''
+                set -e
+
                 docker build \
                     -t ${REGISTRY}/${PROJECT}/${IMAGE_NAME}:${IMAGE_TAG} \
                     -f frontend/Dockerfile \
@@ -166,28 +151,28 @@ pipeline {
         }
 
         stage('Push Image') {
-
             steps {
-
                 sh '''
+                set -e
+
                 docker login \
-                  -u kubeadmin \
-                  -p $(oc whoami -t) \
-                  ${REGISTRY}
+                    -u kubeadmin \
+                    -p $(oc whoami -t) \
+                    ${REGISTRY}
 
                 docker push \
-                  ${REGISTRY}/${PROJECT}/${IMAGE_NAME}:${IMAGE_TAG}
+                    ${REGISTRY}/${PROJECT}/${IMAGE_NAME}:${IMAGE_TAG}
                 '''
             }
         }
 
         stage('Deploy') {
-
             steps {
-
                 sh '''
+                set -e
+
                 oc set image deployment/web \
-                  web=${REGISTRY}/${PROJECT}/${IMAGE_NAME}:${IMAGE_TAG}
+                    web=${REGISTRY}/${PROJECT}/${IMAGE_NAME}:${IMAGE_TAG}
 
                 oc rollout restart deployment/web
 
@@ -195,16 +180,17 @@ pipeline {
                 '''
             }
         }
+    }
 
     post {
-
         always {
-
             sh '''
             rm -f vault.token
             rm -f login.json
+            rm -f login-payload.json
             rm -f frontend.json
             rm -f frontend.env
             '''
         }
     }
+}
