@@ -55,83 +55,99 @@ pipeline {
 
         stage('Login to Vault') {
             steps {
-                sh '''
-                set -e
+                script {
+                    withEnv([
+                        "VAULT_URL=${params.VAULT_ADDR}",
+                        "ROLE_ID=${params.VAULT_ROLE_ID}",
+                        "SECRET_ID=${params.VAULT_SECRET_ID}"
+                    ]) {
 
-                echo "Logging into Vault..."
+                        sh '''
+                            #!/bin/bash
+                            set -e
 
-                cat > login-payload.json <<EOF
-                    {
-                        "role_id": "${ROLE_ID}",
-                        "secret_id": "${SECRET_ID}"
+                            echo "Logging into Vault..."
+
+                            cat > login-payload.json <<EOF
+                            {
+                            "role_id": "${ROLE_ID}",
+                            "secret_id": "${SECRET_ID}"
+                            }
+                            EOF
+
+                            echo "===== Login Payload ====="
+                            cat login-payload.json
+
+                            curl -s \
+                                -X POST \
+                                -H "Content-Type: application/json" \
+                                --data @login-payload.json \
+                                "${VAULT_URL}/v1/auth/approle/login" \
+                                > login.json
+
+                            echo
+                            echo "===== Vault Login Response ====="
+                            cat login.json
+
+                            TOKEN=$(jq -r '.auth.client_token // empty' login.json)
+
+                            if [ -z "$TOKEN" ]; then
+                                echo "ERROR: Vault authentication failed."
+                                exit 1
+                            fi
+
+                            echo "$TOKEN" > vault.token
+                            '''
+                        }
                     }
-                EOF
-
-                echo "===== Login Payload ====="
-                cat login-payload.json
-
-                curl -s \
-                    -X POST \
-                    -H "Content-Type: application/json" \
-                    --data @login-payload.json \
-                    "${VAULT_URL}/v1/auth/approle/login" \
-                    > login.json
-
-                echo
-                echo "===== Vault Login Response ====="
-                cat login.json
-
-                TOKEN=$(jq -r '.auth.client_token // empty' login.json)
-
-                if [ -z "$TOKEN" ]; then
-                    echo "ERROR: Vault authentication failed."
-                    exit 1
-                fi
-
-                echo "$TOKEN" > vault.token
-                '''
+                }
             }
-        }
-
-        stage('Read Vault Secret') {
-
-            steps {
-
-            sh '''
-            set -e
-
-            TOKEN=$(cat vault.token)
-
-            curl -s \
-                -H "X-Vault-Token: $TOKEN" \
-                ${params.VAULT_ADDR}/v1/${SECRET_PATH} \
-                > frontend.json
-
-            echo "===== Vault Secret ====="
-            cat frontend.json
-
-            if jq -e '.errors' frontend.json >/dev/null; then
-                echo "Vault returned an error."
-                exit 1
-            fi
-            '''
         }
     }
 
-        stage('Create OKD Secret') {
-
+        stage('Read Vault Secret') {
             steps {
+                script {
+                    withEnv([
+                        "VAULT_URL=${params.VAULT_ADDR}"
+                    ]) {
 
+                        sh '''
+                            #!/bin/bash
+                            set -e
+
+                            TOKEN=$(cat vault.token)
+
+                            curl -s \
+                                -H "X-Vault-Token: $TOKEN" \
+                                "${VAULT_URL}/v1/${SECRET_PATH}" \
+                                > frontend.json
+
+                            echo "===== Vault Secret ====="
+                            cat frontend.json
+
+                            if jq -e '.errors' frontend.json >/dev/null; then
+                                echo "Vault returned an error."
+                                exit 1
+                            fi
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Create OKD Secret') {
+            steps {
                 sh '''
-                rm -f frontend.env
+                    rm -f frontend.env
 
-                jq -r '.data.data | to_entries[] | "\\(.key)=\\(.value)"' frontend.json \
-                    > frontend.env
+                    jq -r '.data.data | to_entries[] | "\\(.key)=\\(.value)"' frontend.json \
+                        > frontend.env
 
-                oc delete secret frontend-secret --ignore-not-found
+                    oc delete secret frontend-secret --ignore-not-found
 
-                oc create secret generic frontend-secret \
-                    --from-env-file=frontend.env
+                    oc create secret generic frontend-secret \
+                        --from-env-file=frontend.env
                 '''
             }
         }
