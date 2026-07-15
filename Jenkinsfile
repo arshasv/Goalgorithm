@@ -11,6 +11,10 @@ pipeline {
         IMAGE_TAG    = "${BUILD_NUMBER}"
 
         SECRET_PATH  = "secret/data/frontend"
+
+        VAULT_URL = "${params.VAULT_ADDR}"
+        ROLE_ID = "${params.VAULT_ROLE_ID}"
+        SECRET_ID = "${params.VAULT_SECRET_ID}"
     }
 
     stages {
@@ -41,48 +45,51 @@ pipeline {
             }
         }
 
-        stage('Login to Vault') {
-
+        stage('Verify Parameters') {
             steps {
+                echo "VAULT_ADDR = ${params.VAULT_ADDR}"
+                echo "ROLE ID Length = ${params.VAULT_ROLE_ID.length()}"
+                echo "SECRET ID Length = ${params.VAULT_SECRET_ID.length()}"
+            }
+        }
 
-                script {
+        stage('Login to Vault') {
+            steps {
+                sh '''
+                set -e
 
-                    sh """
-                    set -e
+                echo "Logging into Vault..."
 
-                    echo "Logging into Vault..."
+                cat > login-payload.json <<EOF
+                    {
+                        "role_id": "${ROLE_ID}",
+                        "secret_id": "${SECRET_ID}"
+                    }
+                EOF
 
-                    cat > login-payload.json <<EOF
-                        {
-                            "role_id": "${params.VAULT_ROLE_ID}",
-                            "secret_id": "${params.VAULT_SECRET_ID}"
-                        }
-                    EOF
+                echo "===== Login Payload ====="
+                cat login-payload.json
 
-                    echo "===== Login Payload ====="
-                    cat login-payload.json
+                curl -s \
+                    -X POST \
+                    -H "Content-Type: application/json" \
+                    --data @login-payload.json \
+                    "${VAULT_URL}/v1/auth/approle/login" \
+                    > login.json
 
-                    curl -s \
-                        -X POST \
-                        -H "Content-Type: application/json" \
-                        --data @login-payload.json \
-                        ${params.VAULT_ADDR}/v1/auth/approle/login \
-                        > login.json
+                echo
+                echo "===== Vault Login Response ====="
+                cat login.json
 
-                    echo
-                    echo "===== Vault Login Response ====="
-                    cat login.json
+                TOKEN=$(jq -r '.auth.client_token // empty' login.json)
 
-                    TOKEN=\$(jq -r '.auth.client_token // empty' login.json)
+                if [ -z "$TOKEN" ]; then
+                    echo "ERROR: Vault authentication failed."
+                    exit 1
+                fi
 
-                    if [ -z "\$TOKEN" ]; then
-                        echo "Vault authentication failed."
-                        exit 1
-                    fi
-
-                    echo "\$TOKEN" > vault.token
-                    """
-                }
+                echo "$TOKEN" > vault.token
+                '''
             }
         }
 
