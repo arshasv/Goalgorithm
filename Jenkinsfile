@@ -43,30 +43,44 @@ pipeline {
         }
 
         stage('Login to Vault') {
-            steps {
-                withCredentials([
-                    string(credentialsId: 'vault-role-id', variable: 'ROLE_ID'),
-                    string(credentialsId: 'vault-secret-id', variable: 'SECRET_ID')
-                ]) {
-                    sh '''
-                set -e
 
-                echo "Logging into Vault..."
+    steps {
 
-                curl -s \
-                --request POST \
-                --data "{\"role_id\":\"$ROLE_ID\",\"secret_id\":\"$SECRET_ID\"}" \
-              ${VAULT_ADDR}/v1/auth/approle/login \
-              > login.json
+        withCredentials([
+            string(credentialsId: 'vault-role-id', variable: 'ROLE_ID'),
+            string(credentialsId: 'vault-secret-id', variable: 'SECRET_ID')
+        ]) {
 
+            sh '''
+            set -e
+
+            echo "Logging into Vault..."
+
+            cat > login-payload.json <<EOF
+{
+  "role_id": "${ROLE_ID}",
+  "secret_id": "${SECRET_ID}"
+}
+EOF
+
+            echo "===== Login Payload ====="
+            cat login-payload.json
+
+            curl -s \
+                -X POST \
+                -H "Content-Type: application/json" \
+                --data @login-payload.json \
+                ${VAULT_ADDR}/v1/auth/approle/login \
+                > login.json
+
+            echo
             echo "===== Vault Login Response ====="
             cat login.json
-            echo
 
             TOKEN=$(jq -r '.auth.client_token // empty' login.json)
 
             if [ -z "$TOKEN" ]; then
-                echo "ERROR: Failed to authenticate with Vault."
+                echo "ERROR: Vault authentication failed."
                 exit 1
             fi
 
@@ -80,16 +94,26 @@ pipeline {
 
             steps {
 
-                sh '''
-                TOKEN=$(cat vault.token)
+            sh '''
+        set -e
 
-                curl \
-                  -H "X-Vault-Token:$TOKEN" \
-                  ${VAULT_ADDR}/v1/${SECRET_PATH} \
-                  > frontend.json
-                '''
-            }
-        }
+        TOKEN=$(cat vault.token)
+
+        curl -s \
+            -H "X-Vault-Token: $TOKEN" \
+            ${VAULT_ADDR}/v1/${SECRET_PATH} \
+            > frontend.json
+
+        echo "===== Vault Secret ====="
+        cat frontend.json
+
+        if jq -e '.errors' frontend.json >/dev/null; then
+            echo "Vault returned an error."
+            exit 1
+        fi
+        '''
+    }
+}
 
         stage('Create OKD Secret') {
 
